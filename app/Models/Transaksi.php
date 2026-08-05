@@ -10,12 +10,29 @@ class Transaksi extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['order_id', 'biaya_jasa', 'biaya_part', 'status_escrow', 'dicairkan_pada'];
+    protected $table = 'transaksi';
 
-    protected $casts = [
-        'dicairkan_pada' => 'datetime',
+    protected $fillable = [
+        'order_id',
+        'biaya_jasa',
+        'biaya_part',
+        'total',
+        'metode_pembayaran',
+        'status_pembayaran',
+        'status_escrow',
+        'paid_at',
     ];
 
+    protected $casts = [
+        'biaya_jasa' => 'decimal:2',
+        'biaya_part' => 'decimal:2',
+        'total' => 'decimal:2',
+        'paid_at' => 'datetime',
+    ];
+
+    /**
+     * Get the order that owns this transaction.
+     */
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);

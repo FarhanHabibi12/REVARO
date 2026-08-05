@@ -1,133 +1,850 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>REVARO — Layanan Servis Elektronik On-Demand Instan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brandBlue: '#0A4C8A',
+                        brandOrange: '#FF6A00',
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .glass-nav {
+            background: rgba(10, 76, 138, 0.95);
+            backdrop-filter: blur(8px);
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .shimmer {
+            background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800 flex flex-col">
 
-        <title>Laravel</title>
-
-        <!-- Fonts -->
-        <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=figtree:400,600&display=swap" rel="stylesheet" />
-
-        <!-- Styles -->
-        <style>
-            /* ! tailwindcss v3.2.4 | MIT License | https://tailwindcss.com */*,::after,::before{box-sizing:border-box;border-width:0;border-style:solid;border-color:#e5e7eb}::after,::before{--tw-content:''}html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;tab-size:4;font-family:Figtree, sans-serif;font-feature-settings:normal}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-size:100%;font-weight:inherit;line-height:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}[type=button],[type=reset],[type=submit],button{-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0;padding:0}legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}textarea{resize:vertical}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]{display:none}*, ::before, ::after{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: }::-webkit-backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: }.relative{position:relative}.mx-auto{margin-left:auto;margin-right:auto}.mx-6{margin-left:1.5rem;margin-right:1.5rem}.ml-4{margin-left:1rem}.mt-16{margin-top:4rem}.mt-6{margin-top:1.5rem}.mt-4{margin-top:1rem}.-mt-px{margin-top:-1px}.mr-1{margin-right:0.25rem}.flex{display:flex}.inline-flex{display:inline-flex}.grid{display:grid}.h-16{height:4rem}.h-7{height:1.75rem}.h-6{height:1.5rem}.h-5{height:1.25rem}.min-h-screen{min-height:100vh}.w-auto{width:auto}.w-16{width:4rem}.w-7{width:1.75rem}.w-6{width:1.5rem}.w-5{width:1.25rem}.max-w-7xl{max-width:80rem}.shrink-0{flex-shrink:0}.scale-100{--tw-scale-x:1;--tw-scale-y:1;transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.grid-cols-1{grid-template-columns:repeat(1, minmax(0, 1fr))}.items-center{align-items:center}.justify-center{justify-content:center}.gap-6{gap:1.5rem}.gap-4{gap:1rem}.self-center{align-self:center}.rounded-lg{border-radius:0.5rem}.rounded-full{border-radius:9999px}.bg-gray-100{--tw-bg-opacity:1;background-color:rgb(243 244 246 / var(--tw-bg-opacity))}.bg-white{--tw-bg-opacity:1;background-color:rgb(255 255 255 / var(--tw-bg-opacity))}.bg-red-50{--tw-bg-opacity:1;background-color:rgb(254 242 242 / var(--tw-bg-opacity))}.bg-dots-darker{background-image:url("data:image/svg+xml,%3Csvg width='30' height='30' viewBox='0 0 30 30' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1.22676 0C1.91374 0 2.45351 0.539773 2.45351 1.22676C2.45351 1.91374 1.91374 2.45351 1.22676 2.45351C0.539773 2.45351 0 1.91374 0 1.22676C0 0.539773 0.539773 0 1.22676 0Z' fill='rgba(0,0,0,0.07)'/%3E%3C/svg%3E")}.from-gray-700\/50{--tw-gradient-from:rgb(55 65 81 / 0.5);--tw-gradient-to:rgb(55 65 81 / 0);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.via-transparent{--tw-gradient-to:rgb(0 0 0 / 0);--tw-gradient-stops:var(--tw-gradient-from), transparent, var(--tw-gradient-to)}.bg-center{background-position:center}.stroke-red-500{stroke:#ef4444}.stroke-gray-400{stroke:#9ca3af}.p-6{padding:1.5rem}.px-6{padding-left:1.5rem;padding-right:1.5rem}.text-center{text-align:center}.text-right{text-align:right}.text-xl{font-size:1.25rem;line-height:1.75rem}.text-sm{font-size:0.875rem;line-height:1.25rem}.font-semibold{font-weight:600}.leading-relaxed{line-height:1.625}.text-gray-600{--tw-text-opacity:1;color:rgb(75 85 99 / var(--tw-text-opacity))}.text-gray-900{--tw-text-opacity:1;color:rgb(17 24 39 / var(--tw-text-opacity))}.text-gray-500{--tw-text-opacity:1;color:rgb(107 114 128 / var(--tw-text-opacity))}.underline{-webkit-text-decoration-line:underline;text-decoration-line:underline}.antialiased{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}.shadow-2xl{--tw-shadow:0 25px 50px -12px rgb(0 0 0 / 0.25);--tw-shadow-colored:0 25px 50px -12px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-gray-500\/20{--tw-shadow-color:rgb(107 114 128 / 0.2);--tw-shadow:var(--tw-shadow-colored)}.transition-all{transition-property:all;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.selection\:bg-red-500 *::selection{--tw-bg-opacity:1;background-color:rgb(239 68 68 / var(--tw-bg-opacity))}.selection\:text-white *::selection{--tw-text-opacity:1;color:rgb(255 255 255 / var(--tw-text-opacity))}.selection\:bg-red-500::selection{--tw-bg-opacity:1;background-color:rgb(239 68 68 / var(--tw-bg-opacity))}.selection\:text-white::selection{--tw-text-opacity:1;color:rgb(255 255 255 / var(--tw-text-opacity))}.hover\:text-gray-900:hover{--tw-text-opacity:1;color:rgb(17 24 39 / var(--tw-text-opacity))}.hover\:text-gray-700:hover{--tw-text-opacity:1;color:rgb(55 65 81 / var(--tw-text-opacity))}.focus\:rounded-sm:focus{border-radius:0.125rem}.focus\:outline:focus{outline-style:solid}.focus\:outline-2:focus{outline-width:2px}.focus\:outline-red-500:focus{outline-color:#ef4444}.group:hover .group-hover\:stroke-gray-600{stroke:#4b5563}.z-10{z-index: 10}@media (prefers-reduced-motion: no-preference){.motion-safe\:hover\:scale-\[1\.01\]:hover{--tw-scale-x:1.01;--tw-scale-y:1.01;transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}}@media (prefers-color-scheme: dark){.dark\:bg-gray-900{--tw-bg-opacity:1;background-color:rgb(17 24 39 / var(--tw-bg-opacity))}.dark\:bg-gray-800\/50{background-color:rgb(31 41 55 / 0.5)}.dark\:bg-red-800\/20{background-color:rgb(153 27 27 / 0.2)}.dark\:bg-dots-lighter{background-image:url("data:image/svg+xml,%3Csvg width='30' height='30' viewBox='0 0 30 30' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1.22676 0C1.91374 0 2.45351 0.539773 2.45351 1.22676C2.45351 1.91374 1.91374 2.45351 1.22676 2.45351C0.539773 2.45351 0 1.91374 0 1.22676C0 0.539773 0.539773 0 1.22676 0Z' fill='rgba(255,255,255,0.07)'/%3E%3C/svg%3E")}.dark\:bg-gradient-to-bl{background-image:linear-gradient(to bottom left, var(--tw-gradient-stops))}.dark\:stroke-gray-600{stroke:#4b5563}.dark\:text-gray-400{--tw-text-opacity:1;color:rgb(156 163 175 / var(--tw-text-opacity))}.dark\:text-white{--tw-text-opacity:1;color:rgb(255 255 255 / var(--tw-text-opacity))}.dark\:shadow-none{--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.dark\:ring-1{--tw-ring-offset-shadow:var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);--tw-ring-shadow:var(--tw-ring-inset) 0 0 0 calc(1px + var(--tw-ring-offset-width)) var(--tw-ring-color);box-shadow:var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000)}.dark\:ring-inset{--tw-ring-inset:inset}.dark\:ring-white\/5{--tw-ring-color:rgb(255 255 255 / 0.05)}.dark\:hover\:text-white:hover{--tw-text-opacity:1;color:rgb(255 255 255 / var(--tw-text-opacity))}.group:hover .dark\:group-hover\:stroke-gray-400{stroke:#9ca3af}}@media (min-width: 640px){.sm\:fixed{position:fixed}.sm\:top-0{top:0px}.sm\:right-0{right:0px}.sm\:ml-0{margin-left:0px}.sm\:flex{display:flex}.sm\:items-center{align-items:center}.sm\:justify-center{justify-content:center}.sm\:justify-between{justify-content:space-between}.sm\:text-left{text-align:left}.sm\:text-right{text-align:right}}@media (min-width: 768px){.md\:grid-cols-2{grid-template-columns:repeat(2, minmax(0, 1fr))}}@media (min-width: 1024px){.lg\:gap-8{gap:2rem}.lg\:p-8{padding:2rem}}
-        </style>
-    </head>
-    <body class="antialiased">
-        <div class="relative sm:flex sm:justify-center sm:items-center min-h-screen bg-dots-darker bg-center bg-gray-100 dark:bg-dots-lighter dark:bg-gray-900 selection:bg-red-500 selection:text-white">
-            @if (Route::has('login'))
-                <div class="sm:fixed sm:top-0 sm:right-0 p-6 text-right z-10">
-                    @auth
-                        <a href="{{ url('/home') }}" class="font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500">Home</a>
-                    @else
-                        <a href="{{ route('login') }}" class="font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500">Log in</a>
-
-                        @if (Route::has('register'))
-                            <a href="{{ route('register') }}" class="ml-4 font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500">Register</a>
-                        @endif
-                    @endauth
+    <!-- Top Navigation Bar -->
+    <header class="glass-nav text-white sticky top-0 z-50 shadow-md">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+            <a href="/" class="flex items-center space-x-2.5">
+                <div class="bg-brandOrange p-2 rounded-xl font-extrabold text-sm tracking-widest text-white shadow-sm">
+                    REV
                 </div>
-            @endif
+                <div>
+                    <h1 class="text-lg font-extrabold tracking-tight">REVARO</h1>
+                    <p class="text-[10px] text-blue-200 font-medium">Repair & Restore</p>
+                </div>
+            </a>
+            
+            <nav class="hidden md:flex items-center space-x-6">
+                <a href="/" class="text-sm font-semibold hover:text-brandOrange transition">Pesan Jasa</a>
+                <a href="/partner/register" class="text-sm font-semibold hover:text-brandOrange transition">Gabung Mitra</a>
+                <a href="/admin/login" class="text-sm font-semibold hover:text-brandOrange transition">Admin Portal</a>
+            </nav>
 
-            <div class="max-w-7xl mx-auto p-6 lg:p-8">
-                <div class="flex justify-center">
-                    <svg viewBox="0 0 62 65" fill="none" xmlns="http://www.w3.org/2000/svg" class="h-16 w-auto bg-gray-100 dark:bg-gray-900">
-                        <path d="M61.8548 14.6253C61.8778 14.7102 61.8895 14.7978 61.8897 14.8858V28.5615C61.8898 28.737 61.8434 28.9095 61.7554 29.0614C61.6675 29.2132 61.5409 29.3392 61.3887 29.4265L49.9104 36.0351V49.1337C49.9104 49.4902 49.7209 49.8192 49.4118 49.9987L25.4519 63.7916C25.3971 63.8227 25.3372 63.8427 25.2774 63.8639C25.255 63.8714 25.2338 63.8851 25.2101 63.8913C25.0426 63.9354 24.8666 63.9354 24.6991 63.8913C24.6716 63.8838 24.6467 63.8689 24.6205 63.8589C24.5657 63.8389 24.5084 63.8215 24.456 63.7916L0.501061 49.9987C0.348882 49.9113 0.222437 49.7853 0.134469 49.6334C0.0465019 49.4816 0.000120578 49.3092 0 49.1337L0 8.10652C0 8.01678 0.0124642 7.92953 0.0348998 7.84477C0.0423783 7.8161 0.0598282 7.78993 0.0697995 7.76126C0.0884958 7.70891 0.105946 7.65531 0.133367 7.6067C0.152063 7.5743 0.179485 7.54812 0.20192 7.51821C0.230588 7.47832 0.256763 7.43719 0.290416 7.40229C0.319084 7.37362 0.356476 7.35243 0.388883 7.32751C0.425029 7.29759 0.457436 7.26518 0.498568 7.2415L12.4779 0.345059C12.6296 0.257786 12.8015 0.211853 12.9765 0.211853C13.1515 0.211853 13.3234 0.257786 13.475 0.345059L25.4531 7.2415H25.4556C25.4955 7.26643 25.5292 7.29759 25.5653 7.32626C25.5977 7.35119 25.6339 7.37362 25.6625 7.40104C25.6974 7.43719 25.7224 7.47832 25.7523 7.51821C25.7735 7.54812 25.8021 7.5743 25.8196 7.6067C25.8483 7.65656 25.8645 7.70891 25.8844 7.76126C25.8944 7.78993 25.9118 7.8161 25.9193 7.84602C25.9423 7.93096 25.954 8.01853 25.9542 8.10652V33.7317L35.9355 27.9844V14.8846C35.9355 14.7973 35.948 14.7088 35.9704 14.6253C35.9792 14.5954 35.9954 14.5692 36.0053 14.5405C36.0253 14.4882 36.0427 14.4346 36.0702 14.386C36.0888 14.3536 36.1163 14.3274 36.1375 14.2975C36.1674 14.2576 36.1923 14.2165 36.2272 14.1816C36.2559 14.1529 36.292 14.1317 36.3244 14.1068C36.3618 14.0769 36.3942 14.0445 36.4341 14.0208L48.4147 7.12434C48.5663 7.03694 48.7383 6.99094 48.9133 6.99094C49.0883 6.99094 49.2602 7.03694 49.4118 7.12434L61.3899 14.0208C61.4323 14.0457 61.4647 14.0769 61.5021 14.1055C61.5333 14.1305 61.5694 14.1529 61.5981 14.1803C61.633 14.2165 61.6579 14.2576 61.6878 14.2975C61.7103 14.3274 61.7377 14.3536 61.7551 14.386C61.7838 14.4346 61.8 14.4882 61.8199 14.5405C61.8312 14.5692 61.8474 14.5954 61.8548 14.6253ZM59.893 27.9844V16.6121L55.7013 19.0252L49.9104 22.3593V33.7317L59.8942 27.9844H59.893ZM47.9149 48.5566V37.1768L42.2187 40.4299L25.953 49.7133V61.2003L47.9149 48.5566ZM1.99677 9.83281V48.5566L23.9562 61.199V49.7145L12.4841 43.2219L12.4804 43.2194L12.4754 43.2169C12.4368 43.1945 12.4044 43.1621 12.3682 43.1347C12.3371 43.1097 12.3009 43.0898 12.2735 43.0624L12.271 43.0586C12.2386 43.0275 12.2162 42.9888 12.1887 42.9539C12.1638 42.9203 12.1339 42.8916 12.114 42.8567L12.1127 42.853C12.0903 42.8156 12.0766 42.7707 12.0604 42.7283C12.0442 42.6909 12.023 42.656 12.013 42.6161C12.0005 42.5688 11.998 42.5177 11.9931 42.4691C11.9881 42.4317 11.9781 42.3943 11.9781 42.3569V15.5801L6.18848 12.2446L1.99677 9.83281ZM12.9777 2.36177L2.99764 8.10652L12.9752 13.8513L22.9541 8.10527L12.9752 2.36177H12.9777ZM18.1678 38.2138L23.9574 34.8809V9.83281L19.7657 12.2459L13.9749 15.5801V40.6281L18.1678 38.2138ZM48.9133 9.14105L38.9344 14.8858L48.9133 20.6305L58.8909 14.8846L48.9133 9.14105ZM47.9149 22.3593L42.124 19.0252L37.9323 16.6121V27.9844L43.7219 31.3174L47.9149 33.7317V22.3593ZM24.9533 47.987L39.59 39.631L46.9065 35.4555L36.9352 29.7145L25.4544 36.3242L14.9907 42.3482L24.9533 47.987Z" fill="#FF2D20"/>
-                    </svg>
+            <div class="flex items-center space-x-3">
+                <div id="userProfileSection" class="hidden flex items-center space-x-2">
+                    <span id="navUserName" class="text-xs font-bold bg-white/10 px-3 py-1.5 rounded-full border border-white/20"></span>
+                    <button onclick="handleLogout()" class="bg-red-500/80 hover:bg-red-600 text-white text-xs px-3 py-1.5 rounded-lg font-semibold transition">Logout</button>
+                </div>
+                <div id="authNavButtons" class="flex space-x-2">
+                    <button onclick="openAuthModal('login')" class="bg-white/10 hover:bg-white/20 text-white text-xs px-3.5 py-2 rounded-lg font-bold border border-white/10 transition">Masuk</button>
+                    <button onclick="openAuthModal('register')" class="bg-brandOrange hover:bg-orange-600 text-white text-xs px-3.5 py-2 rounded-lg font-bold transition shadow-sm">Daftar</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="flex-grow max-w-6xl mx-auto w-full px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        <!-- Left Column: Gojek-like Booking & Order Status Panel (8 Cols) -->
+        <div class="lg:col-span-8 space-y-8">
+            
+            <!-- Welcome Hero -->
+            <div class="bg-gradient-to-r from-brandBlue to-blue-800 text-white rounded-2xl p-6 shadow-md relative overflow-hidden">
+                <div class="relative z-10 space-y-2">
+                    <span class="bg-brandOrange/90 text-white text-[10px] uppercase font-bold tracking-widest px-2.5 py-1 rounded-full">Platform On-Demand</span>
+                    <h2 class="text-2xl font-black leading-tight">Servis Elektronik Instan<br>Semudah Pesan Ojek Online</h2>
+                    <p class="text-xs text-blue-100 max-w-md">Teknisi terdekat akan langsung datang ke rumah Anda. Transparan, bergaransi resmi, dan pembayaran aman via Escrow.</p>
+                </div>
+                <div class="absolute -right-10 -bottom-10 opacity-15">
+                    <svg class="w-48 h-48" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2m-8 14H5v-2h6v2m6-4H5v-2h12v2m0-4H5V7h12v2Z"/></svg>
+                </div>
+            </div>
+
+            <!-- Panel 1: Booking Form (Form Pemesanan) -->
+            <div id="bookingFormPanel" class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200/80 space-y-4">
+                <div class="border-b border-slate-100 pb-3">
+                    <h3 class="text-base font-extrabold text-brandBlue flex items-center space-x-2">
+                        <span>🚀 SOS Order Jasa Servis Cepat</span>
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-0.5">Isi formulir kerusakan di bawah ini untuk mencari Teknisi di sekitar Anda.</p>
                 </div>
 
-                <div class="mt-16">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
-                        <a href="https://laravel.com/docs" class="scale-100 p-6 bg-white dark:bg-gray-800/50 dark:bg-gradient-to-bl from-gray-700/50 via-transparent dark:ring-1 dark:ring-inset dark:ring-white/5 rounded-lg shadow-2xl shadow-gray-500/20 dark:shadow-none flex motion-safe:hover:scale-[1.01] transition-all duration-250 focus:outline focus:outline-2 focus:outline-red-500">
-                            <div>
-                                <div class="h-16 w-16 bg-red-50 dark:bg-red-800/20 flex items-center justify-center rounded-full">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" class="w-7 h-7 stroke-red-500">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
-                                    </svg>
-                                </div>
-
-                                <h2 class="mt-6 text-xl font-semibold text-gray-900 dark:text-white">Documentation</h2>
-
-                                <p class="mt-4 text-gray-500 dark:text-gray-400 text-sm leading-relaxed">
-                                    Laravel has wonderful documentation covering every aspect of the framework. Whether you are a newcomer or have prior experience with Laravel, we recommend reading our documentation from beginning to end.
-                                </p>
-                            </div>
-
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" class="self-center shrink-0 stroke-red-500 w-6 h-6 mx-6">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12h15m0 0l-6.75-6.75M19.5 12l-6.75 6.75" />
-                            </svg>
-                        </a>
-
-                        <a href="https://laracasts.com" class="scale-100 p-6 bg-white dark:bg-gray-800/50 dark:bg-gradient-to-bl from-gray-700/50 via-transparent dark:ring-1 dark:ring-inset dark:ring-white/5 rounded-lg shadow-2xl shadow-gray-500/20 dark:shadow-none flex motion-safe:hover:scale-[1.01] transition-all duration-250 focus:outline focus:outline-2 focus:outline-red-500">
-                            <div>
-                                <div class="h-16 w-16 bg-red-50 dark:bg-red-800/20 flex items-center justify-center rounded-full">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" class="w-7 h-7 stroke-red-500">
-                                        <path stroke-linecap="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
-                                    </svg>
-                                </div>
-
-                                <h2 class="mt-6 text-xl font-semibold text-gray-900 dark:text-white">Laracasts</h2>
-
-                                <p class="mt-4 text-gray-500 dark:text-gray-400 text-sm leading-relaxed">
-                                    Laracasts offers thousands of video tutorials on Laravel, PHP, and JavaScript development. Check them out, see for yourself, and massively level up your development skills in the process.
-                                </p>
-                            </div>
-
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" class="self-center shrink-0 stroke-red-500 w-6 h-6 mx-6">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12h15m0 0l-6.75-6.75M19.5 12l-6.75 6.75" />
-                            </svg>
-                        </a>
-
-                        <a href="https://laravel-news.com" class="scale-100 p-6 bg-white dark:bg-gray-800/50 dark:bg-gradient-to-bl from-gray-700/50 via-transparent dark:ring-1 dark:ring-inset dark:ring-white/5 rounded-lg shadow-2xl shadow-gray-500/20 dark:shadow-none flex motion-safe:hover:scale-[1.01] transition-all duration-250 focus:outline focus:outline-2 focus:outline-red-500">
-                            <div>
-                                <div class="h-16 w-16 bg-red-50 dark:bg-red-800/20 flex items-center justify-center rounded-full">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" class="w-7 h-7 stroke-red-500">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 01-2.25 2.25M16.5 7.5V18a2.25 2.25 0 002.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 002.25 2.25h13.5M6 7.5h3v3H6v-3z" />
-                                    </svg>
-                                </div>
-
-                                <h2 class="mt-6 text-xl font-semibold text-gray-900 dark:text-white">Laravel News</h2>
-
-                                <p class="mt-4 text-gray-500 dark:text-gray-400 text-sm leading-relaxed">
-                                    Laravel News is a community driven portal and newsletter aggregating all of the latest and most important news in the Laravel ecosystem, including new package releases and tutorials.
-                                </p>
-                            </div>
-
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" class="self-center shrink-0 stroke-red-500 w-6 h-6 mx-6">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12h15m0 0l-6.75-6.75M19.5 12l-6.75 6.75" />
-                            </svg>
-                        </a>
-
-                        <div class="scale-100 p-6 bg-white dark:bg-gray-800/50 dark:bg-gradient-to-bl from-gray-700/50 via-transparent dark:ring-1 dark:ring-inset dark:ring-white/5 rounded-lg shadow-2xl shadow-gray-500/20 dark:shadow-none flex motion-safe:hover:scale-[1.01] transition-all duration-250 focus:outline focus:outline-2 focus:outline-red-500">
-                            <div>
-                                <div class="h-16 w-16 bg-red-50 dark:bg-red-800/20 flex items-center justify-center rounded-full">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" class="w-7 h-7 stroke-red-500">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6.115 5.19l.319 1.913A6 6 0 008.11 10.36L9.75 12l-.387.775c-.217.433-.132.956.21 1.298l1.348 1.348c.21.21.329.497.329.795v1.089c0 .426.24.815.622 1.006l.153.076c.433.217.956.132 1.298-.21l.723-.723a8.7 8.7 0 002.288-4.042 1.087 1.087 0 00-.358-1.099l-1.33-1.108c-.251-.21-.582-.299-.905-.245l-1.17.195a1.125 1.125 0 01-.98-.314l-.295-.295a1.125 1.125 0 010-1.591l.13-.132a1.125 1.125 0 011.3-.21l.603.302a.809.809 0 001.086-1.086L14.25 7.5l1.256-.837a4.5 4.5 0 001.528-1.732l.146-.292M6.115 5.19A9 9 0 1017.18 4.64M6.115 5.19A8.965 8.965 0 0112 3c1.929 0 3.716.607 5.18 1.64" />
-                                    </svg>
-                                </div>
-
-                                <h2 class="mt-6 text-xl font-semibold text-gray-900 dark:text-white">Vibrant Ecosystem</h2>
-
-                                <p class="mt-4 text-gray-500 dark:text-gray-400 text-sm leading-relaxed">
-                                    Laravel's robust library of first-party tools and libraries, such as <a href="https://forge.laravel.com" class="underline hover:text-gray-700 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500">Forge</a>, <a href="https://vapor.laravel.com" class="underline hover:text-gray-700 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500">Vapor</a>, <a href="https://nova.laravel.com" class="underline hover:text-gray-700 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500">Nova</a>, and <a href="https://envoyer.io" class="underline hover:text-gray-700 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500">Envoyer</a> help you take your projects to the next level. Pair them with powerful open source libraries like <a href="https://laravel.com/docs/billing" class="underline hover:text-gray-700 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500">Cashier</a>, <a href="https://laravel.com/docs/dusk" class="underline hover:text-gray-700 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500">Dusk</a>, <a href="https://laravel.com/docs/broadcasting" class="underline hover:text-gray-700 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500">Echo</a>, <a href="https://laravel.com/docs/horizon" class="underline hover:text-gray-700 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500">Horizon</a>, <a href="https://laravel.com/docs/sanctum" class="underline hover:text-gray-700 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500">Sanctum</a>, <a href="https://laravel.com/docs/telescope" class="underline hover:text-gray-700 dark:hover:text-white focus:outline focus:outline-2 focus:rounded-sm focus:outline-red-500">Telescope</a>, and more.
-                                </p>
-                            </div>
+                <form id="sosForm" onsubmit="submitSOSOrder(event)" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Pemesan</label>
+                            <input required type="text" id="bookingName" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl p-3 outline-none focus:border-brandBlue focus:bg-white transition" placeholder="Contoh: Budi Prasetyo">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Kategori Servis</label>
+                            <select required id="bookingCategory" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl p-3 outline-none focus:border-brandBlue focus:bg-white transition">
+                                <option value="AC Pilihan">Servis AC (Garansi 30 Hari)</option>
+                                <option value="Mesin Cuci">Servis Mesin Cuci (Garansi 7 Hari)</option>
+                                <option value="Kulkas">Servis Kulkas (Garansi 7 Hari)</option>
+                                <option value="Pompa Air">Servis Pompa Air (Garansi 7 Hari)</option>
+                                <option value="TV & Audio">Servis TV & Audio (Garansi 7 Hari)</option>
+                            </select>
                         </div>
                     </div>
-                </div>
 
-                <div class="flex justify-center mt-16 px-0 sm:items-center sm:justify-between">
-                    <div class="text-center text-sm sm:text-left">
-                        &nbsp;
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Keluhan / Deskripsi Kerusakan</label>
+                        <textarea required id="bookingComplaint" rows="2" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl p-3 outline-none focus:border-brandBlue focus:bg-white transition" placeholder="Contoh: AC saya bocor meneteskan air terus dan tidak dingin..."></textarea>
                     </div>
 
-                    <div class="text-center text-sm text-gray-500 dark:text-gray-400 sm:text-right sm:ml-0">
-                        Laravel v{{ Illuminate\Foundation\Application::VERSION }} (PHP v{{ PHP_VERSION }})
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Alamat Lengkap Servis</label>
+                        <input required type="text" id="bookingAddress" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl p-3 outline-none focus:border-brandBlue focus:bg-white transition" placeholder="Contoh: Jl. Sudirman No. 45 Blok C, Jakarta Selatan">
+                    </div>
+
+                    <!-- Geolocation Mock Map coordinates -->
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div>
+                            <h4 class="text-xs font-bold text-slate-700">📍 Geokode Lokasi (GPS)</h4>
+                            <p class="text-[10px] text-slate-400 mt-0.5">Gunakan titik koordinat mock di bawah untuk pengujian radius dispatch.</p>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <input type="text" id="geoLat" readonly value="-6.2088" class="bg-white border border-slate-200 text-xs px-2.5 py-1.5 rounded-lg w-20 text-center font-mono">
+                            <input type="text" id="geoLong" readonly value="106.8456" class="bg-white border border-slate-200 text-xs px-2.5 py-1.5 rounded-lg w-20 text-center font-mono">
+                            <button type="button" onclick="randomizeCoords()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs px-3 py-1.5 rounded-lg font-semibold transition">Ganti Lokasi</button>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="w-full bg-brandBlue hover:bg-blue-800 text-white font-bold text-sm py-3.5 rounded-xl transition shadow-md shadow-blue-800/10">
+                        Pesan Jasa Servis Sekarang
+                    </button>
+                </form>
+            </div>
+
+            <!-- Panel 2: Live Tracking & Dispatch Status (Hidden by Default) -->
+            <div id="liveOrderPanel" class="hidden bg-white rounded-2xl p-6 shadow-sm border border-slate-200/80 space-y-6">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                    <div>
+                        <span id="orderBadge" class="bg-blue-100 text-blue-800 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">Menghubungkan...</span>
+                        <h3 id="orderCodeTitle" class="text-base font-extrabold text-brandBlue mt-1">REV-ORDER-0000</h3>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-[10px] text-slate-400 font-bold uppercase">Estimasi Biaya</p>
+                        <p id="orderPrice" class="text-sm font-black text-brandOrange">Rp 100.000</p>
+                    </div>
+                </div>
+
+                <!-- Searching state loader -->
+                <div id="searchingState" class="space-y-4 py-4 text-center">
+                    <div class="shimmer w-16 h-16 rounded-full mx-auto relative flex items-center justify-center">
+                        <svg class="w-8 h-8 text-brandBlue animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-bold text-slate-800">Mencari Teknisi Terdekat...</h4>
+                        <p class="text-[11px] text-slate-400 mt-0.5">Sistem sedang mencocokkan Anda dengan mitra berjarak maksimum 15 KM.</p>
+                    </div>
+                </div>
+
+                <!-- Tech info details -->
+                <div id="techAssignedDetails" class="hidden p-4 rounded-xl border border-slate-100 bg-slate-50 flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold">
+                            T
+                        </div>
+                        <div>
+                            <h4 id="assignedTechName" class="text-sm font-bold text-slate-800">Nama Teknisi</h4>
+                            <p id="assignedTechHP" class="text-xs text-slate-500"></p>
+                        </div>
+                    </div>
+                    <div>
+                        <span class="bg-brandBlue text-white text-[9px] font-bold px-2 py-0.5 rounded uppercase">Teknisi SOS</span>
+                    </div>
+                </div>
+
+                <!-- Chat simulation box -->
+                <div id="chatBoxContainer" class="hidden border border-slate-100 rounded-xl overflow-hidden flex flex-col h-48 bg-slate-50">
+                    <div class="bg-brandBlue text-white px-4 py-2 flex justify-between items-center text-xs">
+                        <span class="font-bold">💬 Chat Instan Dengan Teknisi</span>
+                        <span class="text-[10px] text-emerald-400 font-bold flex items-center space-x-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-ping"></span>
+                            <span>Online</span>
+                        </span>
+                    </div>
+                    <div id="chatMessages" class="flex-grow p-3 space-y-2.5 overflow-y-auto text-xs">
+                        <!-- Message logs -->
+                    </div>
+                    <form onsubmit="handleSendChatMessage(event)" class="border-t border-slate-200 bg-white p-2 flex">
+                        <input id="chatInput" required type="text" class="flex-grow text-xs outline-none px-2.5 py-2 rounded-lg bg-slate-50 border border-slate-200 focus:border-brandBlue focus:bg-white transition" placeholder="Ketik pesan untuk teknisi...">
+                        <button type="submit" class="bg-brandBlue text-white px-4 py-2 ml-2 rounded-lg text-xs font-bold">Kirim</button>
+                    </form>
+                </div>
+
+                <!-- Payment actions panel -->
+                <div id="orderPaymentPanel" class="hidden p-4 rounded-xl border border-orange-100 bg-orange-50/50 space-y-3">
+                    <div class="flex justify-between items-center text-xs">
+                        <div>
+                            <h4 class="font-bold text-slate-800">💳 Menunggu Pembayaran</h4>
+                            <p class="text-[10px] text-slate-500">Pekerjaan selesai. Silakan lakukan pembayaran escrow untuk melepas dana.</p>
+                        </div>
+                        <p id="payPrice" class="font-black text-brandOrange text-sm">Rp 100.000</p>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button onclick="handleEscrowPayment()" class="flex-1 bg-brandOrange hover:bg-orange-600 text-white font-bold text-xs py-2.5 rounded-lg transition shadow">Bayar Sekarang (Escrow)</button>
+                    </div>
+                </div>
+
+                <!-- Dispute filing trigger -->
+                <div id="orderDisputePanel" class="hidden p-4 rounded-xl border border-red-100 bg-red-50/50 space-y-2.5">
+                    <div class="text-xs">
+                        <h4 class="font-bold text-slate-800">⚠️ Garansi & Sengketa Servis</h4>
+                        <p class="text-[10px] text-slate-500 mt-0.5">Jika Anda tidak puas atau kerusakan terulang dalam masa garansi, Anda dapat mengajukan sengketa.</p>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button onclick="openDisputeModal()" class="bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-4 py-2 rounded-lg transition">Ajukan Sengketa (Dispute)</button>
                     </div>
                 </div>
             </div>
         </div>
-    </body>
+
+        <!-- Right Column: Info & Active Orders Feed (4 Cols) -->
+        <div class="lg:col-span-4 space-y-6">
+            
+            <!-- User Status Card -->
+            <div id="loginStatusCard" class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200/80 text-center space-y-3">
+                <div class="w-12 h-12 bg-slate-100 text-slate-500 rounded-full flex items-center justify-center mx-auto text-lg font-bold">
+                    P
+                </div>
+                <div>
+                    <h4 class="text-sm font-bold text-slate-800">Halo, Pelanggan!</h4>
+                    <p class="text-[10px] text-slate-400 mt-0.5">Masuk untuk memesan perbaikan elektronik.</p>
+                </div>
+                <div id="saldoSection" class="hidden bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                    <p class="text-[9px] uppercase font-bold text-slate-400">Saldo Dompet Pelanggan</p>
+                    <p id="saldoValue" class="text-sm font-black text-brandBlue">Rp 500.000</p>
+                </div>
+            </div>
+
+            <!-- Standard On-Demand Instructions -->
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200/80 space-y-4">
+                <h4 class="text-xs font-black uppercase text-brandBlue tracking-wider">💡 SOP Servis On-Demand</h4>
+                
+                <ul class="space-y-3 text-xs">
+                    <li class="flex items-start space-x-2">
+                        <span class="text-brandOrange font-bold">1.</span>
+                        <p class="text-slate-600">Teknisi terdekat akan ditugaskan secara instan dalam radius 15 KM.</p>
+                    </li>
+                    <li class="flex items-start space-x-2">
+                        <span class="text-brandOrange font-bold">2.</span>
+                        <p class="text-slate-600">Masa garansi bergantung kategori (AC 30 hari, kategori lain 7 hari).</p>
+                    </li>
+                    <li class="flex items-start space-x-2">
+                        <span class="text-brandOrange font-bold">3.</span>
+                        <p class="text-slate-600">Dana ditahan di rekening penampung (Escrow) demi keamanan Anda.</p>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </main>
+
+    <!-- Global Auth Modal (Login / Register as Pelanggan) -->
+    <div id="authModal" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-sm rounded-2xl p-6 shadow-xl relative animate-scale">
+            <button onclick="closeAuthModal()" class="absolute right-4 top-4 text-slate-400 hover:text-slate-600 font-extrabold text-sm">✕</button>
+            
+            <div class="border-b border-slate-100 pb-3 mb-4">
+                <h3 id="authModalTitle" class="text-base font-black text-brandBlue">Masuk Akun Pelanggan</h3>
+                <p id="authModalSubtitle" class="text-[11px] text-slate-400 mt-0.5">Silakan masuk menggunakan kredensial Anda.</p>
+            </div>
+
+            <!-- Switch auth tab -->
+            <div class="flex space-x-2 bg-slate-100 p-1 rounded-xl mb-4 text-xs font-semibold">
+                <button onclick="switchAuthTab('login')" id="authTabLogin" class="flex-1 py-1.5 rounded-lg text-center bg-white text-brandBlue shadow-sm">Masuk</button>
+                <button onclick="switchAuthTab('register')" id="authTabRegister" class="flex-1 py-1.5 rounded-lg text-center text-slate-500 hover:text-slate-700">Daftar</button>
+            </div>
+
+            <form id="authForm" onsubmit="handleAuthSubmit(event)" class="space-y-4">
+                <input type="hidden" id="authMode" value="login">
+
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Alamat Email</label>
+                    <input required type="email" id="authEmail" class="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-brandBlue focus:bg-white transition" placeholder="Contoh: budi@gmail.com">
+                </div>
+
+                <div id="authNameField" class="hidden">
+                    <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Nama Lengkap</label>
+                    <input type="text" id="authName" class="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-brandBlue focus:bg-white transition" placeholder="Contoh: Budi Prasetyo">
+                </div>
+
+                <div id="authPhoneField" class="hidden">
+                    <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Nomor WhatsApp/HP</label>
+                    <input type="text" id="authPhone" class="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-brandBlue focus:bg-white transition" placeholder="Contoh: 08123456789">
+                </div>
+
+                <div id="authAddressField" class="hidden">
+                    <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Alamat Lengkap</label>
+                    <input type="text" id="authAddress" class="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-brandBlue focus:bg-white transition" placeholder="Contoh: Jl. Sudirman No. 45">
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Password</label>
+                    <input required type="password" id="authPassword" class="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-brandBlue focus:bg-white transition" placeholder="Minimal 6 karakter">
+                </div>
+
+                <button type="submit" class="w-full bg-brandBlue hover:bg-blue-800 text-white font-bold text-xs py-2.5 rounded-lg transition shadow-md shadow-blue-800/10">
+                    Kirim Kredensial
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Dispute Filing Modal -->
+    <div id="disputeModal" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-sm rounded-2xl p-6 shadow-xl relative animate-scale">
+            <button onclick="closeDisputeModal()" class="absolute right-4 top-4 text-slate-400 hover:text-slate-600 font-extrabold text-sm">✕</button>
+            
+            <div class="border-b border-slate-100 pb-3 mb-4">
+                <h3 class="text-base font-black text-red-600">Ajukan Sengketa (Dispute)</h3>
+                <p class="text-[11px] text-slate-400 mt-0.5">Beri tahu kami masalah servis agar Admin Resolusi dapat melakukan investigasi.</p>
+            </div>
+
+            <form onsubmit="handleDisputeSubmit(event)" class="space-y-4">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Alasan Pengajuan Sengketa</label>
+                    <textarea required id="disputeReason" rows="3" class="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg p-2.5 outline-none focus:border-red-500 focus:bg-white transition" placeholder="Contoh: Teknisi menyervis AC tapi keesokan harinya AC langsung mati total dan tidak mau bertanggung jawab..."></textarea>
+                </div>
+
+                <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold text-xs py-2.5 rounded-lg transition shadow-md shadow-red-800/10">
+                    Kirim Laporan Sengketa
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-slate-500 text-center py-6 mt-8 border-t border-slate-800">
+        <div class="max-w-6xl mx-auto px-4 text-xs space-y-2">
+            <p class="font-bold text-slate-400">© 2026 REVARO — Repair & Restore Marketplace Platform.</p>
+            <p>Sistem ini terintegrasi penuh menggunakan multi-role dan rate limiter dinamis.</p>
+        </div>
+    </footer>
+
+    <!-- Client-Side State Controller Logic (Vanilla JS) -->
+    <script>
+        let currentOrder = null;
+        let orderPollInterval = null;
+
+        // Check login state on load
+        window.addEventListener('load', () => {
+            const token = localStorage.getItem('token');
+            const user = JSON.parse(localStorage.getItem('user'));
+            const profile = JSON.parse(localStorage.getItem('profile'));
+
+            if (token && user) {
+                document.getElementById('authNavButtons').classList.add('hidden');
+                document.getElementById('userProfileSection').classList.remove('hidden');
+                document.getElementById('navUserName').innerText = user.nama;
+                
+                // Show user card info
+                document.getElementById('loginStatusCard').innerHTML = `
+                    <div class="w-12 h-12 bg-blue-100 text-brandBlue rounded-full flex items-center justify-center mx-auto text-lg font-black">
+                        ${user.nama.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-bold text-slate-800">${user.nama}</h4>
+                        <p class="text-[10px] text-brandBlue font-bold mt-0.5">Role: ${user.role ? user.role.nama : 'Pelanggan'}</p>
+                        <p class="text-[10px] text-slate-400 mt-0.5">${user.email}</p>
+                    </div>
+                    <div id="saldoSection" class="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                        <p class="text-[9px] uppercase font-bold text-slate-400">Saldo Dompet Pelanggan</p>
+                        <p id="saldoValue" class="text-sm font-black text-brandBlue">Rp ${(profile && profile.saldo) ? parseFloat(profile.saldo).toLocaleString('id-ID') : '0'}</p>
+                    </div>
+                `;
+                
+                // Fetch active order if exists
+                checkActiveOrders();
+            }
+        });
+
+        // Randomize mock coordinates
+        function randomizeCoords() {
+            // Random point near Jakarta Central
+            const offsetLat = (Math.random() - 0.5) * 0.05;
+            const offsetLong = (Math.random() - 0.5) * 0.05;
+            document.getElementById('geoLat').value = (-6.2088 + offsetLat).toFixed(4);
+            document.getElementById('geoLong').value = (106.8456 + offsetLong).toFixed(4);
+        }
+
+        // Open Auth Modal
+        function openAuthModal(mode) {
+            document.getElementById('authModal').classList.remove('hidden');
+            switchAuthTab(mode);
+        }
+
+        // Close Auth Modal
+        function closeAuthModal() {
+            document.getElementById('authModal').classList.add('hidden');
+        }
+
+        // Switch Auth Tab
+        function switchAuthTab(mode) {
+            document.getElementById('authMode').value = mode;
+            const tabLogin = document.getElementById('authTabLogin');
+            const tabRegister = document.getElementById('authTabRegister');
+            
+            const nameField = document.getElementById('authNameField');
+            const phoneField = document.getElementById('authPhoneField');
+            const addressField = document.getElementById('authAddressField');
+
+            if (mode === 'login') {
+                tabLogin.className = "flex-1 py-1.5 rounded-lg text-center bg-white text-brandBlue shadow-sm";
+                tabRegister.className = "flex-1 py-1.5 rounded-lg text-center text-slate-500 hover:text-slate-700";
+                
+                document.getElementById('authModalTitle').innerText = "Masuk Akun Pelanggan";
+                document.getElementById('authModalSubtitle').innerText = "Silakan masuk untuk melanjutkan pesanan Anda.";
+
+                nameField.classList.add('hidden');
+                phoneField.classList.add('hidden');
+                addressField.classList.add('hidden');
+                
+                document.getElementById('authName').required = false;
+                document.getElementById('authPhone').required = false;
+                document.getElementById('authAddress').required = false;
+            } else {
+                tabRegister.className = "flex-1 py-1.5 rounded-lg text-center bg-white text-brandBlue shadow-sm";
+                tabLogin.className = "flex-1 py-1.5 rounded-lg text-center text-slate-500 hover:text-slate-700";
+                
+                document.getElementById('authModalTitle').innerText = "Daftar Akun Pelanggan";
+                document.getElementById('authModalSubtitle').innerText = "Daftar gratis untuk memesan perbaikan elektronik.";
+
+                nameField.classList.remove('hidden');
+                phoneField.classList.remove('hidden');
+                addressField.classList.remove('hidden');
+                
+                document.getElementById('authName').required = true;
+                document.getElementById('authPhone').required = true;
+                document.getElementById('authAddress').required = true;
+            }
+        }
+
+        // Handle Register / Login
+        async function handleAuthSubmit(e) {
+            e.preventDefault();
+            const mode = document.getElementById('authMode').value;
+            const email = document.getElementById('authEmail').value;
+            const password = document.getElementById('authPassword').value;
+
+            try {
+                let response;
+                if (mode === 'login') {
+                    response = await fetch('/api/auth/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email, password })
+                    });
+                } else {
+                    const nama = document.getElementById('authName').value;
+                    const hp = document.getElementById('authPhone').value;
+                    const alamat = document.getElementById('authAddress').value;
+
+                    response = await fetch('/api/auth/register', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            role_slug: 'pelanggan',
+                            nama,
+                            email,
+                            password,
+                            hp,
+                            alamat
+                        })
+                    });
+                }
+
+                const result = await response.json();
+                if (!response.ok) {
+                    alert(result.message || JSON.stringify(result.errors));
+                    return;
+                }
+
+                // Check role, admins cannot log in here
+                if (result.role && result.role !== 'Pelanggan') {
+                    alert("Akses dibatasi. Halaman ini hanya untuk Pelanggan. Admin silakan login melalui portal khusus admin.");
+                    return;
+                }
+
+                // Save to local storage
+                localStorage.setItem('token', result.access_token);
+                localStorage.setItem('user', JSON.stringify(result.user));
+                localStorage.setItem('profile', JSON.stringify(result.profile));
+
+                alert(result.message || 'Berhasil masuk.');
+                closeAuthModal();
+                window.location.reload();
+
+            } catch (err) {
+                console.error(err);
+                alert("Kesalahan koneksi jaringan.");
+            }
+        }
+
+        // Handle Logout
+        function handleLogout() {
+            localStorage.clear();
+            window.location.reload();
+        }
+
+        // Submit SOS Order
+        async function submitSOSOrder(e) {
+            e.preventDefault();
+            const token = localStorage.getItem('token');
+            if (!token) {
+                alert("Anda harus masuk (login) terlebih dahulu sebelum dapat memesan jasa perbaikan!");
+                openAuthModal('login');
+                return;
+            }
+
+            const keluhan = document.getElementById('bookingComplaint').value;
+            const alamat_servis = document.getElementById('bookingAddress').value;
+            const latitude = document.getElementById('geoLat').value;
+            const longitude = document.getElementById('geoLong').value;
+            const nama = document.getElementById('bookingName').value;
+
+            try {
+                const response = await fetch('/api/orders', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        keluhan,
+                        alamat_servis,
+                        latitude,
+                        longitude
+                    })
+                });
+
+                const result = await response.json();
+                if (!response.ok) {
+                    alert(result.message || JSON.stringify(result.errors));
+                    return;
+                }
+
+                alert("Order berhasil dikirim! Memulai pencarian teknisi terdekat...");
+                currentOrder = result.order;
+                renderOrderPanel(result.order);
+
+            } catch (err) {
+                console.error(err);
+                alert("Kesalahan jaringan saat mengirim order.");
+            }
+        }
+
+        // Check if user has active order on page load
+        async function checkActiveOrders() {
+            const token = localStorage.getItem('token');
+            if (!token) return;
+
+            try {
+                // Fetch the latest customer order
+                // For demo/simplicity, we pull from the system
+                const response = await fetch('/api/orders', {
+                    method: 'GET',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.orders && result.orders.length > 0) {
+                        // Find the first active/disputed/completed order
+                        const activeOrder = result.orders.find(o => !['COMPLETED_RELEASED', 'CANCELLED'].includes(o.status));
+                        if (activeOrder) {
+                            currentOrder = activeOrder;
+                            renderOrderPanel(activeOrder);
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        // Render Order Panel State
+        function renderOrderPanel(order) {
+            document.getElementById('bookingFormPanel').classList.add('hidden');
+            const panel = document.getElementById('liveOrderPanel');
+            panel.classList.remove('hidden');
+
+            document.getElementById('orderCodeTitle').innerText = order.kode_order;
+            document.getElementById('orderBadge').innerText = order.status;
+
+            // Price mapping
+            const fee = parseFloat(order.transaksi ? order.transaksi.total : 100000);
+            document.getElementById('orderPrice').innerText = 'Rp ' + fee.toLocaleString('id-ID');
+            document.getElementById('payPrice').innerText = 'Rp ' + fee.toLocaleString('id-ID');
+
+            const searching = document.getElementById('searchingState');
+            const techDetails = document.getElementById('techAssignedDetails');
+            const chatContainer = document.getElementById('chatBoxContainer');
+            const paymentPanel = document.getElementById('orderPaymentPanel');
+            const disputePanel = document.getElementById('orderDisputePanel');
+
+            searching.classList.add('hidden');
+            techDetails.classList.add('hidden');
+            chatContainer.classList.add('hidden');
+            paymentPanel.classList.add('hidden');
+            disputePanel.classList.add('hidden');
+
+            if (order.status === 'SEARCHING') {
+                searching.classList.remove('hidden');
+            } else if (order.status === 'DISPATCHED' || order.status === 'ON_THE_WAY' || order.status === 'IN_PROGRESS') {
+                techDetails.classList.remove('hidden');
+                chatContainer.classList.remove('hidden');
+                
+                if (order.teknisi) {
+                    document.getElementById('assignedTechName').innerText = order.teknisi.nama;
+                    document.getElementById('assignedTechHP').innerText = '📞 ' + order.teknisi.hp;
+                } else {
+                    document.getElementById('assignedTechName').innerText = "Mencocokkan Teknisi...";
+                }
+
+                // Poll messages
+                fetchChatMessages(order.id);
+            } else if (order.status === 'AWAITING_PAYMENT') {
+                techDetails.classList.remove('hidden');
+                paymentPanel.classList.remove('hidden');
+                
+                if (order.teknisi) {
+                    document.getElementById('assignedTechName').innerText = order.teknisi.nama;
+                    document.getElementById('assignedTechHP').innerText = '📞 ' + order.teknisi.hp;
+                }
+            } else if (order.status === 'COMPLETED' || order.status === 'RESOLVED') {
+                techDetails.classList.remove('hidden');
+                disputePanel.classList.remove('hidden');
+
+                if (order.teknisi) {
+                    document.getElementById('assignedTechName').innerText = order.teknisi.nama;
+                    document.getElementById('assignedTechHP').innerText = 'Status Perbaikan: Selesai';
+                }
+            } else if (order.status === 'DISPUTED') {
+                techDetails.classList.remove('hidden');
+                document.getElementById('assignedTechName').innerText = "Status Perbaikan: SENGKETA (DISPUTED)";
+                document.getElementById('assignedTechHP').innerText = "Penyelesaian sedang diinvestigasi Admin Resolusi.";
+            }
+
+            // Start polling status
+            startStatusPolling(order.id);
+        }
+
+        // Poll Order Status
+        function startStatusPolling(orderId) {
+            if (orderPollInterval) clearInterval(orderPollInterval);
+
+            orderPollInterval = setInterval(async () => {
+                const token = localStorage.getItem('token');
+                if (!token) return;
+
+                try {
+                    const response = await fetch(`/api/orders/${orderId}`, {
+                        method: 'GET',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        const order = result.order;
+                        currentOrder = order;
+                        
+                        // Update UI status badge
+                        document.getElementById('orderBadge').innerText = order.status;
+
+                        // Re-render subpanels if status has transitioned
+                        renderOrderPanel(order);
+                        
+                        // If fully closed or cancelled, clear interval and return to normal booking
+                        if (['CANCELLED'].includes(order.status)) {
+                            clearInterval(orderPollInterval);
+                            alert("Pesanan telah dibatalkan.");
+                            window.location.reload();
+                        }
+                    }
+                } catch (err) {
+                    console.error(err);
+                }
+            }, 3000);
+        }
+
+        // Fetch Chat Messages
+        async function fetchChatMessages(orderId) {
+            const token = localStorage.getItem('token');
+            if (!token) return;
+
+            try {
+                const response = await fetch(`/api/orders/${orderId}/chats`, {
+                    method: 'GET',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    const container = document.getElementById('chatMessages');
+                    container.innerHTML = '';
+                    
+                    if (result.messages && result.messages.length > 0) {
+                        result.messages.forEach(msg => {
+                            const isMe = msg.pengirim_id === JSON.parse(localStorage.getItem('user')).id;
+                            const div = document.createElement('div');
+                            div.className = isMe 
+                                ? 'bg-blue-100 text-blue-900 rounded-lg p-2.5 max-w-[80%] ml-auto text-right' 
+                                : 'bg-slate-200 text-slate-800 rounded-lg p-2.5 max-w-[80%]';
+                            div.innerHTML = `
+                                <p class="font-bold text-[9px] text-slate-500">${msg.pengirim.nama}</p>
+                                <p class="mt-0.5">${msg.pesan}</p>
+                            `;
+                            container.appendChild(div);
+                        });
+                        // Scroll to bottom
+                        container.scrollTop = container.scrollHeight;
+                    }
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        // Send Chat Message
+        async function handleSendChatMessage(e) {
+            e.preventDefault();
+            const token = localStorage.getItem('token');
+            if (!token || !currentOrder) return;
+
+            const input = document.getElementById('chatInput');
+            const pesan = input.value;
+
+            try {
+                const response = await fetch(`/api/orders/${currentOrder.id}/chats`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ pesan })
+                });
+
+                if (response.ok) {
+                    input.value = '';
+                    fetchChatMessages(currentOrder.id);
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        // Escrow Payment
+        async function handleEscrowPayment() {
+            const token = localStorage.getItem('token');
+            if (!token || !currentOrder) return;
+
+            try {
+                const response = await fetch(`/api/orders/${currentOrder.id}/pay`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const result = await response.json();
+                if (!response.ok) {
+                    alert(result.message || "Gagal memproses pembayaran.");
+                    return;
+                }
+
+                alert("Pembayaran Escrow HELD berhasil disalurkan ke sistem penampung!");
+                window.location.reload();
+
+            } catch (err) {
+                console.error(err);
+                alert("Kesalahan jaringan.");
+            }
+        }
+
+        // Open Dispute Modal
+        function openDisputeModal() {
+            document.getElementById('disputeModal').classList.remove('hidden');
+        }
+
+        // Close Dispute Modal
+        function closeDisputeModal() {
+            document.getElementById('disputeModal').classList.add('hidden');
+        }
+
+        // Submit Dispute
+        async function handleDisputeSubmit(e) {
+            e.preventDefault();
+            const token = localStorage.getItem('token');
+            if (!token || !currentOrder) return;
+
+            const alasan = document.getElementById('disputeReason').value;
+
+            try {
+                const response = await fetch('/api/disputes', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        order_id: currentOrder.id,
+                        alasan
+                    })
+                });
+
+                const result = await response.json();
+                if (!response.ok) {
+                    alert(result.message || "Gagal mengajukan sengketa.");
+                    return;
+                }
+
+                alert("Sengketa perbaikan Anda berhasil didaftarkan! Admin Resolusi segera bertindak.");
+                closeDisputeModal();
+                window.location.reload();
+
+            } catch (err) {
+                console.error(err);
+                alert("Kesalahan jaringan.");
+            }
+        }
+    </script>
+
+</body>
 </html>

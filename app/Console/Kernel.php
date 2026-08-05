@@ -12,7 +12,9 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // $schedule->command('inspire')->hourly();
+        $schedule->command('revaro:check-reverification')->daily();
+        $schedule->command('revaro:auto-release-escrow')->hourly();
+        $schedule->command('revaro:check-dispute-sla')->hourly();
     }
 
     /**
