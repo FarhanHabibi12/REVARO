@@ -10,6 +10,7 @@ use App\Models\Toko;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
 class AuthController extends Controller
@@ -23,11 +24,13 @@ class AuthController extends Controller
             $request->merge(['telepon' => $request->hp]);
         }
 
-        $validator = Validator::make($request->all(), [
+        $loggedInUser = auth('sanctum')->user();
+
+        $rules = [
             'role_slug' => 'required|in:pelanggan,teknisi,toko-sparepart',
             'nama' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:6',
+            'email' => 'required|string|email|max:255' . ($loggedInUser ? '|unique:users,email,' . $loggedInUser->id : '|unique:users'),
+            'password' => $loggedInUser ? 'nullable|string|min:6' : 'required|string|min:6',
             
             // Pelanggan specific
             'hp' => 'required_if:role_slug,pelanggan,teknisi|nullable|string|max:20',
@@ -41,7 +44,14 @@ class AuthController extends Controller
             // Toko specific
             'izin_usaha' => 'required_if:role_slug,toko-sparepart|nullable|string',
             'telepon' => 'required_if:role_slug,toko-sparepart|nullable|string|max:20',
-        ]);
+
+            // Files
+            'sertifikat' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'ktp' => 'nullable|file|mimes:jpg,jpeg,png|max:5120',
+            'dokumen_izin' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+        ];
+
+        $validator = Validator::make($request->all(), $rules);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
@@ -54,51 +64,84 @@ class AuthController extends Controller
             return response()->json(['message' => 'Role tidak ditemukan.'], 500);
         }
 
-        // Create user
-        $user = User::create([
-            'role_id' => $role->id,
-            'nama' => $request->nama,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'is_active' => true,
-        ]);
+        if ($loggedInUser) {
+            $user = $loggedInUser;
+            $user->update([
+                'role_id' => $role->id,
+                'nama' => $request->nama,
+            ]);
+        } else {
+            // Create user
+            $user = User::create([
+                'role_id' => $role->id,
+                'nama' => $request->nama,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'is_active' => true,
+            ]);
+        }
 
         $profile = null;
 
+        // Handle private file uploads
+        $sertifikatPath = null;
+        if ($request->hasFile('sertifikat')) {
+            $sertifikatPath = $request->file('sertifikat')->store('private/mitra', 'local');
+        }
+
+        $ktpPath = null;
+        if ($request->hasFile('ktp')) {
+            $ktpPath = $request->file('ktp')->store('private/mitra', 'local');
+        }
+
+        $dokumenIzinPath = null;
+        if ($request->hasFile('dokumen_izin')) {
+            $dokumenIzinPath = $request->file('dokumen_izin')->store('private/mitra', 'local');
+        }
+
         // Create profile based on role
         if ($request->role_slug === 'pelanggan') {
-            $profile = Pelanggan::create([
-                'user_id' => $user->id,
-                'nama' => $request->nama,
-                'email' => $request->email,
-                'hp' => $request->hp,
-                'alamat' => $request->alamat,
-                'saldo' => 0.00,
-            ]);
+            $profile = Pelanggan::updateOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'nama' => $request->nama,
+                    'email' => $request->email,
+                    'hp' => $request->hp,
+                    'alamat' => $request->alamat,
+                    'saldo' => 0.00,
+                ]
+            );
         } elseif ($request->role_slug === 'teknisi') {
-            $profile = Teknisi::create([
-                'user_id' => $user->id,
-                'nama' => $request->nama,
-                'kategori' => $request->kategori,
-                'tier' => 'Bronze',
-                'hp' => $request->hp,
-                'rating' => 0.00,
-                'tersedia' => true,
-                'status' => 'PENDING_REVIEW',
-                'latitude' => $request->latitude,
-                'longitude' => $request->longitude,
-            ]);
+            $profile = Teknisi::updateOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'nama' => $request->nama,
+                    'kategori' => $request->kategori,
+                    'tier' => 'Bronze',
+                    'hp' => $request->hp,
+                    'rating' => 0.00,
+                    'tersedia' => true,
+                    'status' => 'PENDING_REVIEW',
+                    'latitude' => $request->latitude,
+                    'longitude' => $request->longitude,
+                    'sertifikat' => $sertifikatPath,
+                    'ktp' => $ktpPath,
+                ]
+            );
         } elseif ($request->role_slug === 'toko-sparepart') {
-            $profile = Toko::create([
-                'user_id' => $user->id,
-                'nama' => $request->nama,
-                'izin_usaha' => $request->izin_usaha,
-                'alamat' => $request->alamat,
-                'telepon' => $request->telepon,
-                'status' => 'PENDING_REVIEW',
-                'latitude' => $request->latitude,
-                'longitude' => $request->longitude,
-            ]);
+            $profile = Toko::updateOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'nama' => $request->nama,
+                    'izin_usaha' => $request->izin_usaha,
+                    'alamat' => $request->alamat,
+                    'telepon' => $request->telepon,
+                    'status' => 'PENDING_REVIEW',
+                    'latitude' => $request->latitude,
+                    'longitude' => $request->longitude,
+                    'dokumen_izin' => $dokumenIzinPath,
+                ]
+            );
         }
 
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -229,19 +272,30 @@ class AuthController extends Controller
                 'kategori' => 'required|string',
                 'latitude' => 'nullable|numeric',
                 'longitude' => 'nullable|numeric',
+                'sertifikat' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+                'ktp' => 'nullable|file|mimes:jpg,jpeg,png|max:5120',
             ]);
 
             if ($validator->fails()) {
                 return response()->json(['errors' => $validator->errors()], 422);
             }
 
-            $profile->update([
+            $data = [
                 'hp' => $request->hp,
                 'kategori' => $request->kategori,
                 'latitude' => $request->latitude,
                 'longitude' => $request->longitude,
                 'status' => 'PENDING_REVIEW',
-            ]);
+            ];
+
+            if ($request->hasFile('sertifikat')) {
+                $data['sertifikat'] = $request->file('sertifikat')->store('private/mitra', 'local');
+            }
+            if ($request->hasFile('ktp')) {
+                $data['ktp'] = $request->file('ktp')->store('private/mitra', 'local');
+            }
+
+            $profile->update($data);
 
             \App\Models\ActivityLog::create([
                 'user_id' => $user->id,
@@ -266,20 +320,27 @@ class AuthController extends Controller
                 'telepon' => 'required|string|max:20',
                 'latitude' => 'nullable|numeric',
                 'longitude' => 'nullable|numeric',
+                'dokumen_izin' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
             ]);
 
             if ($validator->fails()) {
                 return response()->json(['errors' => $validator->errors()], 422);
             }
 
-            $profile->update([
+            $data = [
                 'izin_usaha' => $request->izin_usaha,
                 'alamat' => $request->alamat,
                 'telepon' => $request->telepon,
                 'latitude' => $request->latitude,
                 'longitude' => $request->longitude,
                 'status' => 'PENDING_REVIEW',
-            ]);
+            ];
+
+            if ($request->hasFile('dokumen_izin')) {
+                $data['dokumen_izin'] = $request->file('dokumen_izin')->store('private/mitra', 'local');
+            }
+
+            $profile->update($data);
 
             \App\Models\ActivityLog::create([
                 'user_id' => $user->id,
@@ -294,5 +355,64 @@ class AuthController extends Controller
         }
 
         return response()->json(['message' => 'Jenis profil tidak didukung untuk pengajuan ulang.'], 400);
+    }
+
+    /**
+     * Download or stream private documents securely with role/ownership enforcement.
+     */
+    public function downloadDocument(Request $request, $type, $id)
+    {
+        $user = $request->user();
+        if (!$user && $request->query('token')) {
+            $accessToken = \Laravel\Sanctum\PersonalAccessToken::findToken($request->query('token'));
+            if ($accessToken) {
+                $user = $accessToken->tokenable;
+            }
+        }
+
+        if (!$user) {
+            abort(401, 'Unauthenticated.');
+        }
+
+        if (!in_array($type, ['sertifikat', 'ktp', 'dokumen_izin'])) {
+            abort(400, 'Tipe dokumen tidak valid.');
+        }
+
+        $profile = null;
+        if (in_array($type, ['sertifikat', 'ktp'])) {
+            $profile = Teknisi::find($id);
+        } else {
+            $profile = Toko::find($id);
+        }
+
+        if (!$profile) {
+            abort(404, 'Profil tidak ditemukan.');
+        }
+
+        // Authorization check: Super Admin Pemilik, Admin Verifikator, or Owner of the document
+        $isAuthorized = $user->isSuperAdminPemilik() || 
+                        $user->isAdminVerifikator() || 
+                        ($user->id === $profile->user_id);
+
+        if (!$isAuthorized) {
+            abort(403, 'Anda tidak memiliki akses ke dokumen ini.');
+        }
+
+        // Get private path
+        $path = null;
+        if ($type === 'sertifikat') {
+            $path = $profile->sertifikat;
+        } elseif ($type === 'ktp') {
+            $path = $profile->ktp;
+        } else {
+            $path = $profile->dokumen_izin;
+        }
+
+        if (!$path || !Storage::disk('local')->exists($path)) {
+            abort(404, 'Dokumen fisik tidak ditemukan.');
+        }
+
+        $fullPath = storage_path('app/' . $path);
+        return response()->file($fullPath);
     }
 }

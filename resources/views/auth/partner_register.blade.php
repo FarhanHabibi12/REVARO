@@ -50,7 +50,6 @@
             <nav class="hidden md:flex items-center space-x-6">
                 <a href="/" class="text-sm font-semibold hover:text-brandOrange transition">Pesan Jasa</a>
                 <a href="/partner/register" class="text-sm font-semibold hover:text-brandOrange transition">Gabung Mitra</a>
-                <a href="/admin/login" class="text-sm font-semibold hover:text-brandOrange transition">Admin Portal</a>
             </nav>
             <div>
                 <a href="/" class="bg-white/10 hover:bg-white/20 text-white text-xs px-3.5 py-2 rounded-lg font-bold border border-white/10 transition">Kembali</a>
@@ -90,11 +89,11 @@
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
+                    <div id="passwordFieldBlock">
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Password</label>
                         <input required type="password" id="regPassword" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl p-3 outline-none focus:border-brandBlue focus:bg-white transition" placeholder="Minimal 6 karakter">
                     </div>
-                    <div>
+                    <div id="phoneFieldBlock">
                         <label id="phoneLabel" class="block text-xs font-semibold text-slate-600 mb-1">Nomor WhatsApp/HP</label>
                         <input required type="text" id="regPhone" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl p-3 outline-none focus:border-brandBlue focus:bg-white transition" placeholder="08xxxxxxxx">
                     </div>
@@ -163,6 +162,48 @@
 
     <!-- Client Script -->
     <script>
+        // Check if user is logged in to auto-fill details
+        window.addEventListener('DOMContentLoaded', () => {
+            const userRaw = localStorage.getItem('user');
+            const profileRaw = localStorage.getItem('profile');
+
+            if (userRaw) {
+                const user = JSON.parse(userRaw);
+                const regEmail = document.getElementById('regEmail');
+                const regName = document.getElementById('regName');
+                const passwordBlock = document.getElementById('passwordFieldBlock');
+                const phoneBlock = document.getElementById('phoneFieldBlock');
+                const regPassword = document.getElementById('regPassword');
+
+                if (regEmail && user.email) {
+                    regEmail.value = user.email;
+                    regEmail.readOnly = true;
+                    regEmail.classList.add('bg-slate-200', 'cursor-not-allowed', 'text-slate-500');
+                    regEmail.classList.remove('bg-slate-50');
+                }
+                if (regName && user.nama) {
+                    regName.value = user.nama;
+                }
+                if (passwordBlock) {
+                    passwordBlock.classList.add('hidden');
+                }
+                if (phoneBlock) {
+                    phoneBlock.classList.add('md:col-span-2');
+                }
+                if (regPassword) {
+                    regPassword.required = false;
+                }
+
+                if (profileRaw) {
+                    const profile = JSON.parse(profileRaw);
+                    const regPhone = document.getElementById('regPhone');
+                    if (regPhone) {
+                        regPhone.value = profile.hp || profile.telepon || '';
+                    }
+                }
+            }
+        });
+
         function switchTab(role) {
             document.getElementById('roleSlugInput').value = role;
             
@@ -229,38 +270,67 @@
             const password = document.getElementById('regPassword').value;
             const hp = document.getElementById('regPhone').value;
 
-            // Form data construction
-            const payload = {
-                role_slug,
-                nama,
-                email,
-                password,
-                hp
-            };
+            // Multipart Form Data construction
+            const formData = new FormData();
+            formData.append('role_slug', role_slug);
+            formData.append('nama', nama);
+            formData.append('email', email);
+            if (password) {
+                formData.append('password', password);
+            }
+            formData.append('hp', hp);
 
             if (role_slug === 'teknisi') {
-                payload.kategori = document.getElementById('regCategory').value;
-                payload.latitude = -6.2088; // Default mock
-                payload.longitude = 106.8456;
+                formData.append('kategori', document.getElementById('regCategory').value);
+                formData.append('latitude', -6.2088); // Default mock
+                formData.append('longitude', 106.8456);
+
+                const certInput = document.getElementById('regCert');
+                if (certInput.files[0]) {
+                    formData.append('sertifikat', certInput.files[0]);
+                }
+
+                const ktpInput = document.getElementById('regKtp');
+                if (ktpInput.files[0]) {
+                    formData.append('ktp', ktpInput.files[0]);
+                }
             } else {
-                payload.alamat = document.getElementById('regAddress').value;
-                payload.izin_usaha = document.getElementById('regIzinUsaha').value;
-                payload.telepon = hp;
-                payload.latitude = -6.2100;
-                payload.longitude = 106.8500;
+                formData.append('alamat', document.getElementById('regAddress').value);
+                formData.append('izin_usaha', document.getElementById('regIzinUsaha').value);
+                formData.append('telepon', hp);
+                formData.append('latitude', -6.2100);
+                formData.append('longitude', 106.8500);
+
+                const shopDocInput = document.getElementById('regShopDoc');
+                if (shopDocInput.files[0]) {
+                    formData.append('dokumen_izin', shopDocInput.files[0]);
+                }
+            }
+
+            const headers = {};
+            const token = localStorage.getItem('token');
+            if (token) {
+                headers['Authorization'] = 'Bearer ' + token;
             }
 
             try {
                 const response = await fetch('/api/auth/register', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                    headers: headers,
+                    body: formData
                 });
 
                 const result = await response.json();
                 if (!response.ok) {
                     alert(result.message || JSON.stringify(result.errors));
                     return;
+                }
+
+                // Update session details
+                localStorage.setItem('user', JSON.stringify(result.user));
+                localStorage.setItem('profile', JSON.stringify(result.profile));
+                if (result.access_token) {
+                    localStorage.setItem('token', result.access_token);
                 }
 
                 alert(`Pendaftaran Akun ${role_slug === 'teknisi' ? 'Teknisi' : 'Toko'} Berhasil!\nAkun Anda saat ini berstatus PENDING_REVIEW.\nBerkas lampiran KTP/SIUP/Sertifikat telah diunggah dan sedang diantrekan ke Admin Verifikator.`);

@@ -23,6 +23,13 @@
     </script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
+        /* Custom Scrollbar Styles */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.2); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(249, 115, 22, 0.45); }
+        html { scrollbar-width: thin; scrollbar-color: rgba(148, 163, 184, 0.2) transparent; }
+
         :root { --sidebar-width: 260px; }
         body { font-family: 'Plus Jakarta Sans', sans-serif; background: #0D1117; color: #E2E8F0; }
         .sidebar { width: var(--sidebar-width); height: 100vh; background: rgba(15,20,30,0.97); border-right: 1px solid rgba(248,113,22,0.12); position: fixed; top: 0; left: 0; z-index: 50; display: flex; flex-direction: column; overflow-y: auto; }
@@ -50,6 +57,124 @@
         table.data-table th { font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #64748B; padding: 10px 14px; text-align: left; border-bottom: 1px solid rgba(71,85,105,0.3); }
         table.data-table td { padding: 12px 14px; font-size: 0.8rem; border-bottom: 1px solid rgba(30,41,59,0.8); vertical-align: middle; }
         table.data-table tr:hover td { background: rgba(248,113,22,0.04); }
+
+        /* Light Mode CSS Overrides */
+        body.light-mode { background: #FAF9F6; color: #0F172A; }
+        body.light-mode .sidebar { background: #FFFFFF; border-right: 1px solid rgba(249,115,22,0.15); }
+        body.light-mode #sidebarUserName { color: #0F172A !important; }
+        body.light-mode #sidebarRoleLabel { color: #EA580C !important; }
+        body.light-mode .nav-link { color: #475569; }
+        body.light-mode .nav-link:hover { background: rgba(249,115,22,0.08); color: #EA580C; }
+        body.light-mode .nav-link.active { background: rgba(249,115,22,0.12); color: #EA580C; border-left: 3px solid #EA580C; }
+        body.light-mode .nav-group-label { color: #94A3B8; }
+        body.light-mode .card { background: #FFFFFF; border: 1px solid rgba(71,85,105,0.12); box-shadow: 0 4px 18px rgba(0,0,0,0.03); }
+        body.light-mode h1, body.light-mode h2, body.light-mode h3, body.light-mode th { color: #0F172A !important; }
+        body.light-mode td { color: #334155 !important; border-bottom: 1px solid rgba(0,0,0,0.04); }
+        body.light-mode table.data-table tr:hover td { background: rgba(249,115,22,0.03); }
+        body.light-mode .input-field { background: #F1F5F9; border: 1px solid #CBD5E1; color: #0F172A; }
+        body.light-mode .input-field:focus { border-color: #EA580C; background: #FFFFFF; }
+        body.light-mode .input-field::placeholder { color: #94A3B8; }
+        body.light-mode select.input-field option { background: #FFFFFF; color: #0F172A; }
+        
+        /* Tailwind classes overrides for light-mode */
+        body.light-mode .text-white { color: #0F172A !important; }
+        body.light-mode .text-slate-100 { color: #0F172A !important; }
+        body.light-mode .text-slate-200 { color: #1E293B !important; }
+        body.light-mode .text-slate-300 { color: #334155 !important; }
+        body.light-mode .text-slate-400 { color: #475569 !important; }
+        body.light-mode .text-slate-500 { color: #64748B !important; }
+        body.light-mode .bg-slate-900\/40 { background-color: #FFFFFF !important; border-color: rgba(71,85,105,0.12) !important; }
+        body.light-mode .bg-slate-950 { background-color: #F8FAFC !important; }
+        body.light-mode .border-slate-800 { border-color: rgba(71,85,105,0.12) !important; }
+        body.light-mode .border-slate-900 { border-color: rgba(71,85,105,0.12) !important; }
+        body.light-mode .bg-slate-900 { background-color: #FFFFFF !important; }
+        body.light-mode .divide-slate-800\/50 > :not([hidden]) ~ :not([hidden]) { border-color: rgba(71,85,105,0.1) !important; }
+        body.light-mode .divide-y { border-color: rgba(71,85,105,0.12) !important; }
+        body.light-mode .divide-slate-800 { border-color: rgba(71,85,105,0.12) !important; }
+        body.light-mode .bg-brandDark { background-color: #FAF9F6 !important; }
+        body.light-mode .brand-text { color: #0F172A !important; }
+
+        /* Day/Night switch styles */
+        .theme-switch-container {
+            display: inline-block;
+            position: relative;
+            width: 90px;
+            height: 50px;
+            transform: scale(0.65);
+            transform-origin: right center;
+            margin-right: -10px;
+        }
+        .theme-switch-container .dn-input {
+            display: none !important;
+        }
+        .dn-toggle {
+            cursor: pointer;
+            display: inline-block;
+            position: relative;
+            width: 90px;
+            height: 50px;
+            background-color: #83d8ff;
+            border-radius: 84px;
+            transition: background-color 200ms cubic-bezier(0.445, 0.05, 0.55, 0.95);
+        }
+        .dn-toggle-handler {
+            display: inline-block;
+            position: relative;
+            z-index: 1;
+            top: 3px;
+            left: 3px;
+            width: 44px;
+            height: 44px;
+            background-color: #ffcf96;
+            border-radius: 50px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+            transition: all 400ms cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            transform: rotate(-45deg);
+        }
+        .dn-toggle-handler .dn-crater {
+            position: absolute;
+            background-color: #e8cda5;
+            opacity: 0;
+            transition: opacity 200ms ease-in-out;
+            border-radius: 100%;
+        }
+        .dn-toggle-handler .dn-crater--1 { top: 18px; left: 10px; width: 4px; height: 4px; }
+        .dn-toggle-handler .dn-crater--2 { top: 28px; left: 22px; width: 6px; height: 6px; }
+        .dn-toggle-handler .dn-crater--3 { top: 10px; left: 25px; width: 8px; height: 8px; }
+        .dn-star {
+            position: absolute;
+            background-color: #fff;
+            transition: all 300ms cubic-bezier(0.445, 0.05, 0.55, 0.95);
+            border-radius: 50%;
+        }
+        .dn-star--1 { top: 10px; left: 35px; z-index: 0; width: 30px; height: 3px; }
+        .dn-star--2 { top: 18px; left: 28px; z-index: 1; width: 30px; height: 3px; }
+        .dn-star--3 { top: 27px; left: 40px; z-index: 0; width: 30px; height: 3px; }
+        .dn-star--4, .dn-star--5, .dn-star--6 {
+            opacity: 0;
+            transition: all 300ms 0 cubic-bezier(0.445, 0.05, 0.55, 0.95);
+        }
+        .dn-star--4 { top: 16px; left: 11px; z-index: 0; width: 2px; height: 2px; transform: translate3d(3px, 0, 0); }
+        .dn-star--5 { top: 32px; left: 17px; z-index: 0; width: 3px; height: 3px; transform: translate3d(3px, 0, 0); }
+        .dn-star--6 { top: 36px; left: 28px; z-index: 0; width: 2px; height: 2px; transform: translate3d(3px, 0, 0); }
+        .dn-input:checked + .dn-toggle { background-color: #749dd6; }
+        .dn-input:checked + .dn-toggle .dn-toggle-handler {
+            background-color: #ffe5b5;
+            transform: translate3d(40px, 0, 0) rotate(0);
+        }
+        .dn-input:checked + .dn-toggle .dn-toggle-handler .dn-crater { opacity: 1; }
+        .dn-input:checked + .dn-toggle .dn-star--1 { width: 2px; height: 2px; }
+        .dn-input:checked + .dn-toggle .dn-star--2 { width: 4px; height: 4px; transform: translate3d(-5px, 0, 0); }
+        .dn-input:checked + .dn-toggle .dn-star--3 { width: 2px; height: 2px; transform: translate3d(-7px, 0, 0); }
+        .dn-input:checked + .dn-toggle .dn-star--4,
+        .dn-input:checked + .dn-toggle .dn-star--5,
+        .dn-input:checked + .dn-toggle .dn-star--6 {
+            opacity: 1;
+            transform: translate3d(0, 0, 0);
+        }
+        .dn-input:checked + .dn-toggle .dn-star--4 { transition: all 300ms 200ms cubic-bezier(0.445, 0.05, 0.55, 0.95); }
+        .dn-input:checked + .dn-toggle .dn-star--5 { transition: all 300ms 300ms cubic-bezier(0.445, 0.05, 0.55, 0.95); }
+        .dn-input:checked + .dn-toggle .dn-star--6 { transition: all 300ms 400ms cubic-bezier(0.445, 0.05, 0.55, 0.95); }
     </style>
     @yield('styles')
 </head>
@@ -61,7 +186,7 @@
             <div style="display:flex;align-items:center;gap:10px;">
                 <div style="width:36px;height:36px;background:linear-gradient(135deg,#F97316,#EA580C);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;">🔧</div>
                 <div>
-                    <div style="font-size:1rem;font-weight:900;color:white;letter-spacing:-0.02em;">REVARO</div>
+                    <div style="font-size:1rem;font-weight:900;letter-spacing:-0.02em;" class="brand-text text-white">REVARO</div>
                     <div style="font-size:0.6rem;color:#F97316;font-weight:700;letter-spacing:0.05em;" id="sidebarRoleLabel">LOADING...</div>
                 </div>
             </div>
@@ -92,7 +217,23 @@
                 <h1 style="font-size:1.25rem;font-weight:900;color:white;margin:0;letter-spacing:-0.02em;">@yield('page-title', 'Dashboard')</h1>
                 <p style="font-size:0.72rem;color:#64748B;margin:4px 0 0;font-weight:500;">@yield('page-subtitle', '')</p>
             </div>
-            <div style="display:flex;align-items:center;gap:10px;">
+            <div style="display:flex;align-items:center;gap:15px;">
+                <div class="theme-switch-container">
+                    <input class="dn-input" id="dn" type="checkbox" checked />
+                    <label class="dn-toggle" for="dn">
+                        <span class="dn-toggle-handler">
+                            <span class="dn-crater dn-crater--1"></span>
+                            <span class="dn-crater dn-crater--2"></span>
+                            <span class="dn-crater dn-crater--3"></span>
+                        </span>
+                        <span class="dn-star dn-star--1"></span>
+                        <span class="dn-star dn-star--2"></span>
+                        <span class="dn-star dn-star--3"></span>
+                        <span class="dn-star dn-star--4"></span>
+                        <span class="dn-star dn-star--5"></span>
+                        <span class="dn-star dn-star--6"></span>
+                    </label>
+                </div>
                 <div style="width:32px;height:32px;background:linear-gradient(135deg,#F97316,#EA580C);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.9rem;">👤</div>
             </div>
         </div>
@@ -122,6 +263,7 @@
             { icon: '🗺️', label: 'Wilayah Operasional', url: '/superadmin/pemilik/regions' },
             { icon: '✅', label: 'Verifikasi Mitra Baru', url: '/superadmin/pemilik/verifications' },
             { icon: '💾', label: 'Backup & Restore DB', url: '/superadmin/pemilik/backup' },
+            { icon: '🛡️', label: 'Anti-Hack & Keamanan', url: '/superadmin/pemilik/security' },
         ]},
         { group: 'MONITORING & KINERJA PLATFORM', items: [
             { icon: '📋', label: 'Scorecard Verifikator', url: '/superadmin/monitoring/scorecard-verifikator' },
@@ -174,8 +316,45 @@
         });
     }
 
-    // Auth guard + nav builder
+    function toggleTheme() {
+        const body = document.body;
+        if (body.classList.contains('light-mode')) {
+            body.classList.remove('light-mode');
+            localStorage.setItem('theme', 'dark');
+        } else {
+            body.classList.add('light-mode');
+            localStorage.setItem('theme', 'light');
+        }
+    }
+
+    // Auth guard + nav builder + theme load
     document.addEventListener('DOMContentLoaded', function() {
+        const checkbox = document.getElementById('dn');
+        
+        // Load theme early
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'light') {
+            document.body.classList.add('light-mode');
+            if (checkbox) checkbox.checked = false;
+        } else {
+            document.body.classList.remove('light-mode');
+            if (checkbox) checkbox.checked = true;
+        }
+
+        // Handle checkbox change
+        if (checkbox) {
+            checkbox.addEventListener('change', function() {
+                const body = document.body;
+                if (this.checked) {
+                    body.classList.remove('light-mode');
+                    localStorage.setItem('theme', 'dark');
+                } else {
+                    body.classList.add('light-mode');
+                    localStorage.setItem('theme', 'light');
+                }
+            });
+        }
+
         const token = localStorage.getItem('admin_token');
         const user  = JSON.parse(localStorage.getItem('admin_user') || '{}');
         if (!token) { window.location.href = '/admin/login'; return; }

@@ -182,13 +182,23 @@ function openVerifyModal(type, data) {
     document.getElementById('decisionStatus').value = '';
     document.getElementById('decisionCatatan').value = '';
 
+    const token = localStorage.getItem('admin_token');
     const docContainer = document.getElementById('documentDetails');
+    
     if (type === 'teknisi') {
+        const ktpLink = data.ktp 
+            ? `<a href="/api/mitra/documents/ktp/${data.id}?token=${token}" target="_blank" class="bg-brandOrange hover:bg-orange-600 text-white font-bold text-[10px] px-3 py-1.5 rounded-lg mt-2 inline-block">📄 Buka Foto KTP</a>`
+            : `<span class="text-[10px] text-slate-500 font-semibold block mt-2">KTP Belum Diunggah</span>`;
+
+        const certLink = data.sertifikat 
+            ? `<a href="/api/mitra/documents/sertifikat/${data.id}?token=${token}" target="_blank" class="bg-brandOrange hover:bg-orange-600 text-white font-bold text-[10px] px-3 py-1.5 rounded-lg mt-2 inline-block">📜 Buka Sertifikat</a>`
+            : `<span class="text-[10px] text-slate-500 font-semibold block mt-2">Sertifikat Belum Diunggah</span>`;
+
         docContainer.innerHTML = `
             <div class="space-y-2">
                 <p><strong>Nama Teknisi:</strong> ${data.nama}</p>
                 <p><strong>Nomor HP:</strong> ${data.hp}</p>
-                <p><strong>Kategori Servis:</strong> ${data.kategori}</p>
+                <p><strong>Spesialisasi Kategori:</strong> ${data.kategori}</p>
                 <p><strong>Tier Kinerja:</strong> ${data.tier}</p>
                 <hr class="border-slate-800" />
                 <p class="font-bold text-yellow-400 text-xs">🕐 Info: Teknisi ini telah aktif selama 12 bulan lebih. Lakukan audit berkas legalitas dan portofolio keahlian untuk perpanjangan status keaktifan di platform.</p>
@@ -196,17 +206,21 @@ function openVerifyModal(type, data) {
                     <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center">
                         <p class="text-[9px] text-slate-500 uppercase font-black">Foto KTP Sistem</p>
                         <div class="text-3xl py-2">🪪</div>
-                        <span class="text-[9px] text-slate-400 font-semibold">ktp_${data.nama.toLowerCase().replace(/\s+/g,'')}.jpg</span>
+                        ${ktpLink}
                     </div>
                     <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center">
                         <p class="text-[9px] text-slate-500 uppercase font-black">Audit Kinerja</p>
                         <div class="text-3xl py-2">📈</div>
-                        <span class="text-[9px] text-slate-400 font-semibold">perf_audit_score.pdf</span>
+                        ${certLink}
                     </div>
                 </div>
             </div>
         `;
     } else {
+        const docIzinLink = data.dokumen_izin 
+            ? `<a href="/api/mitra/documents/dokumen_izin/${data.id}?token=${token}" target="_blank" class="bg-brandOrange hover:bg-orange-600 text-white font-bold text-[10px] px-3 py-1.5 rounded-lg mt-2 inline-block">📄 Buka Izin NIB Usaha</a>`
+            : `<span class="text-[10px] text-slate-500 font-semibold block mt-2">SIUP/NIB Belum Diunggah</span>`;
+
         docContainer.innerHTML = `
             <div class="space-y-2">
                 <p><strong>Nama Toko Mitra:</strong> ${data.nama}</p>
@@ -215,16 +229,11 @@ function openVerifyModal(type, data) {
                 <p><strong>Alamat Toko:</strong> ${data.alamat}</p>
                 <hr class="border-slate-800" />
                 <p class="font-bold text-yellow-400 text-xs">🕐 Info: Toko ini telah aktif selama 6 bulan lebih. Pastikan legalitas NIB terdaftar dan tidak ada dispute/anomali penipuan barang dagangan.</p>
-                <div class="grid grid-cols-2 gap-3 mt-3">
+                <div class="grid grid-cols-1 gap-3 mt-3">
                     <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center">
                         <p class="text-[9px] text-slate-500 uppercase font-black">Izin NIB Usaha</p>
                         <div class="text-3xl py-2">📄</div>
-                        <span class="text-[9px] text-slate-400 font-semibold">nib_${data.nama.toLowerCase().replace(/\s+/g,'')}.pdf</span>
-                    </div>
-                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center">
-                        <p class="text-[9px] text-slate-500 uppercase font-black">Katalog Aktif</p>
-                        <div class="text-3xl py-2">🏪</div>
-                        <span class="text-[9px] text-slate-400 font-semibold">catalog_active_check.csv</span>
+                        ${docIzinLink}
                     </div>
                 </div>
             </div>

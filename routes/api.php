@@ -30,6 +30,7 @@ use Illuminate\Support\Facades\Route;
 // --- Public Auth Routes (with Rate Limiting) ---
 Route::post('/auth/register', [AuthController::class, 'register'])->middleware('throttle:3,1');
 Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
+Route::get('/mitra/documents/{type}/{id}', [AuthController::class, 'downloadDocument']);
 
 // --- Protected Routes ---
 Route::middleware(['auth:sanctum', 'read_only'])->group(function () {
@@ -134,6 +135,20 @@ Route::middleware(['auth:sanctum', 'read_only'])->group(function () {
     Route::post('/admin/database/restore', [BackupDbController::class, 'restore'])
         ->middleware('role:super-admin-pemilik');
 
+    // Security & Anti-Hack (Super Admin Pemilik only)
+    Route::get('/admin/security/blacklist', [\App\Http\Controllers\Api\SecurityController::class, 'listBlacklist'])
+        ->middleware('role:super-admin-pemilik');
+    Route::post('/admin/security/blacklist', [\App\Http\Controllers\Api\SecurityController::class, 'banIp'])
+        ->middleware('role:super-admin-pemilik');
+    Route::delete('/admin/security/blacklist/{id}', [\App\Http\Controllers\Api\SecurityController::class, 'unbanIp'])
+        ->middleware('role:super-admin-pemilik');
+    Route::get('/admin/security/users', [\App\Http\Controllers\Api\SecurityController::class, 'listUsers'])
+        ->middleware('role:super-admin-pemilik');
+    Route::post('/admin/security/users/{id}/toggle-ban', [\App\Http\Controllers\Api\SecurityController::class, 'toggleUserBan'])
+        ->middleware('role:super-admin-pemilik');
+    Route::get('/admin/security/logs', [\App\Http\Controllers\Api\SecurityController::class, 'getSecurityLogs'])
+        ->middleware('role:super-admin-pemilik');
+
     // Sent flags history
     Route::get('/admin/flags/sent', function(Request $request) {
         $flags = \App\Models\Notifikasi::with('user')
@@ -174,6 +189,7 @@ Route::middleware(['auth:sanctum', 'read_only'])->group(function () {
 
     // --- Order Lifecycle Endpoints ---
     Route::get('/orders', [OrderLifecycleController::class, 'index']);
+    Route::get('/orders/available', [OrderLifecycleController::class, 'available']);
     Route::get('/orders/{order}', [OrderLifecycleController::class, 'show']);
     Route::post('/orders', [OrderLifecycleController::class, 'createSOS']);
     Route::post('/orders/{order}/accept', [OrderLifecycleController::class, 'acceptOrder']);
@@ -186,6 +202,11 @@ Route::middleware(['auth:sanctum', 'read_only'])->group(function () {
     Route::post('/orders/{order}/pay', [OrderLifecycleController::class, 'payOrder']);
     Route::post('/orders/{order}/confirm-release', [OrderLifecycleController::class, 'confirmRelease']);
     Route::post('/orders/{order}/cancel', [OrderLifecycleController::class, 'cancelOrder']);
+
+    // --- Wallet Endpoints ---
+    Route::get('/wallet/balance', [\App\Http\Controllers\Api\WalletController::class, 'getBalance']);
+    Route::post('/wallet/withdraw', [\App\Http\Controllers\Api\WalletController::class, 'withdraw']);
+    Route::post('/wallet/topup', [\App\Http\Controllers\Api\WalletController::class, 'topup']);
 
     // --- Sparepart Search ---
     Route::get('/spareparts/search', [SparepartSearchController::class, 'search']);
@@ -271,10 +292,50 @@ Route::middleware(['auth:sanctum', 'read_only'])->group(function () {
     });
 
     Route::post('/test/spareparts', function (Request $request) {
-        if (Gate::denies('create', Sparepart::class)) {
+        $user = $request->user();
+        if (!$user->isToko() && !$user->isSuperAdminPemilik()) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
-        return response()->json(['message' => 'Sparepart added.']);
+
+        if ($user->isToko()) {
+            if (!$user->toko || $user->toko->status !== 'ACTIVE') {
+                return response()->json(['message' => 'Forbidden.'], 403);
+            }
+        }
+
+        $tokoId = $request->toko_id;
+        if (!$tokoId && $user->isToko() && $user->toko) {
+            $tokoId = $user->toko->id;
+        }
+        $request->merge(['toko_id' => $tokoId]);
+
+        $validator = Validator::make($request->all(), [
+            'nama' => 'required|string|max:255',
+            'harga' => 'required|numeric|min:0',
+            'stok' => 'required|integer|min:0',
+            'merk' => 'required|string|max:255',
+            'toko_id' => 'required|integer|exists:toko,id',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $sparepart = Sparepart::updateOrCreate(
+            ['id' => $request->id],
+            [
+                'toko_id' => $request->toko_id,
+                'nama' => $request->nama,
+                'harga' => $request->harga,
+                'stok' => $request->stok,
+                'merk' => $request->merk,
+            ]
+        );
+
+        return response()->json([
+            'message' => 'Sparepart berhasil disimpan.',
+            'sparepart' => $sparepart
+        ], 200);
     });
 
     // Transactions

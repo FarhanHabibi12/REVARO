@@ -112,10 +112,31 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
             $table->timestamps();
         });
+
+        // 11. IP Blacklist (Anti-hack protection)
+        Schema::create('ip_blacklist', function (Blueprint $table) {
+            $table->id();
+            $table->string('ip_address')->unique();
+            $table->string('alasan')->nullable();
+            $table->timestamp('banned_at')->useCurrent();
+            $table->timestamps();
+        });
+
+        // 12. Wallet Transactions (Financial ledger)
+        Schema::create('wallet_transactions', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->string('tipe'); // IN, OUT
+            $table->decimal('jumlah', 15, 2);
+            $table->string('deskripsi');
+            $table->timestamps();
+        });
     }
 
     public function down(): void
     {
+        Schema::dropIfExists('wallet_transactions');
+        Schema::dropIfExists('ip_blacklist');
         Schema::dropIfExists('wilayah_operasional');
         Schema::dropIfExists('kebijakan_komisi');
         Schema::dropIfExists('jasa_servis');

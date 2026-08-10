@@ -15,6 +15,11 @@ Route::get('/', fn() => view('welcome'));
 Route::get('/admin/login',      fn() => view('auth.admin_login'));
 Route::get('/partner/register', fn() => view('auth.partner_register'));
 
+// User Portals
+Route::get('/pelanggan/dashboard', fn() => view('pelanggan.dashboard'));
+Route::get('/teknisi/dashboard',   fn() => view('teknisi.dashboard'));
+Route::get('/toko/dashboard',      fn() => view('toko.dashboard'));
+
 // ── Super Admin Pemilik Sistem ──────────────────────────────────────────
 Route::prefix('superadmin/pemilik')->group(function () {
     Route::get('/dashboard',      fn() => view('superadmin.pemilik.dashboard'));
@@ -26,6 +31,7 @@ Route::prefix('superadmin/pemilik')->group(function () {
     Route::get('/disputes',       fn() => view('superadmin.pemilik.disputes'));
     Route::get('/verifications',  fn() => view('superadmin.pemilik.verifications'));
     Route::get('/backup',         fn() => view('superadmin.pemilik.backup'));
+    Route::get('/security',       fn() => view('superadmin.pemilik.security'));
 });
 
 // ── Super Admin Monitoring Kinerja ─────────────────────────────────────

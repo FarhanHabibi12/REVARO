@@ -23,6 +23,7 @@ class Toko extends Model
         'latitude',
         'longitude',
         'saldo',
+        'dokumen_izin',
     ];
 
     protected $casts = [

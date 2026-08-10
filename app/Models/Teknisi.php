@@ -25,6 +25,8 @@ class Teknisi extends Model
         'latitude',
         'longitude',
         'saldo',
+        'sertifikat',
+        'ktp',
     ];
 
     protected $casts = [

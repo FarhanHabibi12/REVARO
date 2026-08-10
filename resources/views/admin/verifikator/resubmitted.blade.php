@@ -182,8 +182,18 @@ function openVerifyModal(type, data) {
     document.getElementById('decisionStatus').value = '';
     document.getElementById('decisionCatatan').value = '';
 
+    const token = localStorage.getItem('admin_token');
     const docContainer = document.getElementById('documentDetails');
+    
     if (type === 'teknisi') {
+        const ktpLink = data.ktp 
+            ? `<a href="/api/mitra/documents/ktp/${data.id}?token=${token}" target="_blank" class="bg-brandOrange hover:bg-orange-600 text-white font-bold text-[10px] px-3 py-1.5 rounded-lg mt-2 inline-block">📄 Buka Foto KTP Baru</a>`
+            : `<span class="text-[10px] text-slate-500 font-semibold block mt-2">KTP Belum Diunggah</span>`;
+
+        const certLink = data.sertifikat 
+            ? `<a href="/api/mitra/documents/sertifikat/${data.id}?token=${token}" target="_blank" class="bg-brandOrange hover:bg-orange-600 text-white font-bold text-[10px] px-3 py-1.5 rounded-lg mt-2 inline-block">📜 Buka Sertifikat Baru</a>`
+            : `<span class="text-[10px] text-slate-500 font-semibold block mt-2">Sertifikat Belum Diunggah</span>`;
+
         docContainer.innerHTML = `
             <div class="space-y-2">
                 <p><strong>Nama Teknisi:</strong> ${data.nama}</p>
@@ -196,17 +206,21 @@ function openVerifyModal(type, data) {
                     <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center">
                         <p class="text-[9px] text-slate-500 uppercase font-black">Foto KTP Baru</p>
                         <div class="text-3xl py-2">🪪</div>
-                        <span class="text-[9px] text-slate-400 font-semibold">ktp_revisi_${data.nama.toLowerCase().replace(/\s+/g,'')}.jpg</span>
+                        ${ktpLink}
                     </div>
                     <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center">
                         <p class="text-[9px] text-slate-500 uppercase font-black">Sertifikasi Terbaru</p>
                         <div class="text-3xl py-2">📜</div>
-                        <span class="text-[9px] text-slate-400 font-semibold">cert_revisi.jpg</span>
+                        ${certLink}
                     </div>
                 </div>
             </div>
         `;
     } else {
+        const docIzinLink = data.dokumen_izin 
+            ? `<a href="/api/mitra/documents/dokumen_izin/${data.id}?token=${token}" target="_blank" class="bg-brandOrange hover:bg-orange-600 text-white font-bold text-[10px] px-3 py-1.5 rounded-lg mt-2 inline-block">📄 Buka Izin Usaha Baru</a>`
+            : `<span class="text-[10px] text-slate-500 font-semibold block mt-2">SIUP/NIB Belum Diunggah</span>`;
+
         docContainer.innerHTML = `
             <div class="space-y-2">
                 <p><strong>Nama Toko Mitra:</strong> ${data.nama}</p>
@@ -215,16 +229,11 @@ function openVerifyModal(type, data) {
                 <p><strong>Alamat Baru:</strong> ${data.alamat}</p>
                 <hr class="border-slate-800" />
                 <p class="font-bold text-yellow-400 text-xs">⚠️ Catatan: Akun ini sebelumnya berstatus 'NEEDS_REVISION'. Pastikan keabsahan dokumen NIB dan daftar katalog yang telah mereka perbaiki.</p>
-                <div class="grid grid-cols-2 gap-3 mt-3">
+                <div class="grid grid-cols-1 gap-3 mt-3">
                     <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center">
                         <p class="text-[9px] text-slate-500 uppercase font-black">Izin Usaha / NIB Baru</p>
                         <div class="text-3xl py-2">📄</div>
-                        <span class="text-[9px] text-slate-400 font-semibold">nib_revisi_${data.nama.toLowerCase().replace(/\s+/g,'')}.pdf</span>
-                    </div>
-                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center">
-                        <p class="text-[9px] text-slate-500 uppercase font-black">Revisi Katalog CSV</p>
-                        <div class="text-3xl py-2">📦</div>
-                        <span class="text-[9px] text-slate-400 font-semibold">catalog_revisi.csv</span>
+                        ${docIzinLink}
                     </div>
                 </div>
             </div>

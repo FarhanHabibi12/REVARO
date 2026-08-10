@@ -26,17 +26,38 @@ class OrderLifecycleController extends Controller
         $orders = collect();
 
         if ($user->isPelanggan() && $user->pelanggan) {
-            $orders = Order::with(['teknisi', 'transaksi'])->where('pelanggan_id', $user->pelanggan->id)->latest()->get();
+            $orders = Order::with(['teknisi', 'transaksi', 'spareparts'])->where('pelanggan_id', $user->pelanggan->id)->latest()->get();
         } elseif ($user->isTeknisi() && $user->teknisi) {
-            $orders = Order::with(['pelanggan', 'transaksi'])->where('teknisi_id', $user->teknisi->id)->latest()->get();
+            $orders = Order::with(['pelanggan', 'transaksi', 'spareparts'])->where('teknisi_id', $user->teknisi->id)->latest()->get();
         } elseif ($user->isToko() && $user->toko) {
-            $orders = Order::with(['pelanggan', 'teknisi', 'transaksi'])
+            $orders = Order::with(['pelanggan', 'teknisi', 'transaksi', 'spareparts'])
                 ->whereHas('spareparts', function ($query) use ($user) {
                     $query->where('toko_id', $user->toko->id);
                 })->latest()->get();
         } else {
-            $orders = Order::with(['pelanggan', 'teknisi', 'transaksi'])->latest()->get();
+            $orders = Order::with(['pelanggan', 'teknisi', 'transaksi', 'spareparts'])->latest()->get();
         }
+
+        return response()->json([
+            'orders' => $orders
+        ]);
+    }
+
+    /**
+     * List available/searching orders for technicians in radius.
+     */
+    public function available(Request $request)
+    {
+        $user = $request->user();
+        if (!$user->isTeknisi() || !$user->teknisi) {
+            return response()->json(['message' => 'Forbidden.'], 403);
+        }
+
+        // Fetch searching orders in status 'SEARCHING'
+        $orders = Order::with(['pelanggan', 'transaksi'])
+            ->where('status', 'SEARCHING')
+            ->latest()
+            ->get();
 
         return response()->json([
             'orders' => $orders

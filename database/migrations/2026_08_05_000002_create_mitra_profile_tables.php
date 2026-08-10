@@ -34,6 +34,8 @@ return new class extends Migration
             $table->decimal('latitude', 10, 8)->nullable();
             $table->decimal('longitude', 11, 8)->nullable();
             $table->decimal('saldo', 15, 2)->default(0.00);
+            $table->string('sertifikat')->nullable();
+            $table->string('ktp')->nullable();
             $table->timestamps();
         });
 
@@ -49,6 +51,7 @@ return new class extends Migration
             $table->decimal('latitude', 10, 8)->nullable();
             $table->decimal('longitude', 11, 8)->nullable();
             $table->decimal('saldo', 15, 2)->default(0.00);
+            $table->string('dokumen_izin')->nullable();
             $table->timestamps();
         });
 
