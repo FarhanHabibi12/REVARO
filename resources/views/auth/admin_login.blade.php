@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Administrator Login — REVARO</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -77,12 +78,15 @@
     <script>
         // Redirect if already logged in as admin
         window.addEventListener('load', () => {
-            const token = localStorage.getItem('token');
-            const user = JSON.parse(localStorage.getItem('user'));
-            const role = localStorage.getItem('role');
+            const token = localStorage.getItem('admin_token');
+            const user = JSON.parse(localStorage.getItem('admin_user') || '{}');
+            const role = user.role || '';
 
-            if (token && user && role && role !== 'Pelanggan' && role !== 'Teknisi' && role !== 'Toko Sparepart') {
-                window.location.href = '/admin/dashboard';
+            if (token && role) {
+                if (role === 'super-admin-pemilik') window.location.href = '/superadmin/pemilik/dashboard';
+                else if (role === 'super-admin-monitoring') window.location.href = '/superadmin/monitoring/scorecard-verifikator';
+                else if (role === 'admin-verifikator') window.location.href = '/admin/verifikator/dashboard';
+                else if (role === 'admin-resolusi') window.location.href = '/admin/resolusi/dashboard';
             }
         });
 
@@ -101,36 +105,72 @@
 
                 const result = await response.json();
                 if (!response.ok) {
-                    alert(result.message || "Gagal masuk.");
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Masuk Gagal',
+                        text: result.message || "Kombinasi email dan kata sandi salah.",
+                        confirmButtonColor: '#FF6A00'
+                    });
                     return;
                 }
 
-                const role = result.role;
-                
-                // Validate if it is an admin role
-                const adminRoles = [
-                    'Super Admin (Pemilik Sistem)', 
-                    'Admin Verifikator', 
-                    'Admin Resolusi', 
-                    'Super Admin (Monitoring Kinerja)'
-                ];
+                const roleNama = result.role; // e.g. 'Super Admin (Pemilik Sistem)'
 
-                if (!adminRoles.includes(role)) {
-                    alert("Akses ditolak! Kredensial Anda bukan milik akun Administrator. Silakan login di portal biasa.");
+                // Map DB role names → slugs used throughout the admin portal
+                const roleSlugMap = {
+                    'Super Admin (Pemilik Sistem)':   'super-admin-pemilik',
+                    'Super Admin (Monitoring Kinerja)': 'super-admin-monitoring',
+                    'Admin Verifikator':               'admin-verifikator',
+                    'Admin Resolusi':                  'admin-resolusi',
+                };
+
+                const role = roleSlugMap[roleNama] || null;
+
+                // Block non-admin roles
+                if (!role) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Akses Ditolak',
+                        text: 'Kredensial Anda bukan milik akun Administrator internal.',
+                        background: '#0F172A',
+                        color: '#E2E8F0',
+                        confirmButtonColor: '#F97316'
+                    });
                     return;
                 }
 
-                // Save credentials
-                localStorage.setItem('token', result.access_token);
-                localStorage.setItem('user', JSON.stringify(result.user));
-                localStorage.setItem('role', role);
+                // Save credentials with consistent keys
+                localStorage.setItem('admin_token', result.access_token);
+                localStorage.setItem('admin_user', JSON.stringify({ ...result.user, role }));
 
-                alert(`Selamat Datang, ${result.user.nama}!\nLogin berhasil sebagai ${role}.`);
-                window.location.href = '/admin/dashboard';
+                // Role-based redirect
+                let redirectUrl = '/superadmin/pemilik/dashboard';
+                if (role === 'super-admin-monitoring') redirectUrl = '/superadmin/monitoring/scorecard-verifikator';
+                else if (role === 'admin-verifikator')  redirectUrl = '/admin/verifikator/dashboard';
+                else if (role === 'admin-resolusi')     redirectUrl = '/admin/resolusi/dashboard';
+
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil Masuk!',
+                    text: `Selamat datang, ${result.user.nama}!`,
+                    showConfirmButton: false,
+                    timer: 1400,
+                    background: '#0F172A',
+                    color: '#E2E8F0'
+                }).then(() => {
+                    window.location.href = redirectUrl;
+                });
 
             } catch (err) {
                 console.error(err);
-                alert("Gagal menghubungkan ke server otentikasi.");
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Koneksi Error',
+                    text: 'Gagal menghubungkan ke server otentikasi.',
+                    background: '#0F172A',
+                    color: '#E2E8F0',
+                    confirmButtonColor: '#F97316'
+                });
             }
         }
     </script>

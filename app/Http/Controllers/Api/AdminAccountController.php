@@ -12,10 +12,41 @@ use Illuminate\Support\Facades\Validator;
 class AdminAccountController extends Controller
 {
     /**
+     * Display a listing of the admin accounts.
+     */
+    public function index()
+    {
+        $adminRoles = Role::whereIn('nama', [
+            'Super Admin (Pemilik Sistem)',
+            'Super Admin (Monitoring Kinerja)',
+            'Admin Resolusi',
+            'Admin Verifikator'
+        ])->pluck('id');
+
+        $users = User::with('role')
+            ->whereIn('role_id', $adminRoles)
+            ->orderBy('id', 'desc')
+            ->get()
+            ->map(function ($u) {
+                // Map display role name back to slug for front-end roleLabel function
+                $slug = array_search($u->role->nama, Role::$slugMap) ?: $u->role->nama;
+                $arr = $u->toArray();
+                $arr['role'] = $slug;
+                return $arr;
+            });
+
+        return response()->json($users);
+    }
+
+    /**
      * Store a new internal administrator account.
      */
     public function store(Request $request)
     {
+        if ($request->has('role') && !$request->has('role_slug')) {
+            $request->merge(['role_slug' => $request->role]);
+        }
+
         $validator = Validator::make($request->all(), [
             'role_slug' => 'required|in:admin-verifikator,admin-resolusi,super-admin-monitoring',
             'nama' => 'required|string|max:255',
@@ -49,5 +80,45 @@ class AdminAccountController extends Controller
             'message' => 'Akun internal admin berhasil dibuat.',
             'user' => $user,
         ], 201);
+    }
+
+    /**
+     * Toggle active state.
+     */
+    public function toggleActive($id)
+    {
+        $user = User::find($id);
+        if (!$user) {
+            return response()->json(['message' => 'Akun administrator tidak ditemukan.'], 404);
+        }
+
+        if ($user->id === auth()->id()) {
+            return response()->json(['message' => 'Anda tidak bisa menonaktifkan akun Anda sendiri.'], 400);
+        }
+
+        if ($user->isSuperAdminPemilik()) {
+            return response()->json(['message' => 'Anda tidak bisa menonaktifkan akun Super Admin Pemilik.'], 403);
+        }
+
+        $user->is_active = !$user->is_active;
+        $user->save();
+
+        return response()->json([
+            'message' => 'Status keaktifan administrator berhasil diperbarui.',
+            'user' => $user
+        ], 200);
+    }
+
+    /**
+     * Get recent audit/security logs.
+     */
+    public function getAuditLogs()
+    {
+        $logs = \App\Models\ActivityLog::with('user.role')
+            ->orderBy('id', 'desc')
+            ->take(50)
+            ->get();
+            
+        return response()->json($logs);
     }
 }

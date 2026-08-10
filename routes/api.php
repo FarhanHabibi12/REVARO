@@ -2,12 +2,16 @@
 
 use App\Http\Controllers\Api\AdminAccountController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BackupDbController;
 use App\Http\Controllers\Api\VerificationController;
 use App\Http\Controllers\Api\OrderLifecycleController;
 use App\Http\Controllers\Api\SparepartSearchController;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\DisputeController;
 use App\Http\Controllers\Api\MonitoringDashboardController;
+use App\Http\Controllers\Api\JasaServisController;
+use App\Http\Controllers\Api\KebijakanKomisiController;
+use App\Http\Controllers\Api\WilayahOperasionalController;
 use App\Models\Dispute;
 use App\Models\Order;
 use App\Models\PendaftaranVerifikasi;
@@ -40,14 +44,129 @@ Route::middleware(['auth:sanctum', 'read_only'])->group(function () {
         ->middleware('role:admin-verifikator');
     Route::post('/verifications/decision', [VerificationController::class, 'verify'])
         ->middleware('role:admin-verifikator');
+    Route::get('/verifications/my-decisions', [VerificationController::class, 'myDecisions'])
+        ->middleware('role:admin-verifikator');
 
     // Admin account management (Super Admin Pemilik only)
+    Route::get('/admin/accounts', [AdminAccountController::class, 'index'])
+        ->middleware('role:super-admin-pemilik');
     Route::post('/admin/accounts', [AdminAccountController::class, 'store'])
+        ->middleware('role:super-admin-pemilik');
+    Route::match(['post', 'patch'], '/admin/accounts/{id}/toggle', [AdminAccountController::class, 'toggleActive'])
+        ->middleware('role:super-admin-pemilik');
+    Route::get('/admin/audit-logs', [AdminAccountController::class, 'getAuditLogs'])
+        ->middleware('role:super-admin-pemilik');
+
+    // Kategori Servis (Super Admin Pemilik only)
+    Route::get('/admin/services', [JasaServisController::class, 'index'])
+        ->middleware('role:super-admin-pemilik');
+    Route::post('/admin/services', [JasaServisController::class, 'store'])
+        ->middleware('role:super-admin-pemilik');
+    Route::put('/admin/services/{id}', [JasaServisController::class, 'update'])
+        ->middleware('role:super-admin-pemilik');
+    Route::match(['post', 'patch'], '/admin/services/{id}/toggle', [JasaServisController::class, 'toggleActive'])
+        ->middleware('role:super-admin-pemilik');
+
+    // Kebijakan Komisi (Super Admin Pemilik only)
+    Route::get('/admin/commission-policy', [KebijakanKomisiController::class, 'getPolicy'])
+        ->middleware('role:super-admin-pemilik');
+    Route::put('/admin/commission-policy', [KebijakanKomisiController::class, 'updatePolicy'])
+        ->middleware('role:super-admin-pemilik');
+
+    // Wilayah Operasional (Super Admin Pemilik only)
+    Route::get('/admin/regions', [WilayahOperasionalController::class, 'index'])
+        ->middleware('role:super-admin-pemilik');
+    Route::post('/admin/regions', [WilayahOperasionalController::class, 'store'])
+        ->middleware('role:super-admin-pemilik');
+    Route::match(['post', 'patch'], '/admin/regions/{id}/toggle', [WilayahOperasionalController::class, 'toggleActive'])
+        ->middleware('role:super-admin-pemilik');
+
+    // Flag Notifikasi (Super Admin Pemilik only)
+    Route::get('/admin/flags', [MonitoringDashboardController::class, 'getFlags'])
+        ->middleware('role:super-admin-pemilik');
+    Route::match(['post', 'patch'], '/admin/flags/{id}/read', function($id) {
+        $notification = \App\Models\Notifikasi::find($id);
+        if ($notification) {
+            $notification->update(['dibaca' => true]);
+        }
+        return response()->json(['message' => 'Success']);
+    })->middleware('role:super-admin-pemilik');
+
+    Route::post('/admin/notifications', function(Request $request) {
+        $validator = Validator::make($request->all(), [
+            'user_id' => 'required|integer',
+            'judul' => 'required|string',
+            'pesan' => 'required|string',
+        ]);
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+        $notification = \App\Models\Notifikasi::create([
+            'user_id' => $request->user_id,
+            'judul' => $request->judul,
+            'pesan' => $request->pesan,
+            'dibaca' => false,
+        ]);
+        return response()->json($notification, 201);
+    })->middleware('role:super-admin-pemilik');
+
+    // Dispute eskalasi list & resolution (Super Admin Pemilik only)
+    Route::get('/admin/disputes', [DisputeController::class, 'index'])
+        ->middleware('role:super-admin-pemilik');
+    Route::match(['post', 'patch'], '/admin/disputes/{dispute}/resolve', [DisputeController::class, 'resolveDispute'])
+        ->middleware('role:super-admin-pemilik');
+
+    // Onboarding verifications overview (Super Admin Pemilik only)
+    Route::get('/admin/verifications', [VerificationController::class, 'getAllVerifications'])
+        ->middleware('role:super-admin-pemilik');
+
+    // Dashboard metrics
+    Route::get('/admin/financial-summary', [MonitoringDashboardController::class, 'getFinancialSummary'])
+        ->middleware('role:super-admin-pemilik');
+    Route::get('/admin/monthly-trends', [MonitoringDashboardController::class, 'getMonthlyTrends'])
+        ->middleware('role:super-admin-pemilik');
+    Route::get('/admin/verification-summary', [MonitoringDashboardController::class, 'getVerificationSummary'])
+        ->middleware('role:super-admin-pemilik');
+
+    // Database Backup & Restore (Super Admin Pemilik only)
+    Route::get('/admin/database/backup', [BackupDbController::class, 'backup'])
+        ->middleware('role:super-admin-pemilik');
+    Route::post('/admin/database/restore', [BackupDbController::class, 'restore'])
+        ->middleware('role:super-admin-pemilik');
+
+    // Sent flags history
+    Route::get('/admin/flags/sent', function(Request $request) {
+        $flags = \App\Models\Notifikasi::with('user')
+            ->where('judul', 'like', '%FLAG ALERT%')
+            ->orderBy('id', 'desc')
+            ->get();
+        return response()->json($flags);
+    });
+
+    // Backward compatibility aliases
+    Route::get('/jasa-servis', [JasaServisController::class, 'index']);
+    Route::post('/jasa-servis/store', [JasaServisController::class, 'store'])
+        ->middleware('role:super-admin-pemilik');
+    Route::post('/jasa-servis/{id}', [JasaServisController::class, 'update'])
+        ->middleware('role:super-admin-pemilik');
+    Route::post('/jasa-servis/{id}/toggle-active', [JasaServisController::class, 'toggleActive'])
+        ->middleware('role:super-admin-pemilik');
+
+    Route::get('/master/kebijakan-komisi', [KebijakanKomisiController::class, 'getPolicy']);
+    Route::post('/master/kebijakan-komisi', [KebijakanKomisiController::class, 'updatePolicy'])
+        ->middleware('role:super-admin-pemilik');
+
+    Route::get('/master/wilayah-operasional', [WilayahOperasionalController::class, 'index']);
+    Route::post('/master/wilayah-operasional', [WilayahOperasionalController::class, 'store'])
+        ->middleware('role:super-admin-pemilik');
+    Route::post('/master/wilayah-operasional/{id}/toggle-active', [WilayahOperasionalController::class, 'toggleActive'])
         ->middleware('role:super-admin-pemilik');
 
     // Monitoring Flag Exception Route (Excluded from ReadOnlyMiddleware write block)
     Route::post('/monitoring/flags', [MonitoringDashboardController::class, 'storeFlag'])
         ->name('monitoring.flags.store')->middleware('role:super-admin-monitoring');
+    Route::get('/monitoring/flags', [MonitoringDashboardController::class, 'getFlags'])
+        ->middleware('role:super-admin-pemilik');
 
     // Monitoring Dashboard Metrics
     Route::get('/monitoring/metrics', [MonitoringDashboardController::class, 'getMetrics'])
@@ -74,6 +193,14 @@ Route::middleware(['auth:sanctum', 'read_only'])->group(function () {
     // --- Chat Messages ---
     Route::post('/orders/{order}/chats', [ChatController::class, 'sendMessage']);
     Route::get('/orders/{order}/chats', [ChatController::class, 'getMessages']);
+
+    // --- Dispute Endpoints for Admin Resolusi ---
+    Route::get('/disputes/my-assigned', [DisputeController::class, 'myAssigned'])
+        ->middleware('role:admin-resolusi');
+    Route::get('/disputes/history/mitra', [DisputeController::class, 'getMitraViolations'])
+        ->middleware('role:admin-resolusi');
+    Route::get('/disputes/my-decisions', [DisputeController::class, 'myDecisions'])
+        ->middleware('role:admin-resolusi');
 
     // --- Dispute Endpoints ---
     Route::get('/disputes', [DisputeController::class, 'index']);

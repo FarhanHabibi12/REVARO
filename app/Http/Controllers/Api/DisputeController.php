@@ -362,10 +362,59 @@ class DisputeController extends Controller
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
-        $disputes = Dispute::with(['order.pelanggan', 'order.teknisi', 'resolver'])->latest()->get();
+        $disputes = Dispute::with(['order.pelanggan', 'order.teknisi', 'admin'])->latest()->get();
 
         return response()->json([
             'disputes' => $disputes
         ]);
+    }
+
+    /**
+     * Get disputes assigned to currently logged-in Admin Resolusi.
+     */
+    public function myAssigned(Request $request)
+    {
+        $admin = $request->user();
+        $disputes = Dispute::with(['order.pelanggan', 'order.teknisi', 'order.transaksi'])
+            ->where('admin_id', $admin->id)
+            ->where('status', '!=', 'RESOLVED')
+            ->orderBy('sla_deadline', 'asc')
+            ->get();
+        return response()->json($disputes);
+    }
+
+    /**
+     * Get violation history logs for a specific technician or shop.
+     */
+    public function getMitraViolations(Request $request)
+    {
+        $techId = $request->query('teknisi_id');
+        $shopId = $request->query('toko_id');
+
+        $query = PelanggaranLog::query();
+        if ($techId) {
+            $query->where('teknisi_id', $techId);
+        } elseif ($shopId) {
+            $query->where('toko_id', $shopId);
+        } else {
+            return response()->json([]);
+        }
+
+        $logs = $query->orderBy('id', 'desc')->get();
+        return response()->json($logs);
+    }
+
+    /**
+     * Get resolved disputes resolved by logged-in resolver admin.
+     */
+    public function myDecisions(Request $request)
+    {
+        $admin = $request->user();
+        $disputes = Dispute::with(['order.pelanggan', 'order.teknisi'])
+            ->where('admin_id', $admin->id)
+            ->where('status', 'RESOLVED')
+            ->orderBy('resolved_at', 'desc')
+            ->get();
+        return response()->json($disputes);
     }
 }

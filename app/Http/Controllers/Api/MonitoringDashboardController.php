@@ -65,6 +65,10 @@ class MonitoringDashboardController extends Controller
         $onboardingRejectionRate = $totalProfiles > 0 ? round(($totalRejected / $totalProfiles) * 100, 2) : 0.00;
         $operationalFreezeRate = $totalProfiles > 0 ? round(($totalFrozen / $totalProfiles) * 100, 2) : 0.00;
 
+        $pendingTechs = Teknisi::where('status', 'PENDING_REVIEW')->count();
+        $pendingShops = Toko::where('status', 'PENDING_REVIEW')->count();
+        $totalPending = $pendingTechs + $pendingShops;
+
         // 5. SLA breaches count (> 48 hours deadline)
         $slaBreachCount = Dispute::where('status', '!=', 'RESOLVED')
             ->whereNotNull('sla_deadline')
@@ -80,6 +84,8 @@ class MonitoringDashboardController extends Controller
             'onboarding_rejection_rate_percent' => $onboardingRejectionRate,
             'operational_freeze_rate_percent' => $operationalFreezeRate,
             'sla_breach_count' => $slaBreachCount,
+            'rejected_onboarding_count' => $totalRejected,
+            'pending_onboarding_count' => $totalPending,
         ]);
     }
 
@@ -136,5 +142,105 @@ class MonitoringDashboardController extends Controller
         return response()->json([
             'message' => 'Flag berhasil dikirim ke Super Admin Pemilik.'
         ], 200);
+    }
+
+    /**
+     * Get security flags/alerts sent to Super Admin Pemilik.
+     */
+    public function getFlags(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user->isSuperAdminPemilik()) {
+            return response()->json(['message' => 'Forbidden.'], 403);
+        }
+
+        $flags = Notifikasi::where('user_id', $user->id)
+            ->where('judul', 'like', 'FLAG ALERT%')
+            ->orderBy('id', 'desc')
+            ->get();
+
+        return response()->json($flags);
+    }
+
+    /**
+     * Get financial summary (GMV, net commission, active transactions)
+     */
+    public function getFinancialSummary()
+    {
+        $policy = \App\Models\KebijakanKomisi::first() ?? (object)['persen_komisi_jasa' => 10, 'persen_fee_sparepart' => 5];
+        $jasaPct = $policy->persen_komisi_jasa / 100;
+        $partPct = $policy->persen_fee_sparepart / 100;
+
+        $transactions = \App\Models\Transaksi::where('status_pembayaran', 'PAID')->get();
+        $gmv = $transactions->sum('total');
+        $komisi = $transactions->sum(function($t) use ($jasaPct, $partPct) {
+            return ($t->biaya_jasa * $jasaPct) + ($t->biaya_part * $partPct);
+        });
+        $activeOrders = \App\Models\Order::whereNotIn('status', ['COMPLETED', 'CANCELLED'])->count();
+
+        return response()->json([
+            'gmv' => $gmv,
+            'komisi_bersih' => $komisi,
+            'transaksi_aktif' => $activeOrders,
+        ]);
+    }
+
+    /**
+     * Get monthly trends (GMV and net commission)
+     */
+    public function getMonthlyTrends()
+    {
+        $trends = [];
+        $policy = \App\Models\KebijakanKomisi::first() ?? (object)['persen_komisi_jasa' => 10, 'persen_fee_sparepart' => 5];
+        $jasaPct = $policy->persen_komisi_jasa / 100;
+        $partPct = $policy->persen_fee_sparepart / 100;
+
+        for ($i = 5; $i >= 0; $i--) {
+            $date = Carbon::now()->subMonths($i);
+            $monthName = $date->format('M');
+            $start = $date->startOfMonth()->toDateTimeString();
+            $end = $date->endOfMonth()->toDateTimeString();
+
+            $txs = \App\Models\Transaksi::where('status_pembayaran', 'PAID')
+                ->whereBetween('paid_at', [$start, $end])
+                ->get();
+
+            $mGmv = $txs->sum('total');
+            $mKomisi = $txs->sum(function($t) use ($jasaPct, $partPct) {
+                return ($t->biaya_jasa * $jasaPct) + ($t->biaya_part * $partPct);
+            });
+
+            $trends[] = [
+                'bulan' => $monthName,
+                'gmv' => $mGmv,
+                'komisi' => $mKomisi,
+            ];
+        }
+
+        return response()->json($trends);
+    }
+
+    /**
+     * Get verification and dispute summary metrics.
+     */
+    public function getVerificationSummary()
+    {
+        $approved = \App\Models\PendaftaranVerifikasi::where('status', 'APPROVED')->count();
+        $rejected = \App\Models\PendaftaranVerifikasi::where('status', 'REJECTED')->count();
+        $pending = \App\Models\Teknisi::where('status', 'PENDING_REVIEW')->count() + \App\Models\Toko::where('status', 'PENDING_REVIEW')->count();
+
+        $disputeOpen = \App\Models\Dispute::where('status', 'OPEN')->count();
+        $disputeInvestigating = \App\Models\Dispute::whereIn('status', ['INVESTIGATING', 'ESCALATED'])->count();
+        $disputeResolved = \App\Models\Dispute::where('status', 'RESOLVED')->count();
+
+        return response()->json([
+            'approved' => $approved,
+            'pending' => $pending,
+            'rejected' => $rejected,
+            'dispute_open' => $disputeOpen,
+            'dispute_investigating' => $disputeInvestigating,
+            'dispute_resolved' => $disputeResolved,
+        ]);
     }
 }

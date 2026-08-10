@@ -19,12 +19,61 @@ class VerificationController extends Controller
      */
     public function index()
     {
-        $technicians = Teknisi::where('status', 'PENDING_REVIEW')->get();
-        $shops = Toko::where('status', 'PENDING_REVIEW')->get();
+        $technicians = Teknisi::with('user')->where('status', 'PENDING_REVIEW')->get();
+        $shops = Toko::with('user')->where('status', 'PENDING_REVIEW')->get();
+
+        $newTechs = [];
+        $resubTechs = [];
+        $reverifTechs = [];
+
+        foreach ($technicians as $tech) {
+            $latest = PendaftaranVerifikasi::where('teknisi_id', $tech->id)
+                ->latest('id')
+                ->first();
+
+            if (!$latest) {
+                $newTechs[] = $tech;
+            } elseif ($latest->status === 'NEEDS_REVISION') {
+                $resubTechs[] = $tech;
+            } else {
+                $reverifTechs[] = $tech;
+            }
+        }
+
+        $newShops = [];
+        $resubShops = [];
+        $reverifShops = [];
+
+        foreach ($shops as $shop) {
+            $latest = PendaftaranVerifikasi::where('toko_id', $shop->id)
+                ->latest('id')
+                ->first();
+
+            if (!$latest) {
+                $newShops[] = $shop;
+            } elseif ($latest->status === 'NEEDS_REVISION') {
+                $resubShops[] = $shop;
+            } else {
+                $reverifShops[] = $shop;
+            }
+        }
 
         return response()->json([
-            'technicians' => $technicians,
-            'shops' => $shops,
+            'new_registrations' => [
+                'technicians' => $newTechs,
+                'shops' => $newShops,
+            ],
+            'resubmitted' => [
+                'technicians' => $resubTechs,
+                'shops' => $resubShops,
+            ],
+            'reverifications' => [
+                'technicians' => $reverifTechs,
+                'shops' => $reverifShops,
+            ],
+            // Backward compatibility for tests
+            'technicians' => array_merge($newTechs, $resubTechs, $reverifTechs),
+            'shops' => array_merge($newShops, $resubShops, $reverifShops),
         ]);
     }
 
@@ -131,5 +180,29 @@ class VerificationController extends Controller
                 'profile' => $profile,
             ]);
         });
+    }
+
+    /**
+     * Get all onboarding verifications list.
+     */
+    public function getAllVerifications()
+    {
+        $verifications = PendaftaranVerifikasi::with(['teknisi', 'toko', 'admin'])
+            ->orderBy('id', 'desc')
+            ->get();
+        return response()->json($verifications);
+    }
+
+    /**
+     * Get decision history for the logged-in admin.
+     */
+    public function myDecisions(Request $request)
+    {
+        $admin = $request->user();
+        $decisions = PendaftaranVerifikasi::with(['teknisi', 'toko'])
+            ->where('admin_id', $admin->id)
+            ->orderBy('id', 'desc')
+            ->get();
+        return response()->json($decisions);
     }
 }
