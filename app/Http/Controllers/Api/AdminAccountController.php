@@ -121,4 +121,87 @@ class AdminAccountController extends Controller
             
         return response()->json($logs);
     }
+
+    /**
+     * Update current logged in admin personal profile.
+     */
+    public function updateProfile(Request $request)
+    {
+        $user = $request->user();
+
+        $validator = Validator::make($request->all(), [
+            'nama' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+            'foto' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $data = [
+            'nama' => $request->nama,
+            'email' => $request->email,
+        ];
+
+        if ($request->hasFile('foto')) {
+            $destinationPath = public_path('uploads/avatars');
+            if (!file_exists($destinationPath)) {
+                mkdir($destinationPath, 0755, true);
+            }
+            $file = $request->file('foto');
+            $filename = 'avatar_' . $user->id . '_' . time() . '.' . $file->getClientOriginalExtension();
+            $file->move($destinationPath, $filename);
+            $data['foto'] = '/uploads/avatars/' . $filename;
+        }
+
+        $user->update($data);
+        $user->load('role');
+
+        \App\Models\ActivityLog::create([
+            'user_id' => $user->id,
+            'aktivitas' => 'Memperbarui profil akun pribadi administrator',
+            'ip_address' => $request->ip(),
+        ]);
+
+        return response()->json([
+            'message' => 'Profil pribadi berhasil diperbarui.',
+            'user' => $user,
+        ]);
+    }
+
+    /**
+     * Update current logged in admin personal password.
+     */
+    public function updatePassword(Request $request)
+    {
+        $user = $request->user();
+
+        $validator = Validator::make($request->all(), [
+            'current_password' => 'required|string',
+            'new_password' => 'required|string|min:6|confirmed',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        if (!Hash::check($request->current_password, $user->password)) {
+            return response()->json(['message' => 'Kata sandi saat ini tidak cocok.'], 422);
+        }
+
+        $user->update([
+            'password' => Hash::make($request->new_password),
+        ]);
+
+        \App\Models\ActivityLog::create([
+            'user_id' => $user->id,
+            'aktivitas' => 'Mengubah kata sandi akun pribadi administrator',
+            'ip_address' => $request->ip(),
+        ]);
+
+        return response()->json([
+            'message' => 'Kata sandi pribadi berhasil diperbarui.',
+        ]);
+    }
 }

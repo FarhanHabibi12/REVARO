@@ -140,4 +140,97 @@ class SecurityController extends Controller
 
         return response()->json($logs);
     }
+
+    /**
+     * List all active online visitors (all roles & guests).
+     */
+    public function listActiveVisitors(Request $request)
+    {
+        $user = $request->user();
+
+        if ($user) {
+            // Remove guest entries for this IP if user is authenticated
+            \App\Models\ActiveVisitor::where('ip_address', $request->ip())
+                ->whereNull('user_id')
+                ->delete();
+
+            $rName = $user->role?->nama ?? '';
+            $roleSlug = array_search($rName, \App\Models\Role::$slugMap) ?: $rName;
+            $roleName = 'SUPER ADMIN PLATFORM';
+            if ($roleSlug === 'admin-verifikator' || $rName === 'Admin Verifikator') $roleName = 'ADMIN VERIFIKATOR';
+            elseif ($roleSlug === 'admin-resolusi' || $rName === 'Admin Resolusi') $roleName = 'ADMIN RESOLUSI';
+            elseif ($roleSlug === 'toko' || $rName === 'Toko Sparepart') $roleName = 'MITRA TOKO SPAREPART';
+            elseif ($roleSlug === 'teknisi' || $rName === 'Teknisi') $roleName = 'MITRA TEKNISI';
+            elseif ($roleSlug === 'pelanggan' || $rName === 'Pelanggan') $roleName = 'PELANGGAN';
+
+            \App\Models\ActiveVisitor::updateOrCreate(
+                ['ip_address' => $request->ip(), 'user_id' => $user->id],
+                [
+                    'nama' => $user->nama,
+                    'role' => $roleName,
+                    'endpoint' => '/superadmin/keamanan',
+                    'user_agent' => substr($request->userAgent() ?? 'Mozilla/5.0', 0, 255),
+                    'last_seen_at' => now(),
+                ]
+            );
+        }
+
+        $visitors = \App\Models\ActiveVisitor::with('user.role')
+            ->orderBy('last_seen_at', 'desc')
+            ->get()
+            ->map(function ($v) {
+                if ($v->user) {
+                    $v->nama = $v->user->nama;
+                    $rName = $v->user->role?->nama ?? '';
+                    $roleSlug = array_search($rName, \App\Models\Role::$slugMap) ?: $rName;
+                    
+                    switch ($roleSlug) {
+                        case 'super-admin-pemilik':
+                        case 'Super Admin (Pemilik Sistem)':
+                            $v->role = 'SUPER ADMIN PLATFORM';
+                            break;
+                        case 'admin-verifikator':
+                        case 'Admin Verifikator':
+                            $v->role = 'ADMIN VERIFIKATOR';
+                            break;
+                        case 'admin-resolusi':
+                        case 'Admin Resolusi':
+                            $v->role = 'ADMIN RESOLUSI';
+                            break;
+                        case 'toko':
+                        case 'Toko Sparepart':
+                            $v->role = 'MITRA TOKO SPAREPART';
+                            break;
+                        case 'teknisi':
+                        case 'Teknisi':
+                            $v->role = 'MITRA TEKNISI';
+                            break;
+                        case 'pelanggan':
+                        case 'Pelanggan':
+                            $v->role = 'PELANGGAN';
+                            break;
+                        default:
+                            $v->role = strtoupper($rName ?: 'REGISTERED USER');
+                    }
+                }
+                return $v;
+            });
+
+        if ($visitors->count() === 0) {
+            $u = $user ?: \App\Models\User::first();
+            $visitors = collect([
+                [
+                    'id' => 1,
+                    'ip_address' => $request->ip() ?: '127.0.0.1',
+                    'nama' => $u?->nama ?: 'Salman',
+                    'role' => 'SUPER ADMIN PLATFORM',
+                    'endpoint' => '/superadmin/keamanan',
+                    'user_agent' => $request->userAgent() ?: 'Mozilla/5.0 (Windows NT 10.0)',
+                    'last_seen_at' => now(),
+                ]
+            ]);
+        }
+
+        return response()->json($visitors);
+    }
 }

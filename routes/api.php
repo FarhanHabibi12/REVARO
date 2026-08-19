@@ -12,6 +12,8 @@ use App\Http\Controllers\Api\MonitoringDashboardController;
 use App\Http\Controllers\Api\JasaServisController;
 use App\Http\Controllers\Api\KebijakanKomisiController;
 use App\Http\Controllers\Api\WilayahOperasionalController;
+use App\Http\Controllers\Api\AuditLogController;
+use App\Http\Controllers\Api\SystemSettingController;
 use App\Models\Dispute;
 use App\Models\Order;
 use App\Models\PendaftaranVerifikasi;
@@ -47,6 +49,10 @@ Route::middleware(['auth:sanctum', 'read_only'])->group(function () {
         ->middleware('role:admin-verifikator');
     Route::get('/verifications/my-decisions', [VerificationController::class, 'myDecisions'])
         ->middleware('role:admin-verifikator');
+
+    // Admin personal profile management
+    Route::post('/admin/profile', [AdminAccountController::class, 'updateProfile']);
+    Route::post('/admin/profile/password', [AdminAccountController::class, 'updatePassword']);
 
     // Admin account management (Super Admin Pemilik only)
     Route::get('/admin/accounts', [AdminAccountController::class, 'index'])
@@ -129,13 +135,39 @@ Route::middleware(['auth:sanctum', 'read_only'])->group(function () {
     Route::get('/admin/verification-summary', [MonitoringDashboardController::class, 'getVerificationSummary'])
         ->middleware('role:super-admin-pemilik');
 
-    // Database Backup & Restore (Super Admin Pemilik only)
+    // Database Backup, Restore, Cache & Reset (Super Admin Pemilik only)
     Route::get('/admin/database/backup', [BackupDbController::class, 'backup'])
         ->middleware('role:super-admin-pemilik');
     Route::post('/admin/database/restore', [BackupDbController::class, 'restore'])
         ->middleware('role:super-admin-pemilik');
+    Route::post('/admin/database/clear-cache', [BackupDbController::class, 'clearCache'])
+        ->middleware('role:super-admin-pemilik');
+    Route::post('/admin/database/reset-transactions', [BackupDbController::class, 'resetTransactions'])
+        ->middleware('role:super-admin-pemilik');
 
-    // Security & Anti-Hack (Super Admin Pemilik only)
+    // Audit Log System (Super Admin Pemilik only)
+    Route::get('/admin/audit-logs', [AuditLogController::class, 'index'])
+        ->middleware('role:super-admin-pemilik');
+    Route::get('/admin/audit-logs/export', [AuditLogController::class, 'export'])
+        ->middleware('role:super-admin-pemilik');
+
+    // System Settings (Super Admin Pemilik only)
+    Route::get('/admin/settings', [SystemSettingController::class, 'index'])
+        ->middleware('role:super-admin-pemilik');
+    Route::match(['post', 'put'], '/admin/settings', [SystemSettingController::class, 'update'])
+        ->middleware('role:super-admin-pemilik');
+    Route::post('/admin/settings/upload-asset', [SystemSettingController::class, 'uploadAsset'])
+        ->middleware('role:super-admin-pemilik');
+
+    // Maintenance Mode System (Super Admin Pemilik only)
+    Route::get('/admin/maintenance', [SystemSettingController::class, 'getMaintenance'])
+        ->middleware('role:super-admin-pemilik');
+    Route::post('/admin/maintenance', [SystemSettingController::class, 'saveMaintenance'])
+        ->middleware('role:super-admin-pemilik');
+
+    // Security & User Account status (Super Admin Pemilik only)
+    Route::get('/admin/security/active-visitors', [\App\Http\Controllers\Api\SecurityController::class, 'listActiveVisitors'])
+        ->middleware('role:super-admin-pemilik');
     Route::get('/admin/security/blacklist', [\App\Http\Controllers\Api\SecurityController::class, 'listBlacklist'])
         ->middleware('role:super-admin-pemilik');
     Route::post('/admin/security/blacklist', [\App\Http\Controllers\Api\SecurityController::class, 'banIp'])
@@ -146,7 +178,7 @@ Route::middleware(['auth:sanctum', 'read_only'])->group(function () {
         ->middleware('role:super-admin-pemilik');
     Route::post('/admin/security/users/{id}/toggle-ban', [\App\Http\Controllers\Api\SecurityController::class, 'toggleUserBan'])
         ->middleware('role:super-admin-pemilik');
-    Route::get('/admin/security/logs', [\App\Http\Controllers\Api\SecurityController::class, 'getSecurityLogs'])
+    Route::get('/admin/security/logs', [AuditLogController::class, 'index'])
         ->middleware('role:super-admin-pemilik');
 
     // Sent flags history

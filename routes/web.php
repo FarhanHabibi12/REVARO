@@ -17,8 +17,11 @@ Route::get('/partner/register', fn() => view('auth.partner_register'));
 
 // User Portals
 Route::get('/pelanggan/dashboard', fn() => view('pelanggan.dashboard'));
+Route::get('/pelanggan/settings',  fn() => view('pelanggan.settings'));
 Route::get('/teknisi/dashboard',   fn() => view('teknisi.dashboard'));
+Route::get('/teknisi/settings',    fn() => view('teknisi.settings'));
 Route::get('/toko/dashboard',      fn() => view('toko.dashboard'));
+Route::get('/toko/settings',       fn() => view('toko.settings'));
 
 // ── Super Admin Pemilik Sistem ──────────────────────────────────────────
 Route::prefix('superadmin/pemilik')->group(function () {
@@ -31,8 +34,17 @@ Route::prefix('superadmin/pemilik')->group(function () {
     Route::get('/disputes',       fn() => view('superadmin.pemilik.disputes'));
     Route::get('/verifications',  fn() => view('superadmin.pemilik.verifications'));
     Route::get('/backup',         fn() => view('superadmin.pemilik.backup'));
-    Route::get('/security',       fn() => view('superadmin.pemilik.security'));
+    Route::get('/audit-logs',     fn() => view('superadmin.pemilik.audit_logs'));
+    Route::get('/security',       fn() => view('superadmin.pemilik.audit_logs'));
+    Route::get('/settings',       fn() => view('superadmin.pemilik.settings'));
+    Route::get('/maintenance',    fn() => view('superadmin.pemilik.maintenance'));
 });
+
+// Convenient URL aliases
+Route::get('/superadmin/keamanan',    fn() => redirect('/superadmin/pemilik/audit-logs'));
+Route::get('/superadmin/database',    fn() => redirect('/superadmin/pemilik/backup'));
+Route::get('/superadmin/settings',    fn() => redirect('/superadmin/pemilik/settings'));
+Route::get('/superadmin/maintenance', fn() => redirect('/superadmin/pemilik/maintenance'));
 
 // ── Super Admin Monitoring Kinerja ─────────────────────────────────────
 Route::prefix('superadmin/monitoring')->group(function () {
@@ -48,10 +60,12 @@ Route::prefix('admin/verifikator')->group(function () {
     Route::get('/resubmitted',     fn() => view('admin.verifikator.resubmitted'));
     Route::get('/reverifications', fn() => view('admin.verifikator.reverifications'));
     Route::get('/history',         fn() => view('admin.verifikator.history'));
+    Route::get('/settings',        fn() => view('admin.verifikator.settings'));
 });
 
 // ── Admin Resolusi ──────────────────────────────────────────────────────
 Route::prefix('admin/resolusi')->group(function () {
     Route::get('/dashboard',       fn() => view('admin.resolusi.dashboard'));
     Route::get('/history',         fn() => view('admin.resolusi.history'));
+    Route::get('/settings',        fn() => view('admin.resolusi.settings'));
 });

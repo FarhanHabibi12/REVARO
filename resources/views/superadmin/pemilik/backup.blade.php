@@ -1,58 +1,115 @@
 @extends('layouts.superadmin')
 
-@section('title', 'Backup & Restore DB — REVARO')
-@section('page-title', '💾 Backup & Restore Database')
-@section('page-subtitle', 'Ekspor cadangan data lengkap platform atau timpa database dari file SQL cadangan.')
+@section('title', 'Pemeliharaan Database & Performa — REVARO')
+@section('page-title', '💾 Pemeliharaan Database & Performa Sistem')
+@section('page-subtitle', 'Unduh cadangan data basis data, pulihkan data dari file SQL, optimalkan cache Laravel, atau reset riwayat transaksi.')
 
 @section('content')
 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-    <!-- Card 1: Download/Export Backup -->
-    <div class="card p-8 space-y-6 flex flex-col justify-between">
+
+    <!-- Card 1: Backup Database SQL -->
+    <div class="card p-6 border-l-4 border-l-blue-500 flex flex-col justify-between space-y-6">
         <div class="space-y-3">
-            <div class="w-12 h-12 rounded-2xl bg-orange-500/10 text-brandOrange flex items-center justify-center text-2xl border border-orange-500/20">
-                📥
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center text-xl border border-blue-500/20">
+                    📥
+                </div>
+                <div>
+                    <h3 class="text-sm font-extrabold text-white">Backup Database SQL</h3>
+                    <p class="text-[10px] font-bold text-blue-400 uppercase tracking-widest">CADANGAN DATA INSTANS</p>
+                </div>
             </div>
-            <h3 class="text-base font-extrabold text-white">Buat & Unduh Backup Database</h3>
             <p class="text-xs text-slate-400 leading-relaxed">
-                Mengekstrak seluruh tabel database (skema tabel beserta baris data transaksi, akun, verifikasi, kebijakan komisi, dll) ke dalam bentuk file cadangan SQL terkompresi. Aman disimpan secara lokal.
+                Unduh seluruh struktur dan isi data platform dalam format berkas berkode <code class="bg-slate-800 text-slate-200 px-1.5 py-0.5 rounded font-mono text-[11px]">.sql</code>. Simpan berkas ini di tempat aman.
             </p>
         </div>
-        <div class="pt-4">
-            <button onclick="downloadBackup()" class="w-full bg-brandOrange hover:bg-orange-600 text-white font-bold text-xs py-3 px-6 rounded-xl transition shadow flex items-center justify-center gap-2">
-                <span>📥</span> Unduh File Backup SQL
+        <div class="pt-2">
+            <button onclick="downloadBackup()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs py-3 px-6 rounded-xl transition shadow flex items-center justify-center gap-2">
+                <span>📥</span> Unduh Cadangan SQL (.sql)
             </button>
         </div>
     </div>
 
-    <!-- Card 2: Restore/Overwrite Database -->
-    <div class="card p-8 space-y-6 flex flex-col justify-between">
+    <!-- Card 2: Pemulihan Database (Restore) -->
+    <div class="card p-6 border-l-4 border-l-amber-500 flex flex-col justify-between space-y-6">
         <div class="space-y-3">
-            <div class="w-12 h-12 rounded-2xl bg-red-500/10 text-red-400 flex items-center justify-center text-2xl border border-red-500/20">
-                📤
-            </div>
-            <h3 class="text-base font-extrabold text-white">Pulihkan / Timpa Database</h3>
-            <p class="text-xs text-slate-400 leading-relaxed">
-                Unggah file backup SQL Anda untuk menimpa seluruh skema dan data database saat ini. Tindakan ini bersifat merusak data aktif saat ini! Pastikan berkas cadangan valid.
-            </p>
-        </div>
-        <div class="space-y-4">
-            <div>
-                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Pilih File SQL (.sql)</label>
-                <div class="relative flex items-center bg-slate-950 border border-slate-800 rounded-xl p-3 hover:border-slate-700 transition">
-                    <input type="file" id="backupFile" accept=".sql" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full">
-                    <span id="fileNameDisplay" class="text-xs text-slate-500">Belum ada file dipilih...</span>
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-xl border border-amber-500/20">
+                    📤
+                </div>
+                <div>
+                    <h3 class="text-sm font-extrabold text-white">Pemulihan Database (Restore)</h3>
+                    <p class="text-[10px] font-bold text-amber-400 uppercase tracking-widest">IMPOR BERKAS SQL</p>
                 </div>
             </div>
-            <button onclick="restoreDatabase()" class="w-full bg-red-950 hover:bg-red-900 text-red-400 hover:text-white font-bold text-xs py-3 px-6 rounded-xl transition shadow border border-red-900/30 flex items-center justify-center gap-2">
-                <span>⚠️</span> Mulai Timpa Database
+            <p class="text-xs text-slate-400 leading-relaxed">
+                Kembalikan data platform dari berkas <code class="bg-slate-800 text-slate-200 px-1.5 py-0.5 rounded font-mono text-[11px]">.sql</code>. Seluruh data yang ada saat ini akan <strong class="text-slate-200">ditimpa ulang</strong>.
+            </p>
+        </div>
+        <div class="space-y-3">
+            <div class="relative flex items-center bg-slate-950 border border-slate-800 rounded-xl p-2.5 hover:border-slate-700 transition">
+                <input type="file" id="backupFile" accept=".sql" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full">
+                <span id="fileNameDisplay" class="text-xs text-slate-500">Belum ada file dipilih...</span>
+            </div>
+            <button onclick="restoreDatabase()" class="w-full bg-amber-700 hover:bg-amber-600 text-white font-extrabold text-xs py-3 px-6 rounded-xl transition shadow flex items-center justify-center gap-2">
+                <span>📤</span> Jalankan Pemulihan Restore Data
             </button>
         </div>
     </div>
+
+    <!-- Card 3: Bersihkan Cache Framework -->
+    <div class="card p-6 border-l-4 border-l-emerald-500 flex flex-col justify-between space-y-6">
+        <div class="space-y-3">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-xl border border-emerald-500/20">
+                    🔄
+                </div>
+                <div>
+                    <h3 class="text-sm font-extrabold text-white">Bersihkan Cache Framework</h3>
+                    <p class="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">OPTIMASI PERFORMA PLATFORM</p>
+                </div>
+            </div>
+            <p class="text-xs text-slate-400 leading-relaxed">
+                Bersihkan kompilasi cache route, config, event, dan tampilan Blade Laravel secara instan tanpa mengganggu data pengguna.
+            </p>
+        </div>
+        <div class="pt-2">
+            <button onclick="clearCacheFramework()" class="w-full bg-emerald-900/80 hover:bg-emerald-800 text-emerald-300 hover:text-white font-extrabold text-xs py-3 px-6 rounded-xl transition border border-emerald-700/40 flex items-center justify-center gap-2">
+                <span>🔄</span> Bersihkan Seluruh Cache Framework
+            </button>
+        </div>
+    </div>
+
+    <!-- Card 4: Reset Riwayat Transaksi -->
+    <div class="card p-6 border-l-4 border-l-red-500 flex flex-col justify-between space-y-6">
+        <div class="space-y-3">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-red-500/10 text-red-400 flex items-center justify-center text-xl border border-red-500/20">
+                    🗑️
+                </div>
+                <div>
+                    <h3 class="text-sm font-extrabold text-white">Reset Riwayat Transaksi</h3>
+                    <p class="text-[10px] font-bold text-red-400 uppercase tracking-widest">PERGANTIAN PERIODE / TAHUN</p>
+                </div>
+            </div>
+            <p class="text-xs text-slate-400 leading-relaxed">
+                Hapus seluruh riwayat pengaduan, permohonan surat, dan ulasan survei / riwayat transaksi. <strong class="text-red-400">Tindakan ini tidak dapat dibatalkan!</strong>
+            </p>
+        </div>
+        <div class="pt-2">
+            <button onclick="resetTransactions()" class="w-full bg-red-800 hover:bg-red-700 text-white font-extrabold text-xs py-3 px-6 rounded-xl transition shadow flex items-center justify-center gap-2">
+                <span>🗑️</span> Reset Seluruh Data Transaksi
+            </button>
+        </div>
+    </div>
+
 </div>
 @endsection
 
 @section('scripts')
 <script>
+    const token = localStorage.getItem('admin_token');
+
     // File input name decorator
     document.getElementById('backupFile').addEventListener('change', function(e) {
         const file = e.target.files[0];
@@ -60,20 +117,21 @@
         if (file) {
             display.textContent = file.name;
             display.classList.remove('text-slate-500');
-            display.classList.add('text-slate-300', 'font-mono');
+            display.classList.add('text-slate-200', 'font-mono');
         } else {
             display.textContent = 'Belum ada file dipilih...';
-            display.classList.remove('text-slate-300', 'font-mono');
+            display.classList.remove('text-slate-200', 'font-mono');
             display.classList.add('text-slate-500');
         }
     });
 
     async function downloadBackup() {
-        const token = localStorage.getItem('admin_token');
         Swal.fire({
             title: 'Mempersiapkan Backup...',
             text: 'Mohon tunggu sebentar.',
             allowOutsideClick: false,
+            background: '#1E293B',
+            color: '#E2E8F0',
             didOpen: () => { Swal.showLoading(); }
         });
 
@@ -82,7 +140,7 @@
                 headers: { 'Authorization': 'Bearer ' + token }
             });
 
-            if (!response.ok) throw new Error('Failed to download backup');
+            if (!response.ok) throw new Error('Gagal mengunduh backup');
 
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
@@ -94,6 +152,8 @@
             a.remove();
             window.URL.revokeObjectURL(url);
             Swal.close();
+
+            Swal.fire({ title: 'Unduh Berhasil!', text: 'File cadangan SQL telah disimpan.', icon: 'success', background: '#1E293B', color: '#E2E8F0', confirmButtonColor: '#F97316' });
         } catch(e) {
             Swal.fire({
                 title: 'Gagal',
@@ -107,7 +167,6 @@
     }
 
     async function restoreDatabase() {
-        const token = localStorage.getItem('admin_token');
         const fileInput = document.getElementById('backupFile');
         const file = fileInput.files[0];
 
@@ -142,6 +201,8 @@
             title: 'Menimpa Database...',
             text: 'Mohon tidak menutup halaman ini.',
             allowOutsideClick: false,
+            background: '#1E293B',
+            color: '#E2E8F0',
             didOpen: () => { Swal.showLoading(); }
         });
 
@@ -158,20 +219,19 @@
             const d = await r.json();
             if (r.ok) {
                 await Swal.fire({
-                    title: 'Berhasil!',
-                    text: d.message + ' Silakan login kembali untuk memperbarui sesi data Anda.',
+                    title: 'Berhasil Pemulihan!',
+                    text: d.message + ' Silakan login kembali.',
                     icon: 'success',
                     background: '#1E293B',
                     color: '#E2E8F0',
                     confirmButtonColor: '#F97316'
                 });
-                // Clear session and force re-login as database might be overwritten
                 localStorage.removeItem('admin_token');
                 localStorage.removeItem('admin_user');
                 window.location.href = '/admin/login';
             } else {
                 Swal.fire({
-                    title: 'Gagal',
+                    title: 'Gagal Restorasi',
                     text: d.message || 'Gagal memproses restorasi database.',
                     icon: 'error',
                     background: '#1E293B',
@@ -188,6 +248,77 @@
                 color: '#E2E8F0',
                 confirmButtonColor: '#F97316'
             });
+        }
+    }
+
+    async function clearCacheFramework() {
+        Swal.fire({
+            title: 'Membersihkan Cache...',
+            text: 'Memproses pembersihan kompilasi cache Laravel.',
+            allowOutsideClick: false,
+            background: '#1E293B',
+            color: '#E2E8F0',
+            didOpen: () => { Swal.showLoading(); }
+        });
+
+        try {
+            const res = await fetch('/api/admin/database/clear-cache', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+            });
+            const d = await res.json();
+            Swal.close();
+
+            if (res.ok) {
+                Swal.fire({ title: 'Cache Dibersihkan!', text: d.message, icon: 'success', background: '#1E293B', color: '#E2E8F0', confirmButtonColor: '#F97316' });
+            } else {
+                Swal.fire({ title: 'Gagal', text: d.message, icon: 'error', background: '#1E293B', color: '#E2E8F0', confirmButtonColor: '#F97316' });
+            }
+        } catch (e) {
+            Swal.fire({ title: 'Error', text: 'Gagal menghubungkan ke server.', icon: 'error', background: '#1E293B', color: '#E2E8F0', confirmButtonColor: '#F97316' });
+        }
+    }
+
+    async function resetTransactions() {
+        const confirm = await Swal.fire({
+            title: 'Reset Seluruh Transaksi?',
+            text: 'Tindakan ini akan MENGHAPUS SEMUA DATA transaksi, order, dispute, dan ulasan! Tindakan ini TIDAK DAPAT DIBATALKAN!',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Ya, Reset Sekarang',
+            cancelButtonText: 'Batal',
+            background: '#1E293B',
+            color: '#E2E8F0',
+            confirmButtonColor: '#EF4444',
+            cancelButtonColor: '#475569'
+        });
+
+        if (!confirm.isConfirmed) return;
+
+        Swal.fire({
+            title: 'Mereset Data Transaksi...',
+            text: 'Mohon tunggu.',
+            allowOutsideClick: false,
+            background: '#1E293B',
+            color: '#E2E8F0',
+            didOpen: () => { Swal.showLoading(); }
+        });
+
+        try {
+            const res = await fetch('/api/admin/database/reset-transactions', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+            });
+            const d = await res.json();
+            Swal.close();
+
+            if (res.ok) {
+                Swal.fire({ title: 'Reset Berhasil!', text: d.message, icon: 'success', background: '#1E293B', color: '#E2E8F0', confirmButtonColor: '#F97316' });
+            } else {
+                Swal.fire({ title: 'Gagal', text: d.message, icon: 'error', background: '#1E293B', color: '#E2E8F0', confirmButtonColor: '#F97316' });
+            }
+        } catch (e) {
+            Swal.fire({ title: 'Error', text: 'Gagal menghubungkan ke server.', icon: 'error', background: '#1E293B', color: '#E2E8F0', confirmButtonColor: '#F97316' });
         }
     }
 </script>

@@ -95,4 +95,66 @@ class BackupDbController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Clear framework caches (route, config, view, cache).
+     */
+    public function clearCache(Request $request)
+    {
+        try {
+            \Illuminate\Support\Facades\Artisan::call('cache:clear');
+            \Illuminate\Support\Facades\Artisan::call('config:clear');
+            \Illuminate\Support\Facades\Artisan::call('route:clear');
+            \Illuminate\Support\Facades\Artisan::call('view:clear');
+
+            \App\Models\ActivityLog::create([
+                'user_id' => $request->user()?->id,
+                'aktivitas' => 'Membersihkan seluruh kompilasi cache framework Laravel (cache, config, route, view)',
+                'ip_address' => $request->ip(),
+            ]);
+
+            return response()->json([
+                'message' => 'Seluruh cache framework Laravel berhasil dibersihkan!'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Gagal membersihkan cache: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Reset transaction data (orders, transactions, disputes, ratings).
+     */
+    public function resetTransactions(Request $request)
+    {
+        try {
+            DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+
+            DB::table('disputes')->truncate();
+            DB::table('rating')->truncate();
+            DB::table('transaksi')->truncate();
+            DB::table('orders')->truncate();
+
+            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+
+            \App\Models\ActivityLog::create([
+                'user_id' => $request->user()?->id,
+                'aktivitas' => 'Melakukan reset seluruh riwayat transaksi & order platform',
+                'ip_address' => $request->ip(),
+            ]);
+
+            return response()->json([
+                'message' => 'Seluruh data riwayat transaksi platform telah berhasil di-reset!'
+            ]);
+        } catch (\Exception $e) {
+            try {
+                DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+            } catch (\Exception $ex) {}
+
+            return response()->json([
+                'message' => 'Gagal mengosongkan data transaksi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

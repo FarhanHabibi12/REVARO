@@ -15,6 +15,8 @@ class Kernel extends HttpKernel
      */
     protected $middleware = [
         \App\Http\Middleware\BlockIpMiddleware::class,
+        \App\Http\Middleware\TrackActiveVisitorsMiddleware::class,
+        \App\Http\Middleware\SetLocaleMiddleware::class,
         // \App\Http\Middleware\TrustHosts::class,
         \App\Http\Middleware\TrustProxies::class,
         \Illuminate\Http\Middleware\HandleCors::class,

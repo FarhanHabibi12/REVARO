@@ -76,11 +76,30 @@
 
     <!-- Client-Side Script -->
     <script>
+        function getRoleSlug(user) {
+            if (!user) return '';
+            let r = user.role;
+            if (typeof r === 'object' && r !== null) {
+                r = r.nama || r.name || '';
+            }
+            const map = {
+                'Super Admin (Pemilik Sistem)':     'super-admin-pemilik',
+                'super-admin-pemilik':              'super-admin-pemilik',
+                'Super Admin (Monitoring Kinerja)': 'super-admin-monitoring',
+                'super-admin-monitoring':           'super-admin-monitoring',
+                'Admin Verifikator':                 'admin-verifikator',
+                'admin-verifikator':                 'admin-verifikator',
+                'Admin Resolusi':                    'admin-resolusi',
+                'admin-resolusi':                    'admin-resolusi',
+            };
+            return map[r] || (typeof r === 'string' ? r : '');
+        }
+
         // Redirect if already logged in as admin
         window.addEventListener('load', () => {
             const token = localStorage.getItem('admin_token');
             const user = JSON.parse(localStorage.getItem('admin_user') || '{}');
-            const role = user.role || '';
+            const role = getRoleSlug(user);
 
             if (token && role) {
                 if (role === 'super-admin-pemilik') window.location.href = '/superadmin/pemilik/dashboard';
@@ -114,14 +133,24 @@
                     return;
                 }
 
-                const roleNama = result.role; // e.g. 'Super Admin (Pemilik Sistem)'
+                let roleNama = result.role;
+                if (typeof roleNama === 'object' && roleNama !== null) {
+                    roleNama = roleNama.nama || '';
+                }
+                if (!roleNama && result.user && result.user.role) {
+                    roleNama = typeof result.user.role === 'object' ? result.user.role.nama : result.user.role;
+                }
 
                 // Map DB role names → slugs used throughout the admin portal
                 const roleSlugMap = {
-                    'Super Admin (Pemilik Sistem)':   'super-admin-pemilik',
+                    'Super Admin (Pemilik Sistem)':     'super-admin-pemilik',
+                    'super-admin-pemilik':              'super-admin-pemilik',
                     'Super Admin (Monitoring Kinerja)': 'super-admin-monitoring',
-                    'Admin Verifikator':               'admin-verifikator',
-                    'Admin Resolusi':                  'admin-resolusi',
+                    'super-admin-monitoring':           'super-admin-monitoring',
+                    'Admin Verifikator':                 'admin-verifikator',
+                    'admin-verifikator':                 'admin-verifikator',
+                    'Admin Resolusi':                    'admin-resolusi',
+                    'admin-resolusi':                    'admin-resolusi',
                 };
 
                 const role = roleSlugMap[roleNama] || null;

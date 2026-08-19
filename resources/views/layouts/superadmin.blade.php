@@ -22,160 +22,10 @@
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <style>
-        /* Custom Scrollbar Styles */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.2); border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(249, 115, 22, 0.45); }
-        html { scrollbar-width: thin; scrollbar-color: rgba(148, 163, 184, 0.2) transparent; }
-
-        :root { --sidebar-width: 260px; }
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #0D1117; color: #E2E8F0; }
-        .sidebar { width: var(--sidebar-width); height: 100vh; background: rgba(15,20,30,0.97); border-right: 1px solid rgba(248,113,22,0.12); position: fixed; top: 0; left: 0; z-index: 50; display: flex; flex-direction: column; overflow-y: auto; }
-        .main-content { margin-left: var(--sidebar-width); min-height: 100vh; padding: 2rem; }
-        .nav-link { display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-radius: 10px; font-size: 0.78rem; font-weight: 600; color: #94A3B8; transition: all 0.2s; text-decoration: none; margin: 2px 0; }
-        .nav-link:hover { background: rgba(248,113,22,0.1); color: #F97316; }
-        .nav-link.active { background: rgba(248,113,22,0.15); color: #F97316; border-left: 3px solid #F97316; }
-        .nav-group-label { font-size: 0.65rem; font-weight: 800; color: #475569; text-transform: uppercase; letter-spacing: 0.1em; padding: 16px 16px 6px; }
-        .card { background: rgba(30,41,59,0.5); border: 1px solid rgba(71,85,105,0.3); border-radius: 16px; }
-        .btn-primary { background: linear-gradient(135deg, #F97316, #EA580C); color: white; font-weight: 700; padding: 8px 18px; border-radius: 10px; border: none; cursor: pointer; font-size: 0.8rem; transition: all 0.2s; }
-        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 25px rgba(249,115,22,0.4); }
-        .btn-outline { background: transparent; color: #94A3B8; font-weight: 600; padding: 8px 18px; border-radius: 10px; border: 1px solid rgba(71,85,105,0.4); cursor: pointer; font-size: 0.8rem; transition: all 0.2s; }
-        .btn-outline:hover { border-color: #F97316; color: #F97316; }
-        .badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 20px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
-        .badge-green { background: rgba(16,185,129,0.15); color: #10B981; }
-        .badge-red { background: rgba(239,68,68,0.15); color: #EF4444; }
-        .badge-yellow { background: rgba(234,179,8,0.15); color: #EAB308; }
-        .badge-blue { background: rgba(59,130,246,0.15); color: #3B82F6; }
-        .badge-gray { background: rgba(100,116,139,0.15); color: #64748B; }
-        .input-field { width: 100%; background: rgba(15,23,42,0.8); border: 1px solid rgba(71,85,105,0.4); border-radius: 10px; padding: 9px 14px; color: #E2E8F0; font-size: 0.82rem; transition: all 0.2s; outline: none; }
-        .input-field:focus { border-color: #F97316; box-shadow: 0 0 0 3px rgba(249,115,22,0.1); }
-        .input-field::placeholder { color: #475569; }
-        select.input-field option { background: #1E293B; }
-        table.data-table { width: 100%; border-collapse: collapse; }
-        table.data-table th { font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #64748B; padding: 10px 14px; text-align: left; border-bottom: 1px solid rgba(71,85,105,0.3); }
-        table.data-table td { padding: 12px 14px; font-size: 0.8rem; border-bottom: 1px solid rgba(30,41,59,0.8); vertical-align: middle; }
-        table.data-table tr:hover td { background: rgba(248,113,22,0.04); }
-
-        /* Light Mode CSS Overrides */
-        body.light-mode { background: #FAF9F6; color: #0F172A; }
-        body.light-mode .sidebar { background: #FFFFFF; border-right: 1px solid rgba(249,115,22,0.15); }
-        body.light-mode #sidebarUserName { color: #0F172A !important; }
-        body.light-mode #sidebarRoleLabel { color: #EA580C !important; }
-        body.light-mode .nav-link { color: #475569; }
-        body.light-mode .nav-link:hover { background: rgba(249,115,22,0.08); color: #EA580C; }
-        body.light-mode .nav-link.active { background: rgba(249,115,22,0.12); color: #EA580C; border-left: 3px solid #EA580C; }
-        body.light-mode .nav-group-label { color: #94A3B8; }
-        body.light-mode .card { background: #FFFFFF; border: 1px solid rgba(71,85,105,0.12); box-shadow: 0 4px 18px rgba(0,0,0,0.03); }
-        body.light-mode h1, body.light-mode h2, body.light-mode h3, body.light-mode th { color: #0F172A !important; }
-        body.light-mode td { color: #334155 !important; border-bottom: 1px solid rgba(0,0,0,0.04); }
-        body.light-mode table.data-table tr:hover td { background: rgba(249,115,22,0.03); }
-        body.light-mode .input-field { background: #F1F5F9; border: 1px solid #CBD5E1; color: #0F172A; }
-        body.light-mode .input-field:focus { border-color: #EA580C; background: #FFFFFF; }
-        body.light-mode .input-field::placeholder { color: #94A3B8; }
-        body.light-mode select.input-field option { background: #FFFFFF; color: #0F172A; }
-        
-        /* Tailwind classes overrides for light-mode */
-        body.light-mode .text-white { color: #0F172A !important; }
-        body.light-mode .text-slate-100 { color: #0F172A !important; }
-        body.light-mode .text-slate-200 { color: #1E293B !important; }
-        body.light-mode .text-slate-300 { color: #334155 !important; }
-        body.light-mode .text-slate-400 { color: #475569 !important; }
-        body.light-mode .text-slate-500 { color: #64748B !important; }
-        body.light-mode .bg-slate-900\/40 { background-color: #FFFFFF !important; border-color: rgba(71,85,105,0.12) !important; }
-        body.light-mode .bg-slate-950 { background-color: #F8FAFC !important; }
-        body.light-mode .border-slate-800 { border-color: rgba(71,85,105,0.12) !important; }
-        body.light-mode .border-slate-900 { border-color: rgba(71,85,105,0.12) !important; }
-        body.light-mode .bg-slate-900 { background-color: #FFFFFF !important; }
-        body.light-mode .divide-slate-800\/50 > :not([hidden]) ~ :not([hidden]) { border-color: rgba(71,85,105,0.1) !important; }
-        body.light-mode .divide-y { border-color: rgba(71,85,105,0.12) !important; }
-        body.light-mode .divide-slate-800 { border-color: rgba(71,85,105,0.12) !important; }
-        body.light-mode .bg-brandDark { background-color: #FAF9F6 !important; }
-        body.light-mode .brand-text { color: #0F172A !important; }
-
-        /* Day/Night switch styles */
-        .theme-switch-container {
-            display: inline-block;
-            position: relative;
-            width: 90px;
-            height: 50px;
-            transform: scale(0.65);
-            transform-origin: right center;
-            margin-right: -10px;
-        }
-        .theme-switch-container .dn-input {
-            display: none !important;
-        }
-        .dn-toggle {
-            cursor: pointer;
-            display: inline-block;
-            position: relative;
-            width: 90px;
-            height: 50px;
-            background-color: #83d8ff;
-            border-radius: 84px;
-            transition: background-color 200ms cubic-bezier(0.445, 0.05, 0.55, 0.95);
-        }
-        .dn-toggle-handler {
-            display: inline-block;
-            position: relative;
-            z-index: 1;
-            top: 3px;
-            left: 3px;
-            width: 44px;
-            height: 44px;
-            background-color: #ffcf96;
-            border-radius: 50px;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-            transition: all 400ms cubic-bezier(0.68, -0.55, 0.265, 1.55);
-            transform: rotate(-45deg);
-        }
-        .dn-toggle-handler .dn-crater {
-            position: absolute;
-            background-color: #e8cda5;
-            opacity: 0;
-            transition: opacity 200ms ease-in-out;
-            border-radius: 100%;
-        }
-        .dn-toggle-handler .dn-crater--1 { top: 18px; left: 10px; width: 4px; height: 4px; }
-        .dn-toggle-handler .dn-crater--2 { top: 28px; left: 22px; width: 6px; height: 6px; }
-        .dn-toggle-handler .dn-crater--3 { top: 10px; left: 25px; width: 8px; height: 8px; }
-        .dn-star {
-            position: absolute;
-            background-color: #fff;
-            transition: all 300ms cubic-bezier(0.445, 0.05, 0.55, 0.95);
-            border-radius: 50%;
-        }
-        .dn-star--1 { top: 10px; left: 35px; z-index: 0; width: 30px; height: 3px; }
-        .dn-star--2 { top: 18px; left: 28px; z-index: 1; width: 30px; height: 3px; }
-        .dn-star--3 { top: 27px; left: 40px; z-index: 0; width: 30px; height: 3px; }
-        .dn-star--4, .dn-star--5, .dn-star--6 {
-            opacity: 0;
-            transition: all 300ms 0 cubic-bezier(0.445, 0.05, 0.55, 0.95);
-        }
-        .dn-star--4 { top: 16px; left: 11px; z-index: 0; width: 2px; height: 2px; transform: translate3d(3px, 0, 0); }
-        .dn-star--5 { top: 32px; left: 17px; z-index: 0; width: 3px; height: 3px; transform: translate3d(3px, 0, 0); }
-        .dn-star--6 { top: 36px; left: 28px; z-index: 0; width: 2px; height: 2px; transform: translate3d(3px, 0, 0); }
-        .dn-input:checked + .dn-toggle { background-color: #749dd6; }
-        .dn-input:checked + .dn-toggle .dn-toggle-handler {
-            background-color: #ffe5b5;
-            transform: translate3d(40px, 0, 0) rotate(0);
-        }
-        .dn-input:checked + .dn-toggle .dn-toggle-handler .dn-crater { opacity: 1; }
-        .dn-input:checked + .dn-toggle .dn-star--1 { width: 2px; height: 2px; }
-        .dn-input:checked + .dn-toggle .dn-star--2 { width: 4px; height: 4px; transform: translate3d(-5px, 0, 0); }
-        .dn-input:checked + .dn-toggle .dn-star--3 { width: 2px; height: 2px; transform: translate3d(-7px, 0, 0); }
-        .dn-input:checked + .dn-toggle .dn-star--4,
-        .dn-input:checked + .dn-toggle .dn-star--5,
-        .dn-input:checked + .dn-toggle .dn-star--6 {
-            opacity: 1;
-            transform: translate3d(0, 0, 0);
-        }
-        .dn-input:checked + .dn-toggle .dn-star--4 { transition: all 300ms 200ms cubic-bezier(0.445, 0.05, 0.55, 0.95); }
-        .dn-input:checked + .dn-toggle .dn-star--5 { transition: all 300ms 300ms cubic-bezier(0.445, 0.05, 0.55, 0.95); }
-        .dn-input:checked + .dn-toggle .dn-star--6 { transition: all 300ms 400ms cubic-bezier(0.445, 0.05, 0.55, 0.95); }
-    </style>
+    <link rel="stylesheet" href="{{ asset('css/superadmin.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/theme-switch.css') }}">
+    <script>window.PLATFORM_LANGUAGE = "{{ $platform_language ?? 'id' }}";</script>
+    <script src="{{ asset('js/app-i18n.js') }}"></script>
     @yield('styles')
 </head>
 <body>
@@ -259,11 +109,13 @@
             { icon: '📊', label: 'Dashboard Keuangan', url: '/superadmin/pemilik/dashboard' },
             { icon: '👥', label: 'Manajemen Akun Staf', url: '/superadmin/pemilik/accounts' },
             { icon: '🛠️', label: 'Kategori Servis', url: '/superadmin/pemilik/services' },
-            { icon: '⚙️', label: 'Kebijakan Komisi', url: '/superadmin/pemilik/commission' },
+            { icon: '💸', label: 'Kebijakan Komisi', url: '/superadmin/pemilik/commission' },
             { icon: '🗺️', label: 'Wilayah Operasional', url: '/superadmin/pemilik/regions' },
             { icon: '✅', label: 'Verifikasi Mitra Baru', url: '/superadmin/pemilik/verifications' },
             { icon: '💾', label: 'Backup & Restore DB', url: '/superadmin/pemilik/backup' },
-            { icon: '🛡️', label: 'Anti-Hack & Keamanan', url: '/superadmin/pemilik/security' },
+            { icon: '📜', label: 'Audit Log System', url: '/superadmin/pemilik/audit-logs' },
+            { icon: '🔑', label: 'Maintenance Mode', url: '/superadmin/pemilik/maintenance' },
+            { icon: '⚙️', label: 'Pengaturan Sistem', url: '/superadmin/pemilik/settings' },
         ]},
         { group: 'MONITORING & KINERJA PLATFORM', items: [
             { icon: '📋', label: 'Scorecard Verifikator', url: '/superadmin/monitoring/scorecard-verifikator' },
@@ -361,7 +213,14 @@
 
         document.getElementById('sidebarUserName').textContent = user.nama || '—';
 
-        const role = user.role || '';
+        let role = user.role || '';
+        if (typeof role === 'object' && role !== null) {
+            role = role.nama || role.name || '';
+        }
+        if (role === 'Super Admin (Pemilik Sistem)') {
+            role = 'super-admin-pemilik';
+        }
+
         if (role === 'super-admin-pemilik') {
             document.getElementById('sidebarRoleLabel').textContent = 'SUPER ADMIN — PEMILIK';
             buildNav(MENU_PEMILIK);

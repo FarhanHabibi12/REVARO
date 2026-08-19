@@ -52,10 +52,10 @@ class DatabaseSeeder extends Seeder
         $roleSuperPemilik = Role::where('nama', 'Super Admin (Pemilik Sistem)' )->first()->id;
 
         // 2. Seed Admin Accounts
-        $pemilik = User::firstOrCreate(
+        $pemilik = User::updateOrCreate(
             ['email' => 'pemilik@revaro.com'],
             [
-                'nama' => 'Super Admin Pemilik',
+                'nama' => 'Salman',
                 'password' => Hash::make('12345678'),
                 'role_id' => $roleSuperPemilik,
                 'foto' => 'admins/pemilik.png',
@@ -63,22 +63,22 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        $verifikator = User::firstOrCreate(
+        $verifikator = User::updateOrCreate(
             ['email' => 'verifikator@revaro.com'],
             [
-                'nama' => 'Verifikator Admin 1',
-                'password' => Hash::make('password123'),
+                'nama' => 'Jero',
+                'password' => Hash::make('12345678'),
                 'role_id' => $roleVerifikator,
                 'foto' => 'admins/verifikator1.png',
                 'is_active' => true,
             ]
         );
 
-        $resolusi = User::firstOrCreate(
+        $resolusi = User::updateOrCreate(
             ['email' => 'resolusi@revaro.com'],
             [
-                'nama' => 'Resolusi Admin 1',
-                'password' => Hash::make('password123'),
+                'nama' => 'Nunu Nigas' ,
+                'password' => Hash::make('12345678'),
                 'role_id' => $roleResolusi,
                 'foto' => 'admins/resolusi1.png',
                 'is_active' => true,
