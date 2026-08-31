@@ -501,10 +501,10 @@ class OrderLifecycleController extends Controller
             // Deduct customer balance
             $pelanggan->decrement('saldo', $transaksi->total);
 
-            // Update transaction payment & escrow status
+            // Update transaction payment & escrow status (LANGSUNG RELEASE)
             $transaksi->update([
                 'status_pembayaran' => 'PAID',
-                'status_escrow' => 'HELD', // Escrow HELD after payment
+                'status_escrow' => 'RELEASED', // Dana langsung cair
                 'paid_at' => now(),
             ]);
 
@@ -513,16 +513,44 @@ class OrderLifecycleController extends Controller
             // Set technician back to available
             $order->teknisi->update(['tersedia' => true]);
 
-            Notifikasi::create([
-                'user_id' => $order->teknisi->user_id,
-                'judul' => 'Pembayaran Diterima (Dana Escrow Ditahan)',
-                'pesan' => "Pelanggan telah melakukan pembayaran untuk order {$order->kode_order}. Dana berada di escrow HELD.",
-                'dibaca' => false,
-            ]);
+            // Disperse service fee to technician (LANGSUNG MASUK)
+            $teknisi = $order->teknisi;
+            if ($teknisi) {
+                $teknisi->increment('saldo', $transaksi->biaya_jasa);
+                
+                Notifikasi::create([
+                    'user_id' => $teknisi->user_id,
+                    'judul' => 'Pembayaran & Pencairan Diterima',
+                    'pesan' => "Pelanggan telah membayar order {$order->kode_order}. Dana Rp " . number_format($transaksi->biaya_jasa, 0, ',', '.') . " langsung masuk ke saldo Anda.",
+                    'dibaca' => false,
+                ]);
+            }
+
+            // Disperse sparepart subtotals to shop(s) (LANGSUNG MASUK)
+            $shopPayments = [];
+            foreach ($order->spareparts as $sparepart) {
+                if ($sparepart->pivot->status === 'CONFIRMED') {
+                    $shopPayments[$sparepart->toko_id] = ($shopPayments[$sparepart->toko_id] ?? 0) + $sparepart->pivot->subtotal;
+                }
+            }
+
+            foreach ($shopPayments as $tokoId => $amount) {
+                $toko = \App\Models\Toko::find($tokoId);
+                if ($toko) {
+                    $toko->increment('saldo', $amount);
+
+                    Notifikasi::create([
+                        'user_id' => $toko->user_id,
+                        'judul' => 'Pencairan Hasil Penjualan',
+                        'pesan' => "Dana Rp " . number_format($amount, 0, ',', '.') . " hasil penjualan sparepart order {$order->kode_order} telah masuk ke saldo.",
+                        'dibaca' => false,
+                    ]);
+                }
+            }
 
             return response()->json([
-                'message' => 'Pembayaran sukses. Uang aman tertahan di escrow REVARO.',
-                'order' => $order
+                'message' => 'Pembayaran berhasil. Dana langsung diteruskan ke Teknisi dan Toko (jika ada).',
+                'transaksi' => $transaksi
             ]);
         });
     }
