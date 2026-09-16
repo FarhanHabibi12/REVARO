@@ -274,7 +274,7 @@ class OrderLifecycleController extends Controller
                 'qty' => $item['qty'],
                 'harga' => $part->harga,
                 'subtotal' => $subtotal,
-                'status' => 'PENDING_SHOP', // Awaiting Shop approval
+                'status' => 'PENDING_CUSTOMER', // Awaiting Customer approval
             ]);
         }
 
@@ -311,6 +311,12 @@ class OrderLifecycleController extends Controller
         }
 
         if ($request->approve) {
+            // Update sparepart status to PENDING_SHOP
+            foreach ($order->spareparts as $part) {
+                if ($part->pivot->status === 'PENDING_CUSTOMER' || $part->pivot->status === 'PENDING_SHOP') {
+                    $order->spareparts()->updateExistingPivot($part->id, ['status' => 'PENDING_SHOP']);
+                }
+            }
             // Send notification to each shop involved to confirm order
             $shopIds = $order->spareparts->pluck('toko_id')->unique();
             foreach ($shopIds as $tokoId) {

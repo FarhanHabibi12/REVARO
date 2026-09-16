@@ -700,11 +700,11 @@
 
             // Check spareparts
             if (order.spareparts && order.spareparts.length > 0) {
-                const pendingShopParts = order.spareparts.filter(p => p.pivot.status === 'PENDING_SHOP');
+                const pendingCustomerParts = order.spareparts.filter(p => p.pivot.status === 'PENDING_CUSTOMER');
                 const hasRejectedParts = order.spareparts.some(p => p.pivot.status === 'REJECTED');
 
                 // If technician requested, show approval list
-                if (pendingShopParts.length > 0) {
+                if (pendingCustomerParts.length > 0) {
                     sparepartsBlock.classList.remove('hidden');
                     const tbody = document.getElementById('sparepartsApproveList');
                     tbody.innerHTML = order.spareparts.map(p => `

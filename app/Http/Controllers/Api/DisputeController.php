@@ -195,10 +195,32 @@ class DisputeController extends Controller
             if ($decision === 'REFUND_PELANGGAN') {
                 $order->update(['status' => 'RESOLVED']);
 
-                if ($transaksi && $transaksi->status_escrow === 'HELD') {
+                if ($transaksi) {
                     $transaksi->update(['status_escrow' => 'REFUNDED']);
                     // Return funds to customer
                     $order->pelanggan->increment('saldo', $transaksi->total);
+
+                    // Potong kembali dari Teknisi (karena bypass escrow langsung cair)
+                    $teknisi = $order->teknisi;
+                    if ($teknisi && $transaksi->status_pembayaran === 'PAID') {
+                        $teknisi->decrement('saldo', $transaksi->biaya_jasa);
+                    }
+
+                    // Potong kembali dari Toko (karena bypass escrow langsung cair)
+                    if ($transaksi->status_pembayaran === 'PAID') {
+                        $shopPayments = [];
+                        foreach ($order->spareparts as $sparepart) {
+                            if ($sparepart->pivot->status === 'CONFIRMED') {
+                                $shopPayments[$sparepart->toko_id] = ($shopPayments[$sparepart->toko_id] ?? 0) + $sparepart->pivot->subtotal;
+                            }
+                        }
+                        foreach ($shopPayments as $tokoId => $amount) {
+                            $toko = \App\Models\Toko::find($tokoId);
+                            if ($toko) {
+                                $toko->decrement('saldo', $amount);
+                            }
+                        }
+                    }
                 }
 
                 if ($order->teknisi) {
@@ -207,7 +229,7 @@ class DisputeController extends Controller
                     Notifikasi::create([
                         'user_id' => $order->teknisi->user_id,
                         'judul' => 'Sengketa Selesai (Refund)',
-                        'pesan' => "Admin Resolusi memutuskan melakukan pengembalian dana penuh ke Pelanggan untuk order {$order->kode_order}.",
+                        'pesan' => "Admin Resolusi memutuskan melakukan pengembalian dana penuh ke Pelanggan untuk order {$order->kode_order}. Saldo Anda telah dipotong kembali.",
                         'dibaca' => false,
                     ]);
                 }
@@ -221,30 +243,10 @@ class DisputeController extends Controller
 
             } elseif ($decision === 'RELEASE_TEKNISI') {
                 $order->update(['status' => 'RESOLVED']);
-
-                if ($transaksi && $transaksi->status_escrow === 'HELD') {
+                
+                if ($transaksi) {
                     $transaksi->update(['status_escrow' => 'RELEASED']);
-
-                    // Disperse service fee to technician
-                    $teknisi = $order->teknisi;
-                    if ($teknisi) {
-                        $teknisi->increment('saldo', $transaksi->biaya_jasa);
-                    }
-
-                    // Disperse parts subtotals to shop(s)
-                    $shopPayments = [];
-                    foreach ($order->spareparts as $sparepart) {
-                        if ($sparepart->pivot->status === 'CONFIRMED') {
-                            $shopPayments[$sparepart->toko_id] = ($shopPayments[$sparepart->toko_id] ?? 0) + $sparepart->pivot->subtotal;
-                        }
-                    }
-
-                    foreach ($shopPayments as $tokoId => $amount) {
-                        $toko = Toko::find($tokoId);
-                        if ($toko) {
-                            $toko->increment('saldo', $amount);
-                        }
-                    }
+                    // Uang sudah dicairkan ke Teknisi & Toko saat payOrder (bypass escrow), jadi tidak perlu increment lagi.
                 }
 
                 if ($order->teknisi) {
@@ -253,7 +255,7 @@ class DisputeController extends Controller
                     Notifikasi::create([
                         'user_id' => $order->teknisi->user_id,
                         'judul' => 'Sengketa Selesai (Dana Dicairkan)',
-                        'pesan' => "Admin Resolusi memutuskan mencairkan dana jasa perbaikan untuk order {$order->kode_order} ke saldo Anda.",
+                        'pesan' => "Admin Resolusi memutuskan sengketa order {$order->kode_order} selesai. Dana tetap berada di saldo Anda.",
                         'dibaca' => false,
                     ]);
                 }
