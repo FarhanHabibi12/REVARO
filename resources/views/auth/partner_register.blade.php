@@ -4,7 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gabung Sebagai Mitra REVARO — Teknisi & Toko Sparepart</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com">
+        function togglePwdVis(inputId, iconId) {
+            const inp = document.getElementById(inputId);
+            const ico = document.getElementById(iconId);
+            inp.type = inp.type === 'password' ? 'text' : 'password';
+            ico.innerText = inp.type === 'password' ? '???' : '??';
+        }
+
+        </script>
     <script>
         tailwind.config = {
             theme: {
@@ -91,7 +99,12 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div id="passwordFieldBlock">
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Password</label>
-                        <input required type="password" id="regPassword" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl p-3 outline-none focus:border-brandBlue focus:bg-white transition" placeholder="Minimal 6 karakter">
+                        <div class="relative">
+                            <input required type="password" id="regPassword" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl p-3 pr-10 outline-none focus:border-brandBlue focus:bg-white transition" placeholder="Minimal 6 karakter">
+                            <button type="button" onclick="togglePwdVis('regPassword','eyePartner')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600">
+                                <span id="eyePartner">???</span>
+                            </button>
+                        </div>
                     </div>
                     <div id="phoneFieldBlock">
                         <label id="phoneLabel" class="block text-xs font-semibold text-slate-600 mb-1">Nomor WhatsApp/HP</label>
@@ -322,7 +335,7 @@
 
                 const result = await response.json();
                 if (!response.ok) {
-                    alert(result.message || JSON.stringify(result.errors));
+                    Swal.fire('Gagal', result.message || JSON.stringify(result.errors), 'error');
                     return;
                 }
 
@@ -333,12 +346,12 @@
                     localStorage.setItem('token', result.access_token);
                 }
 
-                alert(`Pendaftaran Akun ${role_slug === 'teknisi' ? 'Teknisi' : 'Toko'} Berhasil!\nAkun Anda saat ini berstatus PENDING_REVIEW.\nBerkas lampiran KTP/SIUP/Sertifikat telah diunggah dan sedang diantrekan ke Admin Verifikator.`);
+                Swal.fire('Berhasil!', 'Pendaftaran berhasil diajukan. Menunggu verifikasi admin.', 'success');
                 window.location.href = '/';
 
             } catch (err) {
                 console.error(err);
-                alert("Gagal menghubungi server pendaftaran.");
+                Swal.fire("Gagal", "Gagal menghubungi server pendaftaran.", "error");
             }
         }
     </script>

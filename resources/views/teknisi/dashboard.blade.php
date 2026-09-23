@@ -248,7 +248,7 @@
         let activeJobPollInterval = null;
 
         if (!token) {
-            alert('Akses dibatasi. Silakan login.');
+            Swal.fire('Akses Ditolak', 'Silakan login.', 'warning').then(() => { window.location.href = '/'; });
             window.location.href = '/';
         }
 
@@ -455,30 +455,55 @@
 
         async function triggerWithdraw() {
             const { value: formValues } = await Swal.fire({
-                title: 'Tarik Pendapatan',
-                html:
-                    '<input id="swal-amount" class="swal2-input" placeholder="Jumlah penarikan (Min Rp 10.000)" type="number">' +
-                    '<input id="swal-bank" class="swal2-input" placeholder="Nama Bank (e.g. BCA, Mandiri)">' +
-                    '<input id="swal-norek" class="swal2-input" placeholder="Nomor Rekening">',
-                focusConfirm: false,
+                title: 'Tarik Pendapatan ke Bank',
+                html: `
+                    <div class="space-y-3 text-left px-1">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Bank</label>
+                            <input type="text" id="wdBank" class="w-full text-sm border border-slate-300 rounded-xl p-3 outline-none" placeholder="BCA / Mandiri / BNI / BRI">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Rekening</label>
+                            <input type="text" id="wdName" class="w-full text-sm border border-slate-300 rounded-xl p-3 outline-none" placeholder="Nama pemilik rekening">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Nomor Rekening</label>
+                            <input type="text" id="wdNumber" class="w-full text-sm font-mono border border-slate-300 rounded-xl p-3 outline-none" placeholder="123456789">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Jumlah Penarikan (Rp)</label>
+                            <div class="relative">
+                                <span class="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-500 text-sm">Rp</span>
+                                <input type="text" id="wdAmount" class="w-full text-base font-black pl-10 pr-3 py-3 border border-slate-300 rounded-xl outline-none" placeholder="50.000">
+                            </div>
+                            <p class="text-[10px] text-slate-400 mt-1">Minimal penarikan Rp 50.000</p>
+                        </div>
+                    </div>
+                `,
+                background: '#FFFFFF',
                 confirmButtonColor: '#FF6A00',
                 showCancelButton: true,
+                didOpen: () => {
+                    const input = document.getElementById('wdAmount');
+                    input.addEventListener('input', function() {
+                        let val = this.value.replace(/[^0-9]/g, '');
+                        this.value = val ? parseInt(val, 10).toLocaleString('id-ID') : '';
+                    });
+                },
                 preConfirm: () => {
-                    return [
-                        document.getElementById('swal-amount').value,
-                        document.getElementById('swal-bank').value,
-                        document.getElementById('swal-norek').value
-                    ]
+                    const bank = document.getElementById('wdBank').value;
+                    const name = document.getElementById('wdName').value;
+                    const number = document.getElementById('wdNumber').value;
+                    const amountRaw = document.getElementById('wdAmount').value.replace(/[^0-9]/g, '');
+                    if (!bank || !name || !number || !amountRaw || parseInt(amountRaw) < 50000) {
+                        Swal.showValidationMessage('Harap lengkapi semua data. Minimal penarikan Rp 50.000');
+                        return false;
+                    }
+                    return { bank_name: bank, account_name: name, account_number: number, amount: amountRaw };
                 }
             });
 
             if (formValues) {
-                const [jumlah, bank, no_rekening] = formValues;
-                if (!jumlah || !bank || !no_rekening) {
-                    Swal.fire('Error', 'Semua form penarikan wajib diisi.', 'error');
-                    return;
-                }
-
                 try {
                     const res = await fetch('/api/wallet/withdraw', {
                         method: 'POST',
@@ -487,7 +512,7 @@
                             'Content-Type': 'application/json',
                             'Accept': 'application/json'
                         },
-                        body: JSON.stringify({ jumlah, bank, no_rekening })
+                        body: JSON.stringify(formValues)
                     });
                     const result = await res.json();
                     if (res.ok) {

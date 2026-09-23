@@ -38,23 +38,24 @@ class WalletController extends Controller
     }
 
     /**
-     * Request withdrawal.
+     * Request withdrawal with full bank details.
      */
     public function withdraw(Request $request)
     {
         $user = $request->user();
 
         $validator = Validator::make($request->all(), [
-            'jumlah' => 'required|numeric|min:10000',
-            'bank' => 'required|string|max:50',
-            'no_rekening' => 'required|string|max:30',
+            'bank_name'      => 'required|string|max:50',
+            'account_name'   => 'required|string|max:100',
+            'account_number' => 'required|string|max:30',
+            'amount'         => 'required|numeric|min:50000',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $amount = $request->jumlah;
+        $amount = $request->amount;
 
         return DB::transaction(function () use ($user, $amount, $request) {
             $profile = null;
@@ -78,37 +79,45 @@ class WalletController extends Controller
             // Deduct balance
             $profile->decrement('saldo', $amount);
 
-            // Log ledger
+            // Record to withdrawals table for admin processing
+            DB::table('withdrawals')->insert([
+                'user_id'        => $user->id,
+                'bank_name'      => $request->bank_name,
+                'account_name'   => $request->account_name,
+                'account_number' => $request->account_number,
+                'amount'         => $amount,
+                'status'         => 'PENDING',
+                'created_at'     => now(),
+                'updated_at'     => now(),
+            ]);
+
+            // Log wallet ledger
             WalletTransaction::create([
-                'user_id' => $user->id,
-                'tipe' => 'OUT',
-                'jumlah' => $amount,
-                'deskripsi' => "Penarikan dana (Withdrawal) ke rekening {$request->bank} {$request->no_rekening}",
+                'user_id'   => $user->id,
+                'tipe'      => 'OUT',
+                'jumlah'    => $amount,
+                'deskripsi' => "Penarikan dana ke {$request->bank_name} a.n. {$request->account_name} ({$request->account_number})",
             ]);
 
             ActivityLog::create([
-                'user_id' => $user->id,
-                'aktivitas' => "Melakukan penarikan dana sebesar Rp " . number_format($amount, 0, ',', '.'),
+                'user_id'    => $user->id,
+                'aktivitas'  => "Penarikan dana Rp " . number_format($amount, 0, ',', '.') . " ke {$request->bank_name}",
                 'ip_address' => $request->ip(),
             ]);
 
             return response()->json([
-                'message' => 'Penarikan dana berhasil diajukan.',
+                'message'     => 'Permintaan penarikan dana berhasil diajukan. Admin akan memproses dalam 1x24 jam.',
                 'new_balance' => $profile->fresh()->saldo
             ]);
         });
     }
 
     /**
-     * Top-up balance (Customer only).
+     * Top-up balance.
      */
     public function topup(Request $request)
     {
         $user = $request->user();
-
-        if (!$user->isPelanggan() || !$user->pelanggan) {
-            return response()->json(['message' => 'Hanya Pelanggan yang dapat melakukan topup.'], 403);
-        }
 
         $validator = Validator::make($request->all(), [
             'jumlah' => 'required|numeric|min:10000',
@@ -118,29 +127,40 @@ class WalletController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $amount = $request->jumlah;
-        $pelanggan = $user->pelanggan;
+        $amount  = $request->jumlah;
+        $profile = null;
 
-        return DB::transaction(function () use ($user, $amount, $pelanggan, $request) {
-            $pelanggan->increment('saldo', $amount);
+        if ($user->isPelanggan() && $user->pelanggan) {
+            $profile = $user->pelanggan;
+        } elseif ($user->isTeknisi() && $user->teknisi) {
+            $profile = $user->teknisi;
+        } elseif ($user->isToko() && $user->toko) {
+            $profile = $user->toko;
+        }
 
-            // Log ledger
+        if (!$profile) {
+            return response()->json(['message' => 'Profil tidak ditemukan.'], 404);
+        }
+
+        return DB::transaction(function () use ($user, $amount, $profile, $request) {
+            $profile->increment('saldo', $amount);
+
             WalletTransaction::create([
-                'user_id' => $user->id,
-                'tipe' => 'IN',
-                'jumlah' => $amount,
+                'user_id'   => $user->id,
+                'tipe'      => 'IN',
+                'jumlah'    => $amount,
                 'deskripsi' => 'Top-up saldo dompet REVARO',
             ]);
 
             ActivityLog::create([
-                'user_id' => $user->id,
-                'aktivitas' => "Melakukan top-up saldo sebesar Rp " . number_format($amount, 0, ',', '.'),
+                'user_id'    => $user->id,
+                'aktivitas'  => "Top-up saldo Rp " . number_format($amount, 0, ',', '.'),
                 'ip_address' => $request->ip(),
             ]);
 
             return response()->json([
-                'message' => 'Top-up saldo berhasil dilakukan.',
-                'new_balance' => $pelanggan->fresh()->saldo
+                'message'     => 'Top-up saldo berhasil.',
+                'new_balance' => $profile->fresh()->saldo
             ]);
         });
     }

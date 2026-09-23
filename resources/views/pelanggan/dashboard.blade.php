@@ -57,6 +57,11 @@
             background: rgba(255, 106, 0, 0.4);
         }
     </style>
+
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 </head>
 <body class="bg-slate-50 min-h-screen text-slate-800 flex flex-col">
 
@@ -103,11 +108,19 @@
                 </div>
 
                 <form id="sosForm" onsubmit="submitSOSOrder(event)" class="space-y-4">
+                    <!-- Toggle Pemesan -->
+                    <div class="flex items-center gap-4 bg-slate-50 border border-slate-100 p-2 rounded-xl mb-4">
+                        <label class="flex items-center gap-2 cursor-pointer text-sm font-semibold text-brandBlue">
+                            <input type="radio" name="bookingType" value="sendiri" checked onchange="toggleBookingType()" class="accent-brandBlue w-4 h-4">
+                            Pesan untuk Saya Sendiri
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer text-sm font-semibold text-slate-500">
+                            <input type="radio" name="bookingType" value="orang_lain" onchange="toggleBookingType()" class="accent-brandBlue w-4 h-4">
+                            Pesankan untuk Orang Lain
+                        </label>
+                    </div>
+
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Pemesan</label>
-                            <input required type="text" id="bookingName" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl p-3 outline-none focus:border-brandBlue focus:bg-white transition" placeholder="Contoh: Budi Prasetyo">
-                        </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-600 mb-1">Kategori Servis</label>
                             <select required id="bookingCategory" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl p-3 outline-none focus:border-brandBlue focus:bg-white transition">
@@ -120,31 +133,51 @@
                         </div>
                     </div>
 
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Keluhan / Deskripsi Kerusakan</label>
-                        <textarea required id="bookingComplaint" rows="2" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl p-3 outline-none focus:border-brandBlue focus:bg-white transition" placeholder="Contoh: AC saya bocor meneteskan air terus dan tidak dingin..."></textarea>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Alamat Lengkap Servis</label>
-                        <input required type="text" id="bookingAddress" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl p-3 outline-none focus:border-brandBlue focus:bg-white transition" placeholder="Contoh: Jl. Sudirman No. 45 Blok C, Jakarta Selatan">
-                    </div>
-
-                    <!-- Geolocation Mock Map coordinates -->
-                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div>
-                            <h4 class="text-xs font-bold text-slate-700">📍 Geokode Lokasi (GPS)</h4>
-                            <p class="text-[10px] text-slate-400 mt-0.5">Gunakan titik koordinat mock di bawah untuk pengujian radius dispatch.</p>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <input type="text" id="geoLat" readonly value="-6.2088" class="bg-white border border-slate-200 text-xs px-2.5 py-1.5 rounded-lg w-20 text-center font-mono">
-                            <input type="text" id="geoLong" readonly value="106.8456" class="bg-white border border-slate-200 text-xs px-2.5 py-1.5 rounded-lg w-20 text-center font-mono">
-                            <button type="button" onclick="randomizeCoords()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs px-3 py-1.5 rounded-lg font-semibold transition">Ganti Lokasi</button>
+                    <!-- Custom inputs for 'Orang Lain' -->
+                    <div id="otherPersonFields" class="hidden bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-4">
+                        <p class="text-xs font-bold text-brandBlue">Data Orang yang Dipesankan</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Penerima Servis</label>
+                                <input type="text" id="pemesanNama" class="w-full text-sm bg-white border border-slate-200 rounded-xl p-3 outline-none focus:border-brandBlue transition" placeholder="Contoh: Budi Prasetyo">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Nomor HP / WhatsApp</label>
+                                <input type="text" id="pemesanHp" class="w-full text-sm bg-white border border-slate-200 rounded-xl p-3 outline-none focus:border-brandBlue transition" placeholder="08xxxxxxxx">
+                            </div>
                         </div>
                     </div>
 
-                    <button type="submit" class="w-full bg-brandBlue hover:bg-blue-800 text-white font-bold text-sm py-3.5 rounded-xl transition shadow-md shadow-blue-800/10">
-                        Pesan Jasa Servis Sekarang
+                    <div>
+                        <div class="flex justify-between">
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Keluhan / Deskripsi Kerusakan</label>
+                            <span class="text-[10px] text-slate-400" id="charCount">0/500</span>
+                        </div>
+                        <textarea required id="bookingComplaint" rows="2" maxlength="500" oninput="updateCharCount()" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl p-3 outline-none focus:border-brandBlue focus:bg-white transition" placeholder="Contoh: AC saya bocor meneteskan air terus dan tidak dingin..."></textarea>
+                    </div>
+
+                    <!-- Real Map Area -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Pilih Lokasi & Alamat Servis</label>
+                        <div class="flex flex-col gap-2">
+                            <div class="flex gap-2">
+                                <input type="text" id="searchMapInput" class="flex-1 text-sm bg-slate-50 border border-slate-200 rounded-xl p-3 outline-none focus:border-brandBlue focus:bg-white transition" placeholder="Cari daerah atau jalan...">
+                                <button type="button" onclick="searchLocation()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold px-4 rounded-xl text-sm transition">Cari</button>
+                                <button type="button" onclick="getCurrentLocation()" class="bg-brandBlue hover:bg-blue-600 text-white font-bold px-4 rounded-xl text-sm transition flex items-center gap-2" title="Gunakan Lokasi Saya">
+                                    ?? GPS
+                                </button>
+                            </div>
+                            <div id="map" class="w-full h-64 rounded-xl border border-slate-200 z-0 relative"></div>
+                            <input required type="text" id="bookingAddress" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl p-3 outline-none focus:border-brandBlue focus:bg-white transition" placeholder="Detail Alamat (Contoh: Jl. Sudirman No. 45 Blok C, Rumah Pagar Hitam)">
+                        </div>
+                        
+                        <!-- Hidden Map Coordinates -->
+                        <input type="hidden" id="geoLat" value="-6.2088">
+                        <input type="hidden" id="geoLong" value="106.8456">
+                    </div>
+                    
+                    <button type="submit" class="w-full bg-brandBlue hover:bg-blue-700 text-white font-bold text-sm py-4 px-6 rounded-xl transition shadow flex items-center justify-center space-x-2">
+                        <span>Panggil Teknisi Sekarang (SOS)</span>
                     </button>
                 </form>
             </div>
@@ -381,6 +414,19 @@
                     <p class="text-slate-400 text-center py-4">Tidak ada sengketa berjalan</p>
                 </div>
             </div>
+
+            <!-- Multi-Role Switcher -->
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200/80 space-y-3">
+                <h4 class="text-xs font-black text-brandBlue uppercase tracking-wider">🔄 Peran Saya di REVARO</h4>
+                <p class="text-[11px] text-slate-400">Anda bisa memiliki peran lebih dari satu. Klik untuk berpindah dasbor atau daftar sebagai mitra baru.</p>
+                <div id="roleButtons" class="space-y-2">
+                    <!-- filled by JS -->
+                    <div class="text-[10px] text-slate-300 text-center py-2">Memuat peran...</div>
+                </div>
+                <a href="/auth/mitra/register" class="block w-full text-center bg-gradient-to-r from-brandBlue to-brandOrange text-white text-xs font-bold py-3 rounded-xl mt-2 hover:opacity-90 transition">
+                    + Daftar sebagai Teknisi / Toko Sparepart
+                </a>
+            </div>
         </div>
     </main>
 
@@ -391,7 +437,7 @@
         const token = localStorage.getItem('token');
 
         if (!token) {
-            alert('Akses dibatasi. Silakan login terlebih dahulu.');
+            Swal.fire('Akses Ditolak', 'Silakan login terlebih dahulu.', 'warning').then(() => { window.location.href = '/'; });
             window.location.href = '/';
         }
 
@@ -401,8 +447,48 @@
             loadWalletLedger();
             loadDisputesList();
             checkActiveOrders();
+            loadRoleSwitcher();
+            if(document.getElementById('map')) initMap();
             orderPollInterval = setInterval(checkActiveOrders, 4000);
         });
+
+        async function loadRoleSwitcher() {
+            try {
+                const res = await fetch('/api/auth/me', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                if (!res.ok) return;
+
+                const user = data.user;
+                const container = document.getElementById('roleButtons');
+                let html = '';
+
+                // Always show Pelanggan (current)
+                html += `<div class="flex items-center justify-between bg-brandBlue/10 border border-brandBlue/30 rounded-xl px-4 py-2.5">
+                    <span class="text-xs font-bold text-brandBlue">👤 Pelanggan (Aktif Sekarang)</span>
+                    <span class="text-[9px] bg-brandBlue text-white rounded-full px-2 py-0.5">Aktif</span>
+                </div>`;
+
+                if (user.teknisi) {
+                    html += `<a href="/teknisi/dashboard" class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 hover:bg-slate-100 transition">
+                        <span class="text-xs font-bold text-slate-700">🔧 Teknisi</span>
+                        <span class="text-[9px] text-brandBlue font-bold">Buka Dasbor →</span>
+                    </a>`;
+                }
+
+                if (user.toko) {
+                    html += `<a href="/toko/dashboard" class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 hover:bg-slate-100 transition">
+                        <span class="text-xs font-bold text-slate-700">🏪 Toko Sparepart</span>
+                        <span class="text-[9px] text-brandBlue font-bold">Buka Dasbor →</span>
+                    </a>`;
+                }
+
+                container.innerHTML = html;
+            } catch(e) {
+                console.error('loadRoleSwitcher error', e);
+            }
+        }
 
         async function fetchUserProfile() {
             try {
@@ -602,13 +688,21 @@
             document.getElementById('geoLong').value = (106.8456 + offsetLong).toFixed(4);
         }
 
-        async function submitSOSOrder(e) {
+                async function submitSOSOrder(e) {
             e.preventDefault();
             const keluhan = document.getElementById('bookingComplaint').value;
             const alamat_servis = document.getElementById('bookingAddress').value;
             const latitude = document.getElementById('geoLat').value;
             const longitude = document.getElementById('geoLong').value;
-            const nama = document.getElementById('bookingName').value;
+            
+            const bookingType = document.querySelector('input[name="bookingType"]:checked').value;
+            let pemesan_nama = null;
+            let pemesan_hp = null;
+            
+            if (bookingType === 'orang_lain') {
+                pemesan_nama = document.getElementById('pemesanNama').value;
+                pemesan_hp = document.getElementById('pemesanHp').value;
+            }
 
             try {
                 const response = await fetch('/api/orders', {
@@ -617,12 +711,31 @@
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`
                     },
+                    body: JSON.stringify({ keluhan, alamat_servis, latitude, longitude, pemesan_nama, pemesan_hp })
+                });
+
+                const result = await response.json();
+                if (!response.ok) {
+                    Swal.fire('Gagal', result.message || JSON.stringify(result.errors), 'error');
+                    return;
+                }
+
+                document.getElementById('bookingFormPanel').classList.add('hidden');
+                
+                checkActiveOrders();
+                Swal.fire('Berhasil', 'Pesanan SOS berhasil dikirim!', 'success');
+            } catch (err) {
+                console.error(err);
+                Swal.fire('Gagal', 'Kesalahan jaringan.', 'error');
+            }
+        }`
+                    },
                     body: JSON.stringify({ keluhan, alamat_servis, latitude, longitude })
                 });
 
                 const result = await response.json();
                 if (!response.ok) {
-                    alert(result.message || JSON.stringify(result.errors));
+                    Swal.fire('Gagal', result.message || JSON.stringify(result.errors), 'error');
                     return;
                 }
 
@@ -630,7 +743,7 @@
                 showLiveOrderPanel(result.order);
             } catch (err) {
                 console.error(err);
-                alert("Gagal mengirim pesanan SOS.");
+                Swal.fire("Gagal", "Gagal mengirim pesanan SOS.", "error");
             }
         }
 

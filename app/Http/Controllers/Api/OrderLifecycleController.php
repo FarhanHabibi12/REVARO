@@ -113,6 +113,8 @@ class OrderLifecycleController extends Controller
             'kode_order' => $kodeOrder,
             'status' => 'SEARCHING',
             'keluhan' => $request->keluhan,
+            'pemesan_nama' => $request->pemesan_nama,
+            'pemesan_hp' => $request->pemesan_hp,
             'alamat_servis' => $request->alamat_servis,
             'tanggal_servis' => now(),
             'latitude' => $request->latitude,

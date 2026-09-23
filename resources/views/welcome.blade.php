@@ -167,7 +167,22 @@
 
                 <div>
                     <label class="block text-xs font-bold text-slate-600 mb-1">Kata Sandi</label>
-                    <input required type="password" id="authPassword" class="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-3 outline-none focus:border-brandBlue focus:bg-white transition" placeholder="Minimal 6 karakter">
+                    <div class="relative">
+                        <input required type="password" id="authPassword" class="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-3 outline-none focus:border-brandBlue focus:bg-white transition" placeholder="Minimal 6 karakter">
+                        <button type="button" onclick="togglePasswordVisibility('authPassword', 'eyeIcon')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600">
+                            <span id="eyeIcon">👁️</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="authConfirmPasswordField" class="hidden">
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Konfirmasi Kata Sandi</label>
+                    <div class="relative">
+                        <input type="password" id="authConfirmPassword" class="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-3 outline-none focus:border-brandBlue focus:bg-white transition" placeholder="Ulangi kata sandi">
+                        <button type="button" onclick="togglePasswordVisibility('authConfirmPassword', 'eyeIconConfirm')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600">
+                            <span id="eyeIconConfirm">👁️</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div id="authPhoneField" class="hidden">
@@ -235,6 +250,19 @@
             document.getElementById('authModal').classList.add('hidden');
         }
 
+        
+        function togglePasswordVisibility(inputId, iconId) {
+            const input = document.getElementById(inputId);
+            const icon = document.getElementById(iconId);
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.innerText = '??';
+            } else {
+                input.type = 'password';
+                icon.innerText = '???';
+            }
+        }
+
         function switchAuthTab(mode) {
             document.getElementById('authMode').value = mode;
             const tabLogin = document.getElementById('authTabLogin');
@@ -243,6 +271,7 @@
             const nameField = document.getElementById('authNameField');
             const phoneField = document.getElementById('authPhoneField');
             const addressField = document.getElementById('authAddressField');
+            const confirmPasswordField = document.getElementById('authConfirmPasswordField');
 
             if (mode === 'login') {
                 tabLogin.className = "flex-1 py-1.5 rounded-lg text-center bg-white text-brandBlue shadow-sm";
@@ -254,10 +283,12 @@
                 nameField.classList.add('hidden');
                 phoneField.classList.add('hidden');
                 addressField.classList.add('hidden');
+                confirmPasswordField.classList.add('hidden');
                 
                 document.getElementById('authName').required = false;
                 document.getElementById('authPhone').required = false;
                 document.getElementById('authAddress').required = false;
+                document.getElementById('authConfirmPassword').required = false;
             } else {
                 tabRegister.className = "flex-1 py-1.5 rounded-lg text-center bg-white text-brandBlue shadow-sm";
                 tabLogin.className = "flex-1 py-1.5 rounded-lg text-center text-slate-500 hover:text-slate-700";
@@ -268,10 +299,12 @@
                 nameField.classList.remove('hidden');
                 phoneField.classList.remove('hidden');
                 addressField.classList.remove('hidden');
+                confirmPasswordField.classList.remove('hidden');
                 
                 document.getElementById('authName').required = true;
                 document.getElementById('authPhone').required = true;
                 document.getElementById('authAddress').required = true;
+                document.getElementById('authConfirmPassword').required = true;
             }
         }
 
@@ -280,6 +313,12 @@
             const mode = document.getElementById('authMode').value;
             const email = document.getElementById('authEmail').value;
             const password = document.getElementById('authPassword').value;
+            const confirmPassword = document.getElementById('authConfirmPassword') ? document.getElementById('authConfirmPassword').value : '';
+            
+            if (mode === 'register' && password !== confirmPassword) {
+                Swal.fire('Gagal', 'Konfirmasi kata sandi tidak cocok.', 'error');
+                return;
+            }
 
             try {
                 let response;

@@ -183,6 +183,26 @@ class AuthController extends Controller
 
         $profile = null;
 
+        if (is_null($user->email_verified_at)) {
+            // Send OTP again
+            $otp = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
+            \Illuminate\Support\Facades\DB::table('email_otps')->where('email', $request->email)->delete();
+            \Illuminate\Support\Facades\DB::table('email_otps')->insert([
+                'email' => $request->email,
+                'otp_code' => $otp,
+                'expires_at' => now()->addMinutes(10),
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+            \Illuminate\Support\Facades\Mail::to($request->email)->send(new \App\Mail\RegisterOtpMail($otp));
+
+            return response()->json([
+                'requires_otp' => true,
+                'email' => $request->email,
+                'message' => 'Akun belum diverifikasi. Kode OTP baru telah dikirim ke email Anda.'
+            ]);
+        }
+
         // Check profile freeze or reject state
         if ($user->isTeknisi()) {
             $profile = $user->teknisi;
@@ -225,20 +245,11 @@ class AuthController extends Controller
      */
     public function me(Request $request)
     {
-        $user = $request->user()->load('role');
-        $profile = null;
-
-        if ($user->isPelanggan()) {
-            $profile = $user->pelanggan;
-        } elseif ($user->isTeknisi()) {
-            $profile = $user->teknisi;
-        } elseif ($user->isToko()) {
-            $profile = $user->toko;
-        }
+        // Load all profiles for multi-role support
+        $user = $request->user()->load(['role', 'pelanggan', 'teknisi', 'toko']);
 
         return response()->json([
             'user' => $user,
-            'profile' => $profile,
         ]);
     }
 

@@ -151,7 +151,7 @@ class DatabaseSeeder extends Seeder
 
         // 6. Seed Customers (Pelanggan)
         $userBudi = User::firstOrCreate(
-            ['email' => 'budi@gmail.com'],
+            ['email' => ' '],
             [
                 'nama' => 'Budi Santoso',
                 'password' => Hash::make('password123'),

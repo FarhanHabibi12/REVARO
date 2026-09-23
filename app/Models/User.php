@@ -85,17 +85,17 @@ class User extends Authenticatable
     // Role Helper Methods
     public function isPelanggan(): bool
     {
-        return $this->role?->nama === 'Pelanggan';
+        return $this->pelanggan !== null;
     }
 
     public function isTeknisi(): bool
     {
-        return $this->role?->nama === 'Teknisi';
+        return $this->teknisi !== null;
     }
 
     public function isToko(): bool
     {
-        return $this->role?->nama === 'Toko Sparepart';
+        return $this->toko !== null;
     }
 
     public function isAdminVerifikator(): bool

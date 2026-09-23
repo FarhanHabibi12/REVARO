@@ -1,11 +1,25 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Administrator Login — REVARO</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <title>Administrator Login â€” REVARO</title>
+    <script src="https://cdn.tailwindcss.com">
+        function toggleAdminPwd() {
+            const inp = document.getElementById('adminPassword');
+            const ico = document.getElementById('adminEye');
+            inp.type = inp.type === 'password' ? 'text' : 'password';
+            ico.innerText = inp.type === 'password' ? '👁️' : '🙈';
+        }
+        </script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11">
+        function toggleAdminPwd() {
+            const inp = document.getElementById('adminPassword');
+            const ico = document.getElementById('adminEye');
+            inp.type = inp.type === 'password' ? 'text' : 'password';
+            ico.innerText = inp.type === 'password' ? '👁️' : '🙈';
+        }
+        </script>
     <script>
         tailwind.config = {
             theme: {
@@ -17,7 +31,14 @@
                 }
             }
         }
-    </script>
+    
+        function toggleAdminPwd() {
+            const inp = document.getElementById('adminPassword');
+            const ico = document.getElementById('adminEye');
+            inp.type = inp.type === 'password' ? 'text' : 'password';
+            ico.innerText = inp.type === 'password' ? '👁️' : '🙈';
+        }
+        </script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         body {
@@ -56,16 +77,16 @@
         <form onsubmit="handleAdminLogin(event)" class="space-y-4">
             <div>
                 <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">Alamat Email Admin</label>
-                <input required type="email" id="adminEmail" class="w-full text-xs bg-slate-900 border border-slate-800 rounded-xl p-3 outline-none text-white focus:border-brandOrange focus:bg-slate-900/60 transition" placeholder="admin@revaro.com">
+                <input required type="email" id="adminEmail" class="w-full text-xs bg-slate-900 border border-slate-800 rounded-xl p-3 outline-none text-white focus:border-brandOrange focus:bg-slate-900/60 transition" placeholder="••••••••"><button type="button" onclick="toggleAdminPwd()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-slate-300"><span id="adminEye">👁️</span></button></div>
             </div>
 
             <div>
                 <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">Kata Sandi</label>
-                <input required type="password" id="adminPassword" class="w-full text-xs bg-slate-900 border border-slate-800 rounded-xl p-3 outline-none text-white focus:border-brandOrange focus:bg-slate-900/60 transition" placeholder="••••••••">
+                <div class="relative"><input required type="password" id="adminPassword" class="w-full text-xs bg-slate-900 border border-slate-800 rounded-xl p-3 pr-10 outline-none text-white focus:border-brandOrange focus:bg-slate-900/60 transition" placeholder="••••••••"><button type="button" onclick="toggleAdminPwd()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-slate-300"><span id="adminEye">👁️</span></button></div>
             </div>
 
             <div class="bg-slate-900 p-3.5 rounded-xl border border-slate-800 text-[10px] text-slate-400 leading-normal">
-                🔐 <strong>Catatan Keamanan:</strong> Portal ini dilindungi oleh pembatasan middleware IP, enkripsi token JWT, dan rate limiter dinamis. Segala aktivitas login terekam secara permanen di audit trail log.
+                ðŸ” <strong>Catatan Keamanan:</strong> Portal ini dilindungi oleh pembatasan middleware IP, enkripsi token JWT, dan rate limiter dinamis. Segala aktivitas login terekam secara permanen di audit trail log.
             </div>
 
             <button type="submit" class="w-full bg-brandOrange hover:bg-orange-600 text-white font-bold text-xs py-3.5 rounded-xl transition shadow shadow-orange-700/20">
@@ -141,7 +162,7 @@
                     roleNama = typeof result.user.role === 'object' ? result.user.role.nama : result.user.role;
                 }
 
-                // Map DB role names → slugs used throughout the admin portal
+                // Map DB role names â†’ slugs used throughout the admin portal
                 const roleSlugMap = {
                     'Super Admin (Pemilik Sistem)':     'super-admin-pemilik',
                     'super-admin-pemilik':              'super-admin-pemilik',
@@ -202,7 +223,15 @@
                 });
             }
         }
-    </script>
+    
+        function toggleAdminPwd() {
+            const inp = document.getElementById('adminPassword');
+            const ico = document.getElementById('adminEye');
+            inp.type = inp.type === 'password' ? 'text' : 'password';
+            ico.innerText = inp.type === 'password' ? '👁️' : '🙈';
+        }
+        </script>
 
 </body>
 </html>
+
