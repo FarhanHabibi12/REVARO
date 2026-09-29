@@ -32,7 +32,7 @@ class OrderPolicy
      */
     public function create(User $user): bool
     {
-        return $user->isPelanggan() && $user->pelanggan !== null;
+        return $user->is_active;
     }
 
     /**

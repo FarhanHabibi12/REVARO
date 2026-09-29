@@ -1,25 +1,11 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Administrator Login â€” REVARO</title>
-    <script src="https://cdn.tailwindcss.com">
-        function toggleAdminPwd() {
-            const inp = document.getElementById('adminPassword');
-            const ico = document.getElementById('adminEye');
-            inp.type = inp.type === 'password' ? 'text' : 'password';
-            ico.innerText = inp.type === 'password' ? '👁️' : '🙈';
-        }
-        </script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11">
-        function toggleAdminPwd() {
-            const inp = document.getElementById('adminPassword');
-            const ico = document.getElementById('adminEye');
-            inp.type = inp.type === 'password' ? 'text' : 'password';
-            ico.innerText = inp.type === 'password' ? '👁️' : '🙈';
-        }
-        </script>
+    <title>Administrator Login — REVARO</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -31,65 +17,68 @@
                 }
             }
         }
-    
-        function toggleAdminPwd() {
-            const inp = document.getElementById('adminPassword');
-            const ico = document.getElementById('adminEye');
-            inp.type = inp.type === 'password' ? 'text' : 'password';
-            ico.innerText = inp.type === 'password' ? '👁️' : '🙈';
-        }
-        </script>
+    </script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
         }
         .glass-card {
-            background: rgba(15, 23, 42, 0.95);
-            backdrop-filter: blur(12px);
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(16px);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
     </style>
 </head>
-<body class="bg-slate-950 min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+<body class="bg-slate-950 min-h-screen flex items-center justify-center p-4 relative overflow-hidden text-slate-100">
 
     <!-- Ambient Glow Effects -->
-    <div class="absolute w-96 h-96 rounded-full bg-blue-900/20 blur-[120px] top-10 left-10"></div>
-    <div class="absolute w-96 h-96 rounded-full bg-orange-950/20 blur-[120px] bottom-10 right-10"></div>
+    <div class="absolute w-[500px] h-[500px] rounded-full bg-blue-600/15 blur-[140px] -top-32 -left-32 pointer-events-none"></div>
+    <div class="absolute w-[500px] h-[500px] rounded-full bg-orange-600/15 blur-[140px] -bottom-32 -right-32 pointer-events-none"></div>
 
-    <div class="w-full max-w-md glass-card text-white rounded-3xl p-8 space-y-6 shadow-2xl relative z-10">
+    <div class="w-full max-w-md glass-card rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl relative z-10">
         
-        <div class="text-center space-y-2.5">
-            <a href="/" class="inline-flex items-center space-x-2.5">
-                <div class="bg-brandOrange p-2 rounded-xl font-extrabold text-sm tracking-widest text-white shadow-md">
+        <!-- Header -->
+        <div class="text-center space-y-3">
+            <a href="/" class="inline-flex items-center space-x-3 group">
+                <div class="bg-brandOrange p-2.5 rounded-2xl font-black text-sm tracking-widest text-white shadow-lg shadow-orange-500/30 group-hover:scale-105 transition-transform">
                     REV
                 </div>
                 <div class="text-left">
-                    <h1 class="text-lg font-black tracking-tight text-white">REVARO</h1>
-                    <p class="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Internal Admin Portal</p>
+                    <h1 class="text-xl font-black tracking-tight text-white">REVARO</h1>
+                    <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Internal Admin Portal</p>
                 </div>
             </a>
-            <h2 class="text-lg font-bold mt-4">Selamat Datang, Administrator</h2>
-            <p class="text-xs text-slate-400">Silakan masuk menggunakan akun kredensial manajemen Anda.</p>
+            <div class="pt-2">
+                <h2 class="text-lg font-bold text-white">Selamat Datang, Administrator</h2>
+                <p class="text-xs text-slate-400 mt-1">Silakan masuk menggunakan akun kredensial manajemen Anda.</p>
+            </div>
         </div>
 
         <!-- Login Form -->
         <form onsubmit="handleAdminLogin(event)" class="space-y-4">
             <div>
-                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">Alamat Email Admin</label>
-                <input required type="email" id="adminEmail" class="w-full text-xs bg-slate-900 border border-slate-800 rounded-xl p-3 outline-none text-white focus:border-brandOrange focus:bg-slate-900/60 transition" placeholder="••••••••"><button type="button" onclick="toggleAdminPwd()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-slate-300"><span id="adminEye">👁️</span></button></div>
+                <label class="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">Alamat Email Admin</label>
+                <input required type="email" id="adminEmail" class="w-full text-sm bg-slate-900/90 border border-slate-700/80 rounded-xl px-4 py-3 outline-none text-white focus:border-brandOrange focus:ring-2 focus:ring-brandOrange/20 transition placeholder:text-slate-500" placeholder="pemilik@revaro.com">
             </div>
 
             <div>
-                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">Kata Sandi</label>
-                <div class="relative"><input required type="password" id="adminPassword" class="w-full text-xs bg-slate-900 border border-slate-800 rounded-xl p-3 pr-10 outline-none text-white focus:border-brandOrange focus:bg-slate-900/60 transition" placeholder="••••••••"><button type="button" onclick="toggleAdminPwd()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-slate-300"><span id="adminEye">👁️</span></button></div>
+                <label class="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">Kata Sandi</label>
+                <div class="relative">
+                    <input required type="password" id="adminPassword" class="w-full text-sm bg-slate-900/90 border border-slate-700/80 rounded-xl px-4 py-3 pr-11 outline-none text-white focus:border-brandOrange focus:ring-2 focus:ring-brandOrange/20 transition placeholder:text-slate-500" placeholder="••••••••">
+                    <button type="button" onclick="toggleAdminPwd()" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-white transition">
+                        <span id="adminEye">👁️</span>
+                    </button>
+                </div>
             </div>
 
-            <div class="bg-slate-900 p-3.5 rounded-xl border border-slate-800 text-[10px] text-slate-400 leading-normal">
-                ðŸ” <strong>Catatan Keamanan:</strong> Portal ini dilindungi oleh pembatasan middleware IP, enkripsi token JWT, dan rate limiter dinamis. Segala aktivitas login terekam secara permanen di audit trail log.
+
+            <div class="bg-slate-900/40 p-3 rounded-xl border border-slate-800/80 text-[10px] text-slate-400 leading-relaxed flex items-start space-x-2">
+                <span class="text-sm leading-none">🔒</span>
+                <span><strong>Catatan Keamanan:</strong> Portal ini dilindungi oleh pembatasan middleware IP, enkripsi token JWT, dan audit trail log.</span>
             </div>
 
-            <button type="submit" class="w-full bg-brandOrange hover:bg-orange-600 text-white font-bold text-xs py-3.5 rounded-xl transition shadow shadow-orange-700/20">
+            <button type="submit" class="w-full bg-brandOrange hover:bg-orange-600 text-white font-bold text-xs py-3.5 rounded-xl transition shadow-lg shadow-orange-600/20 active:scale-[0.99]">
                 Masuk ke Konsol Dashboard
             </button>
         </form>
@@ -97,6 +86,23 @@
 
     <!-- Client-Side Script -->
     <script>
+        function toggleAdminPwd() {
+            const inp = document.getElementById('adminPassword');
+            const ico = document.getElementById('adminEye');
+            if (inp.type === 'password') {
+                inp.type = 'text';
+                ico.innerText = '🙈';
+            } else {
+                inp.type = 'password';
+                ico.innerText = '👁️';
+            }
+        }
+
+        function fillAdminCreds(email, pwd) {
+            document.getElementById('adminEmail').value = email;
+            document.getElementById('adminPassword').value = pwd;
+        }
+
         function getRoleSlug(user) {
             if (!user) return '';
             let r = user.role;
@@ -149,6 +155,8 @@
                         icon: 'error',
                         title: 'Masuk Gagal',
                         text: result.message || "Kombinasi email dan kata sandi salah.",
+                        background: '#0F172A',
+                        color: '#E2E8F0',
                         confirmButtonColor: '#FF6A00'
                     });
                     return;
@@ -162,7 +170,7 @@
                     roleNama = typeof result.user.role === 'object' ? result.user.role.nama : result.user.role;
                 }
 
-                // Map DB role names â†’ slugs used throughout the admin portal
+                // Map DB role names → slugs used throughout the admin portal
                 const roleSlugMap = {
                     'Super Admin (Pemilik Sistem)':     'super-admin-pemilik',
                     'super-admin-pemilik':              'super-admin-pemilik',
@@ -223,15 +231,7 @@
                 });
             }
         }
-    
-        function toggleAdminPwd() {
-            const inp = document.getElementById('adminPassword');
-            const ico = document.getElementById('adminEye');
-            inp.type = inp.type === 'password' ? 'text' : 'password';
-            ico.innerText = inp.type === 'password' ? '👁️' : '🙈';
-        }
-        </script>
+    </script>
 
 </body>
 </html>
-

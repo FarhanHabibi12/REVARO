@@ -4,15 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gabung Sebagai Mitra REVARO — Teknisi & Toko Sparepart</title>
-    <script src="https://cdn.tailwindcss.com">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
         function togglePwdVis(inputId, iconId) {
             const inp = document.getElementById(inputId);
             const ico = document.getElementById(iconId);
+            if (!inp) return;
             inp.type = inp.type === 'password' ? 'text' : 'password';
-            ico.innerText = inp.type === 'password' ? '???' : '??';
+            if (ico) ico.innerText = inp.type === 'password' ? '👁️' : '🙈';
         }
-
-        </script>
+    </script>
     <script>
         tailwind.config = {
             theme: {

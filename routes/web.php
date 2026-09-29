@@ -36,12 +36,14 @@ Route::prefix('superadmin/pemilik')->group(function () {
     Route::get('/backup',         fn() => view('superadmin.pemilik.backup'));
     Route::get('/audit-logs',     fn() => view('superadmin.pemilik.audit_logs'));
     Route::get('/security',       fn() => view('superadmin.pemilik.audit_logs'));
+    Route::get('/jejak-audit',    fn() => view('superadmin.pemilik.jejak_audit'));
     Route::get('/settings',       fn() => view('superadmin.pemilik.settings'));
     Route::get('/maintenance',    fn() => view('superadmin.pemilik.maintenance'));
 });
 
 // Convenient URL aliases
 Route::get('/superadmin/keamanan',    fn() => redirect('/superadmin/pemilik/audit-logs'));
+Route::get('/superadmin/jejak-audit', fn() => redirect('/superadmin/pemilik/jejak-audit'));
 Route::get('/superadmin/database',    fn() => redirect('/superadmin/pemilik/backup'));
 Route::get('/superadmin/settings',    fn() => redirect('/superadmin/pemilik/settings'));
 Route::get('/superadmin/maintenance', fn() => redirect('/superadmin/pemilik/maintenance'));

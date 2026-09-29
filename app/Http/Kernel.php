@@ -14,6 +14,7 @@ class Kernel extends HttpKernel
      * @var array<int, class-string|string>
      */
     protected $middleware = [
+        \App\Http\Middleware\CheckBlockedIp::class,
         \App\Http\Middleware\BlockIpMiddleware::class,
         \App\Http\Middleware\TrackActiveVisitorsMiddleware::class,
         \App\Http\Middleware\SetLocaleMiddleware::class,

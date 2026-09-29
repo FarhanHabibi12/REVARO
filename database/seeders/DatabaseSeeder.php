@@ -60,6 +60,7 @@ class DatabaseSeeder extends Seeder
                 'role_id' => $roleSuperPemilik,
                 'foto' => 'admins/pemilik.png',
                 'is_active' => true,
+                'email_verified_at' => now(),
             ]
         );
 
@@ -71,6 +72,7 @@ class DatabaseSeeder extends Seeder
                 'role_id' => $roleVerifikator,
                 'foto' => 'admins/verifikator1.png',
                 'is_active' => true,
+                'email_verified_at' => now(),
             ]
         );
 
@@ -82,6 +84,7 @@ class DatabaseSeeder extends Seeder
                 'role_id' => $roleResolusi,
                 'foto' => 'admins/resolusi1.png',
                 'is_active' => true,
+                'email_verified_at' => now(),
             ]
         );
 
@@ -150,13 +153,14 @@ class DatabaseSeeder extends Seeder
         );
 
         // 6. Seed Customers (Pelanggan)
-        $userBudi = User::firstOrCreate(
-            ['email' => ' '],
+        $userBudi = User::updateOrCreate(
+            ['email' => 'budi@gmail.com'],
             [
                 'nama' => 'Budi Santoso',
-                'password' => Hash::make('password123'),
+                'password' => Hash::make('12345678'),
                 'role_id' => $rolePelanggan,
                 'is_active' => true,
+                'email_verified_at' => now(),
             ]
         );
         $pelangganBudi = Pelanggan::firstOrCreate(
@@ -170,13 +174,14 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        $userAni = User::firstOrCreate(
+        $userAni = User::updateOrCreate(
             ['email' => 'ani@gmail.com'],
             [
                 'nama' => 'Ani Wijaya',
-                'password' => Hash::make('password123'),
+                'password' => Hash::make('12345678'),
                 'role_id' => $rolePelanggan,
                 'is_active' => true,
+                'email_verified_at' => now(),
             ]
         );
         $pelangganAni = Pelanggan::firstOrCreate(
@@ -191,13 +196,14 @@ class DatabaseSeeder extends Seeder
         );
 
         // 7. Seed Technicians (Teknisi)
-        $userJoko = User::firstOrCreate(
+        $userJoko = User::updateOrCreate(
             ['email' => 'joko@gmail.com'],
             [
                 'nama' => 'Joko Suprianto',
-                'password' => Hash::make('password123'),
+                'password' => Hash::make('12345678'),
                 'role_id' => $roleTeknisi,
                 'is_active' => true,
+                'email_verified_at' => now(),
             ]
         );
         $teknisiJoko = Teknisi::firstOrCreate(
@@ -215,13 +221,14 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        $userTono = User::firstOrCreate(
+        $userTono = User::updateOrCreate(
             ['email' => 'tono@gmail.com'],
             [
                 'nama' => 'Tono Suherman',
-                'password' => Hash::make('password123'),
+                'password' => Hash::make('12345678'),
                 'role_id' => $roleTeknisi,
                 'is_active' => true,
+                'email_verified_at' => now(),
             ]
         );
         $teknisiTono = Teknisi::firstOrCreate(
@@ -240,13 +247,14 @@ class DatabaseSeeder extends Seeder
         );
 
         // 8. Seed Toko Sparepart
-        $userJaya = User::firstOrCreate(
+        $userJaya = User::updateOrCreate(
             ['email' => 'jaya@sparepart.com'],
             [
                 'nama' => 'Jaya Elektronik Toko',
-                'password' => Hash::make('password123'),
+                'password' => Hash::make('12345678'),
                 'role_id' => $roleToko,
                 'is_active' => true,
+                'email_verified_at' => now(),
             ]
         );
         $tokoJaya = Toko::firstOrCreate(
@@ -262,13 +270,14 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        $userBerkah = User::firstOrCreate(
+        $userBerkah = User::updateOrCreate(
             ['email' => 'berkah@sparepart.com'],
             [
                 'nama' => 'Berkah Jaya Toko',
-                'password' => Hash::make('password123'),
+                'password' => Hash::make('12345678'),
                 'role_id' => $roleToko,
                 'is_active' => true,
+                'email_verified_at' => now(),
             ]
         );
         $tokoBerkah = Toko::firstOrCreate(

@@ -245,8 +245,12 @@ class DisputeController extends Controller
                 $order->update(['status' => 'RESOLVED']);
                 
                 if ($transaksi) {
+                    $wasHeld = $transaksi->status_escrow !== 'RELEASED';
                     $transaksi->update(['status_escrow' => 'RELEASED']);
-                    // Uang sudah dicairkan ke Teknisi & Toko saat payOrder (bypass escrow), jadi tidak perlu increment lagi.
+                    
+                    if ($wasHeld && $order->teknisi) {
+                        $order->teknisi->increment('saldo', $transaksi->biaya_jasa);
+                    }
                 }
 
                 if ($order->teknisi) {

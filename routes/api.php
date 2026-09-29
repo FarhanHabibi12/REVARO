@@ -32,6 +32,8 @@ use Illuminate\Support\Facades\Route;
 // --- Public Auth Routes (with Rate Limiting) ---
 Route::post('/auth/register', [AuthController::class, 'register'])->middleware('throttle:3,1');
 Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
+Route::post('/auth/verify-otp', [AuthController::class, 'verifyOtp']);
+Route::post('/auth/resend-otp', [AuthController::class, 'resendOtp']);
 Route::get('/mitra/documents/{type}/{id}', [AuthController::class, 'downloadDocument']);
 
 // --- Protected Routes ---
@@ -174,11 +176,17 @@ Route::middleware(['auth:sanctum', 'read_only'])->group(function () {
         ->middleware('role:super-admin-pemilik');
     Route::delete('/admin/security/blacklist/{id}', [\App\Http\Controllers\Api\SecurityController::class, 'unbanIp'])
         ->middleware('role:super-admin-pemilik');
-    Route::get('/admin/security/users', [\App\Http\Controllers\Api\SecurityController::class, 'listUsers'])
+    Route::post('/auth/switch-role', [AuthController::class, 'switchRole']);
+
+    Route::post('/admin/security/sessions/kick', [\App\Http\Controllers\Api\SecurityController::class, 'kickSession'])
         ->middleware('role:super-admin-pemilik');
-    Route::post('/admin/security/users/{id}/toggle-ban', [\App\Http\Controllers\Api\SecurityController::class, 'toggleUserBan'])
+    Route::post('/admin/security/logs/purge', [\App\Http\Controllers\Api\SecurityController::class, 'purgeIncidentLogs'])
         ->middleware('role:super-admin-pemilik');
-    Route::get('/admin/security/logs', [AuditLogController::class, 'index'])
+
+    // Storage Orphan Files Cleaner (Super Admin Pemilik only)
+    Route::get('/admin/storage/orphans', [\App\Http\Controllers\Api\StorageCleanerController::class, 'getOrphans'])
+        ->middleware('role:super-admin-pemilik');
+    Route::post('/admin/storage/clean', [\App\Http\Controllers\Api\StorageCleanerController::class, 'cleanOrphans'])
         ->middleware('role:super-admin-pemilik');
 
     // Sent flags history

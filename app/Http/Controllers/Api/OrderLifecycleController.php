@@ -86,39 +86,51 @@ class OrderLifecycleController extends Controller
     /**
      * Create SOS order and trigger dispatch.
      */
-    public function createSOS(Request $request)
+    public function createSOS(\App\Http\Requests\CreateOrderRequest $request)
     {
         $user = $request->user();
 
-        if (!$user->isPelanggan() || !$user->pelanggan) {
-            return response()->json(['message' => 'Hanya Pelanggan yang dapat mengajukan SOS.'], 403);
+        // Auto-create/fetch Pelanggan profile if missing (allows Teknisi & Toko to place orders)
+        $pelanggan = $user->pelanggan;
+        if (!$pelanggan) {
+            $pelanggan = \App\Models\Pelanggan::firstOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'nama' => $user->nama,
+                    'email' => $user->email,
+                    'hp' => $user->no_telp ?? '081234567890',
+                    'alamat' => $request->alamat_servis ?? 'Alamat Pemesan',
+                    'saldo' => 0.00,
+                ]
+            );
         }
 
-        $validator = Validator::make($request->all(), [
-            'keluhan' => 'required|string',
-            'alamat_servis' => 'required|string',
-            'latitude' => 'required|numeric',
-            'longitude' => 'required|numeric',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
+        $isForOther = (bool) $request->is_for_other;
+        $recipientName = $isForOther ? $request->recipient_name : ($request->pemesan_nama ?: $user->nama);
+        $recipientPhone = $isForOther ? $request->recipient_phone : ($request->pemesan_hp ?: $pelanggan->hp);
+        $recipientAddress = $isForOther ? ($request->recipient_address ?: $request->alamat_servis) : $request->alamat_servis;
 
         $kodeOrder = 'REV-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(3)));
 
         $order = Order::create([
-            'pelanggan_id' => $user->pelanggan->id,
+            'pelanggan_id' => $pelanggan->id,
             'teknisi_id' => null,
             'kode_order' => $kodeOrder,
             'status' => 'SEARCHING',
-            'keluhan' => $request->keluhan,
-            'pemesan_nama' => $request->pemesan_nama,
-            'pemesan_hp' => $request->pemesan_hp,
+            'keluhan' => substr($request->keluhan, 0, 500),
+            'pemesan_nama' => $recipientName,
+            'pemesan_hp' => $recipientPhone,
+            'pemesan_alamat' => $recipientAddress,
+            'is_for_other' => $isForOther,
+            'recipient_name' => $recipientName,
+            'recipient_phone' => $recipientPhone,
+            'recipient_address' => $recipientAddress,
+            'additional_notes' => $request->additional_notes,
+            'formatted_address' => $request->formatted_address ?: $request->alamat_servis,
             'alamat_servis' => $request->alamat_servis,
             'tanggal_servis' => now(),
-            'latitude' => $request->latitude,
-            'longitude' => $request->longitude,
+            'latitude' => $request->latitude ?? -6.2088,
+            'longitude' => $request->longitude ?? 106.8456,
         ]);
 
         // Trigger asynchronous dispatch job
@@ -276,7 +288,7 @@ class OrderLifecycleController extends Controller
                 'qty' => $item['qty'],
                 'harga' => $part->harga,
                 'subtotal' => $subtotal,
-                'status' => 'PENDING_CUSTOMER', // Awaiting Customer approval
+                'status' => 'PENDING_SHOP', // Sent to Shop for confirmation
             ]);
         }
 

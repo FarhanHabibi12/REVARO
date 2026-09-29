@@ -43,6 +43,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Get all roles associated with this user (Multi-Role Support).
+     */
+    public function roles(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(Role::class, 'user_roles', 'user_id', 'role_id');
+    }
+
+    /**
      * Get the Pelanggan profile of the user.
      */
     public function pelanggan(): HasOne

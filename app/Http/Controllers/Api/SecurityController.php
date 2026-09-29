@@ -233,4 +233,41 @@ class SecurityController extends Controller
 
         return response()->json($visitors);
     }
+
+    /**
+     * Kick active session for user (Paksa Keluar Sesi).
+     */
+    public function kickSession(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'user_id' => 'required|integer|exists:users,id',
+            'session_id' => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $sessionTracker = new \App\Services\SessionTrackerService();
+        $success = $sessionTracker->kickSession($request->user_id, $request->session_id);
+
+        if ($success) {
+            return response()->json(['message' => 'Sesi pengguna berhasil diputus (kicked).']);
+        }
+
+        return response()->json(['message' => 'Gagal memutus sesi pengguna.'], 400);
+    }
+
+    /**
+     * Purge security incident logs.
+     */
+    public function purgeIncidentLogs(Request $request)
+    {
+        $days = $request->days ? (int)$request->days : null;
+        \App\Services\SecurityLoggerService::purge($days);
+
+        return response()->json([
+            'message' => $days ? "Log insiden keamanan sebelum {$days} hari berhasil dibersihkan." : "Seluruh log insiden keamanan berhasil dibersihkan."
+        ]);
+    }
 }

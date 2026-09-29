@@ -38,108 +38,72 @@ class WalletController extends Controller
     }
 
     /**
-     * Request withdrawal with full bank details.
+     * Request withdrawal with full bank details & pessimistic locking.
      */
-    public function withdraw(Request $request)
+    public function withdraw(\App\Http\Requests\WithdrawalRequest $request)
     {
         $user = $request->user();
+        $withdrawalService = new \App\Services\WithdrawalService();
 
-        $validator = Validator::make($request->all(), [
-            'bank_name'      => 'required|string|max:50',
-            'account_name'   => 'required|string|max:100',
-            'account_number' => 'required|string|max:30',
-            'amount'         => 'required|numeric|min:50000',
-        ]);
+        try {
+            $withdrawal = $withdrawalService->createWithdrawal($user, $request->validated());
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
+            $profile = $user->pelanggan ?: ($user->teknisi ?: $user->toko);
 
-        $amount = $request->amount;
-
-        return DB::transaction(function () use ($user, $amount, $request) {
-            $profile = null;
-
-            if ($user->isPelanggan() && $user->pelanggan) {
-                $profile = $user->pelanggan;
-            } elseif ($user->isTeknisi() && $user->teknisi) {
-                $profile = $user->teknisi;
-            } elseif ($user->isToko() && $user->toko) {
-                $profile = $user->toko;
-            }
-
-            if (!$profile) {
-                return response()->json(['message' => 'Profil tidak ditemukan.'], 404);
-            }
-
-            if ($profile->saldo < $amount) {
-                return response()->json(['message' => 'Saldo Anda tidak mencukupi.'], 400);
-            }
-
-            // Deduct balance
-            $profile->decrement('saldo', $amount);
-
-            // Record to withdrawals table for admin processing
-            DB::table('withdrawals')->insert([
-                'user_id'        => $user->id,
-                'bank_name'      => $request->bank_name,
-                'account_name'   => $request->account_name,
-                'account_number' => $request->account_number,
-                'amount'         => $amount,
-                'status'         => 'PENDING',
-                'created_at'     => now(),
-                'updated_at'     => now(),
-            ]);
-
-            // Log wallet ledger
+            // Record ledger transaction
             WalletTransaction::create([
                 'user_id'   => $user->id,
                 'tipe'      => 'OUT',
-                'jumlah'    => $amount,
-                'deskripsi' => "Penarikan dana ke {$request->bank_name} a.n. {$request->account_name} ({$request->account_number})",
-            ]);
-
-            ActivityLog::create([
-                'user_id'    => $user->id,
-                'aktivitas'  => "Penarikan dana Rp " . number_format($amount, 0, ',', '.') . " ke {$request->bank_name}",
-                'ip_address' => $request->ip(),
+                'jumlah'    => $withdrawal->amount,
+                'deskripsi' => "Penarikan dana ke {$withdrawal->bank_name} a.n. {$withdrawal->account_name} ({$withdrawal->account_number})",
             ]);
 
             return response()->json([
                 'message'     => 'Permintaan penarikan dana berhasil diajukan. Admin akan memproses dalam 1x24 jam.',
-                'new_balance' => $profile->fresh()->saldo
-            ]);
-        });
+                'withdrawal'  => $withdrawal,
+                'new_balance' => $profile ? $profile->fresh()->saldo : 0,
+            ], 201);
+
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 400);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'Gagal memproses penarikan dana: ' . $e->getMessage()], 500);
+        }
     }
 
     /**
-     * Top-up balance.
+     * Top-up balance with input sanitization (strips "Rp", dots, spaces).
      */
-    public function topup(Request $request)
+    public function topup(\App\Http\Requests\TopUpRequest $request)
     {
         $user = $request->user();
 
-        $validator = Validator::make($request->all(), [
-            'jumlah' => 'required|numeric|min:10000',
-        ]);
+        // Amount has been sanitized to pure integer in TopUpRequest
+        $amount = (float) $request->input('amount', $request->input('jumlah'));
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+        if ($amount < 10000) {
+            return response()->json(['message' => 'Nominal top up minimal adalah Rp 10.000.'], 422);
         }
 
-        $amount  = $request->jumlah;
         $profile = null;
-
         if ($user->isPelanggan() && $user->pelanggan) {
             $profile = $user->pelanggan;
         } elseif ($user->isTeknisi() && $user->teknisi) {
             $profile = $user->teknisi;
         } elseif ($user->isToko() && $user->toko) {
             $profile = $user->toko;
-        }
-
-        if (!$profile) {
-            return response()->json(['message' => 'Profil tidak ditemukan.'], 404);
+        } else {
+            // Auto-create Pelanggan profile if missing
+            $profile = \App\Models\Pelanggan::firstOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'nama' => $user->nama,
+                    'email' => $user->email,
+                    'hp' => $user->no_telp ?? '081234567890',
+                    'alamat' => 'Alamat Topup',
+                    'saldo' => 0.00,
+                ]
+            );
         }
 
         return DB::transaction(function () use ($user, $amount, $profile, $request) {
