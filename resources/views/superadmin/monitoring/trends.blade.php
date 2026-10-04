@@ -1,7 +1,7 @@
 @extends('layouts.superadmin')
 
 @section('title', 'Tren & Analitik — REVARO')
-@section('page-title', '📈 Tren & Analitik Platform')
+@section('page-title', 'Tren & Analitik Platform')
 @section('page-subtitle', 'Pantau tren registrasi mitra, volume dispute, dan pola kinerja operasional secara berkala')
 
 @section('styles')
@@ -63,7 +63,7 @@
 let regChartInst, disputeChartInst;
 
 async function loadAll() {
-    const token = localStorage.getItem('admin_token');
+    const token = localStorage.getItem('admin_token') || localStorage.getItem('token');
     const days = document.getElementById('periodSelect').value;
     const h = { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' };
 

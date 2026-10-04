@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\GoogleAuthController;
+use App\Http\Controllers\SuperAdmin\SmtpConfigController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -11,17 +13,43 @@ use Illuminate\Support\Facades\Route;
 // Welcome & Public
 Route::get('/', fn() => view('welcome'));
 
-// Auth — Login & Register
-Route::get('/admin/login',      fn() => view('auth.admin_login'));
-Route::get('/partner/register', fn() => view('auth.partner_register'));
+// Google OAuth 2.0 (Socialite)
+Route::get('/auth/google', [GoogleAuthController::class, 'redirectToGoogle'])->name('auth.google');
+Route::get('/auth/google/callback', [GoogleAuthController::class, 'handleGoogleCallback'])->name('auth.google.callback');
+Route::get('/auth/google/complete-profile', [GoogleAuthController::class, 'showCompleteProfile'])->name('auth.google.complete');
+Route::post('/auth/google/complete-profile', [GoogleAuthController::class, 'saveCompleteProfile'])->name('auth.google.complete.save');
+
+// Auth — Login & Register (Anti Brute-Force Rate Limiting)
+Route::middleware('throttle:30,1')->group(function () {
+    Route::get('/login',            fn() => redirect('/?auth=login'))->name('login');
+    Route::get('/login-admin',      fn() => view('auth.admin_login'))->name('admin.login');
+    Route::get('/admin/login',      fn() => redirect('/login-admin'));
+    Route::get('/partner/register', fn() => view('auth.partner_register'));
+});
+Route::get('/session-expired',   fn() => response()->view('errors.419', [], 419))->name('session.expired');
+Route::get('/error/419',        fn() => response()->view('errors.419', [], 419));
+Route::get('/error/403',        fn() => response()->view('errors.403', [], 403));
+Route::get('/error/404',        fn() => response()->view('errors.404', [], 404));
+Route::get('/error/500',        fn() => response()->view('errors.500', [], 500));
+Route::get('/error/429',        fn() => response()->view('errors.429', [], 429));
 
 // User Portals
-Route::get('/pelanggan/dashboard', fn() => view('pelanggan.dashboard'));
-Route::get('/pelanggan/settings',  fn() => view('pelanggan.settings'));
-Route::get('/teknisi/dashboard',   fn() => view('teknisi.dashboard'));
-Route::get('/teknisi/settings',    fn() => view('teknisi.settings'));
-Route::get('/toko/dashboard',      fn() => view('toko.dashboard'));
-Route::get('/toko/settings',       fn() => view('toko.settings'));
+// Pelanggan
+Route::get('/pelanggan/dashboard', fn() => view('pelanggan.dashboard'))->name('pelanggan.dashboard');
+Route::get('/pelanggan/riwayat',   fn() => view('pelanggan.riwayat'))->name('pelanggan.riwayat');
+Route::get('/pelanggan/dompet',    fn() => view('pelanggan.dompet'))->name('pelanggan.dompet');
+Route::get('/pelanggan/settings',  fn() => view('pelanggan.settings'))->name('pelanggan.settings');
+
+// Teknisi
+Route::get('/teknisi/dashboard',   fn() => view('teknisi.dashboard'))->name('teknisi.dashboard');
+Route::get('/teknisi/riwayat',     fn() => view('teknisi.riwayat'))->name('teknisi.riwayat');
+Route::get('/teknisi/dompet',      fn() => view('teknisi.dompet'))->name('teknisi.dompet');
+Route::get('/teknisi/settings',    fn() => view('teknisi.settings'))->name('teknisi.settings');
+
+// Toko
+Route::get('/toko/dashboard',      fn() => view('toko.dashboard'))->name('toko.dashboard');
+Route::get('/toko/keuangan',       fn() => view('toko.keuangan'))->name('toko.keuangan');
+Route::get('/toko/settings',       fn() => view('toko.settings'))->name('toko.settings');
 
 // ── Super Admin Pemilik Sistem ──────────────────────────────────────────
 Route::prefix('superadmin/pemilik')->group(function () {
@@ -38,8 +66,15 @@ Route::prefix('superadmin/pemilik')->group(function () {
     Route::get('/security',       fn() => view('superadmin.pemilik.audit_logs'));
     Route::get('/jejak-audit',    fn() => view('superadmin.pemilik.jejak_audit'));
     Route::get('/settings',       fn() => view('superadmin.pemilik.settings'));
+    Route::get('/maps-api',       fn() => view('superadmin.pemilik.maps_api'))->name('superadmin.maps_api');
+    Route::get('/smtp',           [SmtpConfigController::class, 'edit'])->name('superadmin.smtp.edit');
     Route::get('/maintenance',    fn() => view('superadmin.pemilik.maintenance'));
 });
+
+// SMTP Configuration Routes
+Route::get('/superadmin/smtp',       [SmtpConfigController::class, 'edit']);
+Route::post('/superadmin/smtp',      [SmtpConfigController::class, 'update'])->name('superadmin.smtp.update');
+Route::post('/superadmin/smtp/test', [SmtpConfigController::class, 'testConnection'])->name('superadmin.smtp.test');
 
 // Convenient URL aliases
 Route::get('/superadmin/keamanan',    fn() => redirect('/superadmin/pemilik/audit-logs'));
@@ -62,12 +97,15 @@ Route::prefix('admin/verifikator')->group(function () {
     Route::get('/resubmitted',     fn() => view('admin.verifikator.resubmitted'));
     Route::get('/reverifications', fn() => view('admin.verifikator.reverifications'));
     Route::get('/history',         fn() => view('admin.verifikator.history'));
+    Route::get('/instruksi',       fn() => view('admin.verifikator.instruksi'));
     Route::get('/settings',        fn() => view('admin.verifikator.settings'));
 });
 
 // ── Admin Resolusi ──────────────────────────────────────────────────────
 Route::prefix('admin/resolusi')->group(function () {
     Route::get('/dashboard',       fn() => view('admin.resolusi.dashboard'));
+    Route::get('/evaluasi-rating', fn() => view('admin.resolusi.evaluasi_rating'));
     Route::get('/history',         fn() => view('admin.resolusi.history'));
+    Route::get('/instruksi',       fn() => view('admin.resolusi.instruksi'));
     Route::get('/settings',        fn() => view('admin.resolusi.settings'));
 });

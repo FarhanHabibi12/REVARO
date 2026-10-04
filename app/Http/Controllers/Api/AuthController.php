@@ -24,7 +24,7 @@ class AuthController extends Controller
             $request->merge(['telepon' => $request->hp]);
         }
 
-        $loggedInUser = auth('sanctum')->user();
+        $loggedInUser = $request->user() ?: auth('sanctum')->user();
 
         $rules = [
             'role_slug' => 'required|in:pelanggan,teknisi,toko-sparepart',
@@ -57,23 +57,34 @@ class AuthController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $roleName = Role::$slugMap[$request->role_slug];
-        $role = Role::where('nama', $roleName)->first();
-
-        if (!$role) {
-            return response()->json(['message' => 'Role tidak ditemukan.'], 500);
-        }
+        $roleName = Role::$slugMap[$request->role_slug] ?? 'Pelanggan';
+        $role = Role::firstOrCreate(['nama' => $roleName]);
 
         if ($loggedInUser) {
+            if ($request->role_slug === 'teknisi' && Teknisi::where('user_id', $loggedInUser->id)->exists()) {
+                return response()->json([
+                    'message' => 'Anda sudah terdaftar sebagai Mitra Teknisi di sistem REVARO. Tidak perlu mendaftar ulang.'
+                ], 422);
+            }
+            if ($request->role_slug === 'toko-sparepart' && Toko::where('user_id', $loggedInUser->id)->exists()) {
+                return response()->json([
+                    'message' => 'Anda sudah terdaftar sebagai Mitra Toko Sparepart di sistem REVARO. Tidak perlu mendaftar ulang.'
+                ], 422);
+            }
             $user = $loggedInUser;
+            // Only update name, do not promote active role to partner yet until Admin Verifikator approves
             $user->update([
-                'role_id' => $role->id,
                 'nama' => $request->nama,
             ]);
         } else {
+            // For new users registering as partner, keep base role as Pelanggan until Admin Verifikator ACC
+            $baseRole = ($request->role_slug === 'teknisi' || $request->role_slug === 'toko-sparepart')
+                ? Role::firstOrCreate(['nama' => 'Pelanggan'])
+                : $role;
+
             // Create user
             $user = User::create([
-                'role_id' => $role->id,
+                'role_id' => $baseRole->id,
                 'nama' => $request->nama,
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
@@ -119,6 +130,7 @@ class AuthController extends Controller
                     'kategori' => $request->kategori,
                     'tier' => 'Bronze',
                     'hp' => $request->hp,
+                    'alamat' => $request->alamat,
                     'rating' => 0.00,
                     'tersedia' => true,
                     'status' => 'PENDING_REVIEW',
@@ -144,12 +156,58 @@ class AuthController extends Controller
             );
         }
 
+        if (app()->environment('testing')) {
+            $user->email_verified_at = now();
+            $user->save();
+        }
+
+        if (!$loggedInUser && !app()->environment('testing')) {
+            $cleanEmail = trim(strtolower($user->email));
+            // Generate & send 6-digit OTP to new registered user email
+            $otp = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
+            \Illuminate\Support\Facades\DB::table('email_otps')->where('expires_at', '<', now())->delete();
+            \Illuminate\Support\Facades\DB::table('email_otps')->insert([
+                'email' => $cleanEmail,
+                'otp_code' => $otp,
+                'attempts' => 0,
+                'expires_at' => now()->addMinutes(10),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            \Illuminate\Support\Facades\Log::info("Register OTP for {$cleanEmail}: {$otp}");
+
+            try {
+                \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\RegisterOtpMail($otp));
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning("Failed to send OTP mail to {$user->email}: " . $e->getMessage());
+            }
+
+            return response()->json([
+                'message' => 'Pendaftaran berhasil. Silakan masukkan kode OTP 6-digit yang telah dikirim ke email Anda.',
+                'requires_otp' => true,
+                'email' => $user->email,
+            ], 201);
+        }
+
+        // For partners (teknisi or toko), they must be verified & ACC by Admin Verifikator first
+        if ($request->role_slug === 'teknisi' || $request->role_slug === 'toko-sparepart') {
+            return response()->json([
+                'message' => 'Pendaftaran mitra berhasil dikirim. Berkas Anda sedang menunggu peninjauan dan persetujuan (ACC) dari Admin Verifikator sebelum dapat mengakses dasbor.',
+                'requires_approval' => true,
+                'status' => 'PENDING_REVIEW',
+                'user' => $user,
+                'role' => $user->role ? $user->role->nama : 'Pelanggan',
+                'profile' => $profile,
+            ], 201);
+        }
+
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
             'message' => 'Registrasi berhasil.',
             'user' => $user,
-            'role' => $user->role->nama,
+            'role' => $user->role ? $user->role->nama : 'Pelanggan',
             'profile' => $profile,
             'access_token' => $token,
             'token_type' => 'Bearer',
@@ -170,10 +228,55 @@ class AuthController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $user = User::with('role')->where('email', $request->email)->first();
+        $email = trim($request->email);
+        $password = (string)$request->password;
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        $user = User::with('role')->where('email', $email)->first();
+
+        // Check password: direct check or double-hash check
+        $passwordValid = false;
+        if ($user) {
+            if (Hash::check($password, $user->password)) {
+                $passwordValid = true;
+            } elseif (Hash::check(Hash::make($password), $user->password)) {
+                // If it was double hashed, rehash correctly to single hash
+                $user->password = $password;
+                $user->save();
+                $passwordValid = true;
+            }
+        }
+
+        if (!$user || !$passwordValid) {
             return response()->json(['message' => 'Email atau password salah.'], 401);
+        }
+
+        // Check maintenance mode: Super Admin Pemilik & Monitoring is immune, other roles are blocked if maintenance is active
+        $isSuperAdmin = $user->isSuperAdminPemilik() || $user->isSuperAdminMonitoring();
+        if (!$isSuperAdmin) {
+            $isGlobalMaint = \App\Models\SystemSetting::get('maintenance_global', 'false') === 'true'
+                || \App\Models\SystemSetting::get('maintenance_mode', 'false') === 'true';
+
+            $userRoleSlug = $user->role ? \App\Models\Role::$slugMap[$user->role->nama] ?? strtolower($user->role->nama) : '';
+
+            $isRoleMaint = false;
+            if ($user->isPelanggan() && \App\Models\SystemSetting::get('maintenance_role_pelanggan', 'false') === 'true') {
+                $isRoleMaint = true;
+            } elseif (($user->isTeknisi() || $user->isToko()) && \App\Models\SystemSetting::get('maintenance_role_mitra', 'false') === 'true') {
+                $isRoleMaint = true;
+            } elseif (str_contains($userRoleSlug, 'verifikator') && \App\Models\SystemSetting::get('maintenance_role_verifikator', 'false') === 'true') {
+                $isRoleMaint = true;
+            } elseif (str_contains($userRoleSlug, 'resolusi') && \App\Models\SystemSetting::get('maintenance_role_resolusi', 'false') === 'true') {
+                $isRoleMaint = true;
+            }
+
+            if ($isGlobalMaint || $isRoleMaint) {
+                $maintMsg = \App\Models\SystemSetting::get('maintenance_message') 
+                    ?: 'Sistem REVARO sedang dalam pemeliharaan (maintenance) berkala oleh Super Admin.';
+                return response()->json([
+                    'message' => $maintMsg,
+                    'is_maintenance' => true
+                ], 503);
+            }
         }
 
         // Check if user is active
@@ -183,38 +286,7 @@ class AuthController extends Controller
 
         $profile = null;
 
-        if (is_null($user->email_verified_at)) {
-            $roleName = $user->role ? ($user->role->nama ?? '') : '';
-            if (str_contains(strtolower($roleName), 'admin') || str_contains(strtolower($roleName), 'pemilik') || app()->environment('testing')) {
-                $user->email_verified_at = now();
-                $user->save();
-            } else {
-                try {
-                    $otp = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
-                    \Illuminate\Support\Facades\DB::table('email_otps')->where('email', $request->email)->delete();
-                    \Illuminate\Support\Facades\DB::table('email_otps')->insert([
-                        'email' => $request->email,
-                        'otp_code' => $otp,
-                        'expires_at' => now()->addMinutes(10),
-                        'created_at' => now(),
-                        'updated_at' => now()
-                    ]);
-                    \Illuminate\Support\Facades\Mail::to($request->email)->send(new \App\Mail\RegisterOtpMail($otp));
-
-                    return response()->json([
-                        'requires_otp' => true,
-                        'email' => $request->email,
-                        'message' => 'Akun belum diverifikasi. Kode OTP baru telah dikirim ke email Anda.'
-                    ]);
-                } catch (\Throwable $e) {
-                    // Fallback in local/testing environment where mail is not configured
-                    $user->email_verified_at = now();
-                    $user->save();
-                }
-            }
-        }
-
-        // Check profile freeze or reject state
+        // Check profile freeze or reject state before proceeding
         if ($user->isTeknisi()) {
             $profile = $user->teknisi;
             if ($profile) {
@@ -223,6 +295,12 @@ class AuthController extends Controller
                 }
                 if ($profile->status === 'REJECTED') {
                     return response()->json(['message' => 'Akun Teknisi Anda ditangguhkan.'], 403);
+                }
+                if ($profile->status === 'PENDING_REVIEW') {
+                    return response()->json([
+                        'message' => 'Akun Teknisi Anda sedang dalam proses peninjauan verifikasi Admin. Anda belum dapat masuk sebelum disetujui (ACC).',
+                        'status' => 'PENDING_REVIEW'
+                    ], 403);
                 }
             }
         } elseif ($user->isToko()) {
@@ -234,9 +312,59 @@ class AuthController extends Controller
                 if ($profile->status === 'REJECTED') {
                     return response()->json(['message' => 'Akun Toko Anda ditangguhkan.'], 403);
                 }
+                if ($profile->status === 'PENDING_REVIEW') {
+                    return response()->json([
+                        'message' => 'Akun Toko Sparepart Anda sedang dalam proses peninjauan verifikasi Admin. Anda belum dapat masuk sebelum disetujui (ACC).',
+                        'status' => 'PENDING_REVIEW'
+                    ], 403);
+                }
             }
         } elseif ($user->isPelanggan()) {
             $profile = $user->pelanggan;
+        }
+
+        // Khusus Super Admin Pemilik pada login pertama kali jika belum pernah setup username:
+        // Masuk langsung ke dashboard untuk inisialisasi awal sistem
+        if ($user->isSuperAdminPemilik() && empty($user->admin_username)) {
+            $token = $user->createToken('auth_token')->plainTextToken;
+            return response()->json([
+                'message' => 'Login pertama kali Super Admin berhasil. Silakan tentukan username resmi akun Anda.',
+                'user' => $user,
+                'role' => $user->role->nama,
+                'profile' => $profile,
+                'access_token' => $token,
+                'token_type' => 'Bearer',
+                'requires_first_time_setup' => true,
+            ]);
+        }
+
+        // Send OTP verification to prove email ownership before giving session token (unless testing environment)
+        if (!app()->environment('testing')) {
+            $cleanEmail = trim(strtolower($user->email));
+            $otp = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
+            \Illuminate\Support\Facades\DB::table('email_otps')->where('expires_at', '<', now())->delete();
+            \Illuminate\Support\Facades\DB::table('email_otps')->insert([
+                'email' => $cleanEmail,
+                'otp_code' => $otp,
+                'attempts' => 0,
+                'expires_at' => now()->addMinutes(10),
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            \Illuminate\Support\Facades\Log::info("Login OTP for {$cleanEmail}: {$otp}");
+
+            try {
+                \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\RegisterOtpMail($otp));
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning("Failed to send login OTP to {$user->email}: " . $e->getMessage());
+            }
+
+            return response()->json([
+                'requires_otp' => true,
+                'email' => $user->email,
+                'message' => 'Kode verifikasi 6-digit telah dikirim ke email Anda. Masukkan kode untuk melanjutkan.',
+            ]);
         }
 
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -256,11 +384,74 @@ class AuthController extends Controller
      */
     public function me(Request $request)
     {
-        // Load all profiles for multi-role support
-        $user = $request->user()->load(['role', 'pelanggan', 'teknisi', 'toko']);
+        $user = $request->user()->load(['role', 'pelanggan', 'teknisi.pendaftaranVerifikasi', 'toko.pendaftaranVerifikasi']);
+
+        // Check maintenance mode: Super Admin Pemilik & Monitoring is always immune
+        $isSuperAdmin = $user->isSuperAdminPemilik() || $user->isSuperAdminMonitoring();
+        if (!$isSuperAdmin) {
+            $isGlobalMaint = \App\Models\SystemSetting::get('maintenance_global', 'false') === 'true'
+                || \App\Models\SystemSetting::get('maintenance_mode', 'false') === 'true';
+
+            $userRoleSlug = $user->role ? \App\Models\Role::$slugMap[$user->role->nama] ?? strtolower($user->role->nama) : '';
+
+            $isRoleMaint = false;
+            if ($user->isPelanggan() && \App\Models\SystemSetting::get('maintenance_role_pelanggan', 'false') === 'true') {
+                $isRoleMaint = true;
+            } elseif (($user->isTeknisi() || $user->isToko()) && \App\Models\SystemSetting::get('maintenance_role_mitra', 'false') === 'true') {
+                $isRoleMaint = true;
+            } elseif (str_contains($userRoleSlug, 'verifikator') && \App\Models\SystemSetting::get('maintenance_role_verifikator', 'false') === 'true') {
+                $isRoleMaint = true;
+            } elseif (str_contains($userRoleSlug, 'resolusi') && \App\Models\SystemSetting::get('maintenance_role_resolusi', 'false') === 'true') {
+                $isRoleMaint = true;
+            }
+
+            if ($isGlobalMaint || $isRoleMaint) {
+                $maintMsg = \App\Models\SystemSetting::get('maintenance_message') 
+                    ?: 'Sistem REVARO sedang dalam pemeliharaan (maintenance) berkala oleh Super Admin.';
+                return response()->json([
+                    'message' => $maintMsg,
+                    'is_maintenance' => true
+                ], 503);
+            }
+        }
+
+        $roleContext = $request->query('role');
+        $roleName = $user->role ? $user->role->nama : '';
+
+        if ($roleContext === 'teknisi' && $user->teknisi) {
+            $profile = $user->teknisi;
+        } elseif ($roleContext === 'toko' && $user->toko) {
+            $profile = $user->toko;
+        } elseif ($roleContext === 'pelanggan' && $user->pelanggan) {
+            $profile = $user->pelanggan;
+        } elseif (str_contains($roleName, 'Teknisi') && $user->teknisi) {
+            $profile = $user->teknisi;
+        } elseif (str_contains($roleName, 'Toko') && $user->toko) {
+            $profile = $user->toko;
+        } elseif (str_contains($roleName, 'Pelanggan') && $user->pelanggan) {
+            $profile = $user->pelanggan;
+        } else {
+            $profile = $user->toko ?? $user->teknisi ?? $user->pelanggan;
+        }
+
+        $hasTeknisi = Teknisi::where('user_id', $user->id)->exists();
+        $hasToko = Toko::where('user_id', $user->id)->exists();
+        $hasPelanggan = Pelanggan::where('user_id', $user->id)->exists();
+
+        $unifiedSaldo = $user->getUnifiedSaldo();
 
         return response()->json([
             'user' => $user,
+            'role' => $user->role ? $user->role->nama : 'Pelanggan',
+            'profile' => $profile,
+            'saldo' => $unifiedSaldo,
+            'unified_saldo' => $unifiedSaldo,
+            'has_teknisi' => $hasTeknisi,
+            'has_toko' => $hasToko,
+            'has_pelanggan' => $hasPelanggan,
+            'teknisi' => $user->teknisi,
+            'toko' => $user->toko,
+            'pelanggan' => $user->pelanggan,
         ]);
     }
 
@@ -283,7 +474,18 @@ class AuthController extends Controller
     {
         $user = $request->user();
 
-        if ($user->isTeknisi()) {
+        $targetType = $request->input('target_type');
+        if (!$targetType) {
+            if ($user->teknisi && $user->teknisi->status === 'NEEDS_REVISION') {
+                $targetType = 'teknisi';
+            } elseif ($user->toko && $user->toko->status === 'NEEDS_REVISION') {
+                $targetType = 'toko';
+            } else {
+                $targetType = $user->isTeknisi() ? 'teknisi' : ($user->isToko() ? 'toko' : null);
+            }
+        }
+
+        if ($targetType === 'teknisi') {
             $profile = $user->teknisi;
             if (!$profile || $profile->status !== 'NEEDS_REVISION') {
                 return response()->json(['message' => 'Hanya profil dengan status NEEDS_REVISION yang dapat mengajukan ulang.'], 400);
@@ -305,8 +507,8 @@ class AuthController extends Controller
             $data = [
                 'hp' => $request->hp,
                 'kategori' => $request->kategori,
-                'latitude' => $request->latitude,
-                'longitude' => $request->longitude,
+                'latitude' => $request->latitude ?? $profile->latitude,
+                'longitude' => $request->longitude ?? $profile->longitude,
                 'status' => 'PENDING_REVIEW',
             ];
 
@@ -326,11 +528,11 @@ class AuthController extends Controller
             ]);
 
             return response()->json([
-                'message' => 'Dokumen berhasil diajukan ulang.',
+                'message' => 'Dokumen berhasil diajukan ulang ke antrean verifikasi.',
                 'profile' => $profile,
             ]);
 
-        } elseif ($user->isToko()) {
+        } elseif ($targetType === 'toko') {
             $profile = $user->toko;
             if (!$profile || $profile->status !== 'NEEDS_REVISION') {
                 return response()->json(['message' => 'Hanya profil dengan status NEEDS_REVISION yang dapat mengajukan ulang.'], 400);
@@ -446,52 +648,161 @@ class AuthController extends Controller
         $validator = Validator::make($request->all(), [
             'email' => 'required|email',
             'otp_code' => 'required|string|size:6',
+            'username' => 'nullable|string|min:3|max:30|regex:/^[a-zA-Z0-9_]+$/',
+            'new_password' => 'nullable|string|min:6',
+        ], [
+            'username.regex' => 'Username hanya boleh terdiri dari huruf, angka, dan garis bawah (_).',
+            'username.min' => 'Username minimal 3 karakter.',
+            'new_password.min' => 'Kata sandi baru minimal 6 karakter.'
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $otpRecord = \Illuminate\Support\Facades\DB::table('email_otps')
-            ->where('email', $request->email)
-            ->first();
+        $email = trim(strtolower($request->email));
+        $otpCode = trim((string)$request->otp_code);
 
-        if (!$otpRecord) {
+        // Prune expired OTPs
+        \Illuminate\Support\Facades\DB::table('email_otps')
+            ->where('expires_at', '<', now())
+            ->delete();
+
+        // Get all unexpired OTP records for this email (matching case-insensitively)
+        $activeRecords = \Illuminate\Support\Facades\DB::table('email_otps')
+            ->where(function ($q) use ($email, $request) {
+                $q->where('email', $email)
+                  ->orWhere('email', $request->email);
+            })
+            ->get();
+
+        if ($activeRecords->isEmpty()) {
             return response()->json(['message' => 'Kode OTP tidak ditemukan atau sudah tidak berlaku.'], 404);
         }
 
         // Brute force check: max 5 attempts allowed
-        if (($otpRecord->attempts ?? 0) >= 5) {
+        $exceededRecord = $activeRecords->firstWhere('attempts', '>=', 5);
+        if ($exceededRecord) {
             \App\Services\SecurityLoggerService::log(
                 event: 'OTP_BRUTE_FORCE_EXCEEDED',
-                details: "Max OTP attempts exceeded for email {$request->email}"
+                details: "Max OTP attempts exceeded for email {$email}"
             );
             return response()->json(['message' => 'Batas percobaan OTP telah terlampaui. Silakan minta kode OTP baru.'], 429);
         }
 
-        // Increment attempt counter
-        \Illuminate\Support\Facades\DB::table('email_otps')
-            ->where('id', $otpRecord->id)
-            ->increment('attempts');
+        // Check if any active OTP record matches the provided code
+        $matchingRecord = $activeRecords->firstWhere('otp_code', $otpCode);
 
-        // Check expiration
-        if (now()->greaterThan($otpRecord->expires_at)) {
-            return response()->json(['message' => 'Kode OTP telah kadaluarsa. Silakan minta kode baru.'], 400);
-        }
-
-        // Verify OTP match
-        if ($otpRecord->otp_code !== $request->otp_code) {
+        if (!$matchingRecord) {
+            // Increment attempt on the latest record
+            $latest = $activeRecords->sortByDesc('id')->first();
+            if ($latest) {
+                \Illuminate\Support\Facades\DB::table('email_otps')
+                    ->where('id', $latest->id)
+                    ->increment('attempts');
+            }
             return response()->json(['message' => 'Kode OTP yang Anda masukkan salah.'], 400);
         }
 
         // Mark user email_verified_at
-        $user = User::where('email', $request->email)->first();
+        $user = User::with('role')
+            ->where('email', $email)
+            ->orWhere('email', $request->email)
+            ->first();
+
         if ($user) {
+            // Check maintenance mode: Super Admin Pemilik & Monitoring is immune, other roles are blocked if maintenance is active
+            $isSuperAdmin = $user->isSuperAdminPemilik() || $user->isSuperAdminMonitoring();
+            if (!$isSuperAdmin) {
+                $isGlobalMaint = \App\Models\SystemSetting::get('maintenance_global', 'false') === 'true'
+                    || \App\Models\SystemSetting::get('maintenance_mode', 'false') === 'true';
+
+                $userRoleSlug = $user->role ? \App\Models\Role::$slugMap[$user->role->nama] ?? strtolower($user->role->nama) : '';
+
+                $isRoleMaint = false;
+                if ($user->isPelanggan() && \App\Models\SystemSetting::get('maintenance_role_pelanggan', 'false') === 'true') {
+                    $isRoleMaint = true;
+                } elseif (($user->isTeknisi() || $user->isToko()) && \App\Models\SystemSetting::get('maintenance_role_mitra', 'false') === 'true') {
+                    $isRoleMaint = true;
+                } elseif (str_contains($userRoleSlug, 'verifikator') && \App\Models\SystemSetting::get('maintenance_role_verifikator', 'false') === 'true') {
+                    $isRoleMaint = true;
+                } elseif (str_contains($userRoleSlug, 'resolusi') && \App\Models\SystemSetting::get('maintenance_role_resolusi', 'false') === 'true') {
+                    $isRoleMaint = true;
+                }
+
+                if ($isGlobalMaint || $isRoleMaint) {
+                    $maintMsg = \App\Models\SystemSetting::get('maintenance_message') 
+                        ?: 'Sistem REVARO sedang dalam pemeliharaan (maintenance) berkala oleh Super Admin.';
+                    return response()->json([
+                        'message' => $maintMsg,
+                        'is_maintenance' => true
+                    ], 503);
+                }
+            }
+
+            // Setup username pada login pertama jika disediakan
+            if ($request->filled('username')) {
+                $chosenUsername = strtolower(trim($request->username));
+                $existingOwner = \App\Models\SystemSetting::get('admin_user_lookup_' . $chosenUsername);
+                if ($existingOwner && (int)$existingOwner !== (int)$user->id) {
+                    return response()->json(['message' => 'Username ini sudah digunakan oleh admin lain. Silakan pilih username yang berbeda.'], 422);
+                }
+                $user->setAdminUsername($chosenUsername);
+            }
+
+            // Ganti password acak awal jika disediakan
+            if ($request->filled('new_password')) {
+                $user->password = Hash::make($request->new_password);
+                $user->setMustChangePassword(false);
+                $user->save();
+            }
+
+            // Check profile freeze or reject state
+            $profile = null;
+            if ($user->isTeknisi()) {
+                $profile = $user->teknisi;
+                if ($profile) {
+                    if ($profile->status === 'FROZEN') {
+                        return response()->json(['message' => 'Akun Teknisi Anda dibekukan (FROZEN).'], 403);
+                    }
+                    if ($profile->status === 'REJECTED') {
+                        return response()->json(['message' => 'Akun Teknisi Anda ditangguhkan.'], 403);
+                    }
+                    if ($profile->status === 'PENDING_REVIEW') {
+                        return response()->json([
+                            'message' => 'Akun Teknisi Anda sedang dalam proses peninjauan verifikasi Admin. Anda belum dapat masuk sebelum disetujui (ACC).',
+                            'status' => 'PENDING_REVIEW'
+                        ], 403);
+                    }
+                }
+            } elseif ($user->isToko()) {
+                $profile = $user->toko;
+                if ($profile) {
+                    if ($profile->status === 'FROZEN') {
+                        return response()->json(['message' => 'Akun Toko Anda dibekukan (FROZEN).'], 403);
+                    }
+                    if ($profile->status === 'REJECTED') {
+                        return response()->json(['message' => 'Akun Toko Anda ditangguhkan.'], 403);
+                    }
+                    if ($profile->status === 'PENDING_REVIEW') {
+                        return response()->json([
+                            'message' => 'Akun Toko Sparepart Anda sedang dalam proses peninjauan verifikasi Admin. Anda belum dapat masuk sebelum disetujui (ACC).',
+                            'status' => 'PENDING_REVIEW'
+                        ], 403);
+                    }
+                }
+            } elseif ($user->isPelanggan()) {
+                $profile = $user->pelanggan;
+            }
+
             $user->email_verified_at = now();
             $user->save();
 
-            // Delete used OTP
-            \Illuminate\Support\Facades\DB::table('email_otps')->where('id', $otpRecord->id)->delete();
+            // Delete all used OTPs for this email
+            \Illuminate\Support\Facades\DB::table('email_otps')
+                ->where('email', $email)
+                ->orWhere('email', $request->email)
+                ->delete();
 
             $token = $user->createToken('auth_token')->plainTextToken;
 
@@ -499,6 +810,7 @@ class AuthController extends Controller
                 'message' => 'Verifikasi email berhasil.',
                 'user' => $user,
                 'role' => $user->role ? $user->role->nama : null,
+                'profile' => $profile,
                 'access_token' => $token,
                 'token_type' => 'Bearer',
             ], 200);
@@ -520,7 +832,7 @@ class AuthController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $email = $request->email;
+        $email = trim(strtolower($request->email));
         $cacheKey = 'resend_otp_cooldown_' . md5($email);
 
         if (\Illuminate\Support\Facades\Cache::has($cacheKey)) {
@@ -533,7 +845,7 @@ class AuthController extends Controller
         }
 
         $otp = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
-        \Illuminate\Support\Facades\DB::table('email_otps')->where('email', $email)->delete();
+        \Illuminate\Support\Facades\DB::table('email_otps')->where('expires_at', '<', now())->delete();
         \Illuminate\Support\Facades\DB::table('email_otps')->insert([
             'email' => $email,
             'otp_code' => $otp,
@@ -542,6 +854,8 @@ class AuthController extends Controller
             'created_at' => now(),
             'updated_at' => now()
         ]);
+
+        \Illuminate\Support\Facades\Log::info("Resend OTP for {$email}: {$otp}");
 
         // Set 60-second cooldown in cache
         \Illuminate\Support\Facades\Cache::put($cacheKey, time() + 60, 60);
@@ -583,4 +897,88 @@ class AuthController extends Controller
             'user' => $user,
         ]);
     }
+
+    /**
+     * Update profile and password for any logged-in user (Pelanggan, Teknisi, Toko, Staf, Admin).
+     */
+    public function updateUserProfile(Request $request)
+    {
+        $user = $request->user();
+
+        $rules = [
+            'nama' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+            'hp' => 'nullable|string|max:25',
+            'telepon' => 'nullable|string|max:25',
+            'alamat' => 'nullable|string|max:500',
+            'kategori' => 'nullable|string|max:100',
+            'new_password' => 'nullable|string|min:6',
+            'password_confirmation' => 'nullable|string|same:new_password',
+            'foto' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+        ];
+
+        $validator = Validator::make($request->all(), $rules);
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $userUpdates = [
+            'nama' => $request->nama,
+            'email' => trim(strtolower($request->email)),
+        ];
+
+        if ($request->filled('new_password')) {
+            $userUpdates['password'] = Hash::make($request->new_password);
+        }
+
+        if ($request->hasFile('foto')) {
+            $destinationPath = public_path('uploads/avatars');
+            if (!file_exists($destinationPath)) {
+                mkdir($destinationPath, 0755, true);
+            }
+            $file = $request->file('foto');
+            $filename = 'avatar_' . $user->id . '_' . time() . '.' . $file->getClientOriginalExtension();
+            $file->move($destinationPath, $filename);
+            $userUpdates['foto'] = '/uploads/avatars/' . $filename;
+        }
+
+        $user->update($userUpdates);
+
+        // Update corresponding profile
+        $profile = null;
+        $hp = $request->hp ?? $request->telepon;
+        $alamat = $request->alamat;
+
+        if ($user->pelanggan) {
+            $user->pelanggan->update(array_filter([
+                'nama' => $request->nama,
+                'email' => trim(strtolower($request->email)),
+                'hp' => $hp,
+                'alamat' => $alamat,
+            ], fn($v) => !is_null($v)));
+            $profile = $user->pelanggan->fresh();
+        } elseif ($user->teknisi) {
+            $techUpdates = ['nama' => $request->nama];
+            if ($hp) $techUpdates['hp'] = $hp;
+            if ($alamat) $techUpdates['alamat'] = $alamat;
+            if ($request->filled('kategori')) $techUpdates['kategori'] = $request->kategori;
+            $user->teknisi->update($techUpdates);
+            $profile = $user->teknisi->fresh();
+        } elseif ($user->toko) {
+            $shopUpdates = ['nama' => $request->nama];
+            if ($hp) $shopUpdates['telepon'] = $hp;
+            if ($alamat) $shopUpdates['alamat'] = $alamat;
+            $user->toko->update($shopUpdates);
+            $profile = $user->toko->fresh();
+        }
+
+        $user->load('role');
+
+        return response()->json([
+            'message' => 'Profil dan pengaturan akun berhasil diperbarui.',
+            'user' => $user->fresh(),
+            'profile' => $profile,
+        ]);
+    }
 }
+

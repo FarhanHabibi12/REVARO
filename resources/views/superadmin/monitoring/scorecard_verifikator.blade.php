@@ -1,7 +1,7 @@
 @extends('layouts.superadmin')
 
 @section('title', 'Scorecard Verifikator — REVARO')
-@section('page-title', '📋 Scorecard Admin Verifikator')
+@section('page-title', 'Scorecard Admin Verifikator')
 @section('page-subtitle', 'Evaluasi kinerja harian admin verifikator — volume proses, akurasi keputusan, dan waktu rata-rata')
 
 @section('content')
@@ -51,7 +51,7 @@
 @section('scripts')
 <script>
 async function loadScorecard() {
-    const token = localStorage.getItem('admin_token');
+    const token = localStorage.getItem('admin_token') || localStorage.getItem('token');
     const days = document.getElementById('periodSelect').value;
     try {
         const r = await fetch(`/api/superadmin/scorecard-verifikator?days=${days}`, { headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' } });

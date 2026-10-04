@@ -24,18 +24,55 @@ class OrderLifecycleController extends Controller
     {
         $user = $request->user();
         $orders = collect();
+        $roleParam = strtolower($request->query('role', $request->query('as', '')));
+        $referer = strtolower($request->header('Referer', ''));
 
-        if ($user->isPelanggan() && $user->pelanggan) {
-            $orders = Order::with(['teknisi', 'transaksi', 'spareparts'])->where('pelanggan_id', $user->pelanggan->id)->latest()->get();
-        } elseif ($user->isTeknisi() && $user->teknisi) {
-            $orders = Order::with(['pelanggan', 'transaksi', 'spareparts'])->where('teknisi_id', $user->teknisi->id)->latest()->get();
-        } elseif ($user->isToko() && $user->toko) {
-            $orders = Order::with(['pelanggan', 'teknisi', 'transaksi', 'spareparts'])
-                ->whereHas('spareparts', function ($query) use ($user) {
-                    $query->where('toko_id', $user->toko->id);
-                })->latest()->get();
+        if ($roleParam === 'teknisi' || (!$roleParam && str_contains($referer, '/teknisi'))) {
+            if ($user->teknisi) {
+                $orders = Order::with(['pelanggan', 'teknisi', 'transaksi', 'spareparts.toko', 'rating'])
+                    ->where('teknisi_id', $user->teknisi->id)
+                    ->latest()
+                    ->get();
+            }
+        } elseif ($roleParam === 'toko' || (!$roleParam && str_contains($referer, '/toko'))) {
+            if ($user->toko) {
+                $orders = Order::with(['pelanggan', 'teknisi', 'transaksi', 'spareparts.toko', 'rating'])
+                    ->whereHas('spareparts', function ($query) use ($user) {
+                        $query->where('toko_id', $user->toko->id);
+                    })->latest()->get();
+            }
+        } elseif ($roleParam === 'pelanggan' || (!$roleParam && str_contains($referer, '/pelanggan'))) {
+            if ($user->pelanggan) {
+                $orders = Order::with(['teknisi', 'transaksi', 'spareparts.toko', 'rating'])
+                    ->where('pelanggan_id', $user->pelanggan->id)
+                    ->latest()
+                    ->get();
+            }
         } else {
-            $orders = Order::with(['pelanggan', 'teknisi', 'transaksi', 'spareparts'])->latest()->get();
+            // General multi-role fallback based on referrer or profile
+            if ($user->teknisi && str_contains($referer, 'teknisi')) {
+                $orders = Order::with(['pelanggan', 'teknisi', 'transaksi', 'spareparts.toko', 'rating'])
+                    ->where('teknisi_id', $user->teknisi->id)
+                    ->latest()
+                    ->get();
+            } elseif ($user->pelanggan) {
+                $orders = Order::with(['teknisi', 'transaksi', 'spareparts.toko', 'rating'])
+                    ->where('pelanggan_id', $user->pelanggan->id)
+                    ->latest()
+                    ->get();
+            } elseif ($user->teknisi) {
+                $orders = Order::with(['pelanggan', 'teknisi', 'transaksi', 'spareparts.toko', 'rating'])
+                    ->where('teknisi_id', $user->teknisi->id)
+                    ->latest()
+                    ->get();
+            } elseif ($user->toko) {
+                $orders = Order::with(['pelanggan', 'teknisi', 'transaksi', 'spareparts.toko', 'rating'])
+                    ->whereHas('spareparts', function ($query) use ($user) {
+                        $query->where('toko_id', $user->toko->id);
+                    })->latest()->get();
+            } else {
+                $orders = Order::with(['pelanggan', 'teknisi', 'transaksi', 'spareparts.toko', 'rating'])->latest()->get();
+            }
         }
 
         return response()->json([
@@ -59,6 +96,28 @@ class OrderLifecycleController extends Controller
             ->latest()
             ->get();
 
+        $teknisi = $user->teknisi;
+        $tLat = $teknisi->latitude;
+        $tLon = $teknisi->longitude;
+
+        if ($tLat && $tLon) {
+            $orders = $orders->map(function ($ord) use ($tLat, $tLon) {
+                if ($ord->latitude && $ord->longitude) {
+                    $dLat = deg2rad($ord->latitude - $tLat);
+                    $dLon = deg2rad($ord->longitude - $tLon);
+                    $a = sin($dLat / 2) * sin($dLat / 2) +
+                         cos(deg2rad($tLat)) * cos(deg2rad($ord->latitude)) *
+                         sin($dLon / 2) * sin($dLon / 2);
+                    $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+                    $dist = 6371 * $c; // km
+                    $ord->distance_km = round($dist, 1);
+                } else {
+                    $ord->distance_km = null;
+                }
+                return $ord;
+            });
+        }
+
         return response()->json([
             'orders' => $orders
         ]);
@@ -71,15 +130,17 @@ class OrderLifecycleController extends Controller
     {
         $user = $request->user();
 
-        if ($user->isPelanggan() && $order->pelanggan_id !== $user->pelanggan?->id) {
-            return response()->json(['message' => 'Forbidden.'], 403);
-        }
-        if ($user->isTeknisi() && $order->teknisi_id !== $user->teknisi?->id) {
+        $isPelanggan = $user->pelanggan && $order->pelanggan_id === $user->pelanggan->id;
+        $isTeknisi = $user->teknisi && $order->teknisi_id === $user->teknisi->id;
+        $isToko = $user->toko && $order->spareparts()->where('toko_id', $user->toko->id)->exists();
+        $isAdmin = $user->isAdminSuper() || $user->isAdminVerifikator() || $user->isAdminResolusi();
+
+        if (!$isPelanggan && !$isTeknisi && !$isToko && !$isAdmin) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
         return response()->json([
-            'order' => $order->load(['pelanggan', 'teknisi', 'transaksi', 'spareparts'])
+            'order' => $order->load(['pelanggan', 'teknisi', 'transaksi', 'spareparts.toko'])
         ]);
     }
 
@@ -112,6 +173,11 @@ class OrderLifecycleController extends Controller
 
         $kodeOrder = 'REV-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(3)));
 
+        // Check if premium 20km radius feature is selected (default regular: 7km)
+        $isPremium = (bool) $request->input('is_premium', false) || (int) $request->input('search_radius', 7) >= 20;
+        $maxRadius = $isPremium ? 20 : 7;
+        $premiumFee = $isPremium ? (float) \App\Models\SystemSetting::get('maps_premium_fee', 25000) : 0.0;
+
         $order = Order::create([
             'pelanggan_id' => $pelanggan->id,
             'teknisi_id' => null,
@@ -131,14 +197,21 @@ class OrderLifecycleController extends Controller
             'tanggal_servis' => now(),
             'latitude' => $request->latitude ?? -6.2088,
             'longitude' => $request->longitude ?? 106.8456,
+            'is_premium' => $isPremium,
+            'biaya_prioritas' => $premiumFee,
         ]);
 
-        // Trigger asynchronous dispatch job
-        DispatchOrderJob::dispatch($order->id);
+        // Trigger asynchronous dispatch job (initial: 7km, max: 7km or 20km)
+        DispatchOrderJob::dispatch($order->id, 7, $maxRadius);
 
         return response()->json([
-            'message' => 'SOS berhasil diajukan. Sistem sedang mencari teknisi terdekat...',
-            'order' => $order
+            'message' => $isPremium 
+                ? 'SOS berhasil diajukan dengan Fitur Premium (Jangkauan Prioritas hingga 20 KM, Biaya Tambahan Rp ' . number_format($premiumFee, 0, ',', '.') . '). Mencari teknisi...' 
+                : 'SOS berhasil diajukan (Radius 7 KM). Sistem sedang mencari teknisi terdekat...',
+            'order' => $order,
+            'is_premium' => $isPremium,
+            'biaya_prioritas' => $premiumFee,
+            'max_radius_km' => $maxRadius
         ], 201);
     }
 
@@ -188,7 +261,7 @@ class OrderLifecycleController extends Controller
 
             return response()->json([
                 'message' => 'Pesanan berhasil diterima.',
-                'order' => $lockedOrder
+                'order' => $lockedOrder->fresh(['pelanggan', 'teknisi', 'transaksi', 'spareparts.toko'])
             ]);
         });
     }
@@ -288,7 +361,7 @@ class OrderLifecycleController extends Controller
                 'qty' => $item['qty'],
                 'harga' => $part->harga,
                 'subtotal' => $subtotal,
-                'status' => 'PENDING_SHOP', // Sent to Shop for confirmation
+                'status' => 'PENDING_CUSTOMER', // Sent to Customer for approval first
             ]);
         }
 
@@ -456,6 +529,8 @@ class OrderLifecycleController extends Controller
 
         // Calculate bill
         $biayaJasa = 100000.00; // Flat mock fee
+        $biayaPrioritas = ($order->is_premium && $order->biaya_prioritas > 0) ? (float) $order->biaya_prioritas : 0.00;
+        $biayaJasa += $biayaPrioritas;
         $biayaPart = 0.00;
 
         foreach ($order->spareparts as $part) {
@@ -589,7 +664,18 @@ class OrderLifecycleController extends Controller
 
         $transaksi = $order->transaksi;
 
-        if (!$transaksi || $transaksi->status_escrow !== 'HELD') {
+        if (!$transaksi) {
+            return response()->json(['message' => 'Transaksi tidak ditemukan.'], 404);
+        }
+
+        if ($transaksi->status_escrow === 'RELEASED') {
+            return response()->json([
+                'message' => 'Dana telah berhasil dicairkan ke pihak teknisi dan toko mitra.',
+                'order' => $order->fresh()->load('transaksi')
+            ], 200);
+        }
+
+        if ($transaksi->status_escrow !== 'HELD') {
             return response()->json(['message' => 'Transaksi tidak berada di escrow HELD.'], 400);
         }
 
@@ -717,6 +803,144 @@ class OrderLifecycleController extends Controller
 
                 return response()->json(['message' => 'Order dibatalkan secara sepihak oleh Teknisi. Penalti WARNING tercatat.']);
             }
+        });
+    }
+
+    /**
+     * Submit rating for completed order.
+     */
+    public function submitRating(Request $request, Order $order)
+    {
+        $user = $request->user();
+
+        // Customer access check
+        if (!$user->isPelanggan() || !$user->pelanggan || $order->pelanggan_id !== $user->pelanggan->id) {
+            return response()->json(['message' => 'Hanya Pelanggan pemesan yang dapat memberikan ulasan.'], 403);
+        }
+
+        // Validate rating inputs
+        $validator = Validator::make($request->all(), [
+            'skor' => 'required|integer|min:1|max:5',
+            'komentar' => 'nullable|string|max:1000',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $skor = (int) $request->skor;
+        $komentar = $request->komentar ?: '';
+
+        return DB::transaction(function () use ($order, $user, $skor, $komentar) {
+            $teknisi = $order->teknisi;
+            if (!$teknisi) {
+                return response()->json(['message' => 'Teknisi tidak ditemukan pada pesanan ini.'], 404);
+            }
+
+            // Check existing rating
+            $existingRating = \App\Models\Rating::where('order_id', $order->id)
+                ->where('dari_user_id', $user->id)
+                ->first();
+
+            if ($existingRating) {
+                return response()->json(['message' => 'Anda sudah memberikan penilaian untuk pesanan ini.'], 400);
+            }
+
+            // Create rating
+            $rating = \App\Models\Rating::create([
+                'order_id' => $order->id,
+                'dari_user_id' => $user->id,
+                'ke_user_id' => $teknisi->user_id,
+                'skor' => $skor,
+                'komentar' => $komentar,
+            ]);
+
+            // Recalculate average rating of technician
+            $avgScore = \App\Models\Rating::where('ke_user_id', $teknisi->user_id)->avg('skor');
+            $roundedAvg = round($avgScore, 2);
+            $teknisi->update(['rating' => $roundedAvg]);
+
+            // Notification to technician
+            Notifikasi::create([
+                'user_id' => $teknisi->user_id,
+                'judul' => 'Ulasan Baru Diterima',
+                'pesan' => "Pelanggan memberikan rating {$skor}/5 untuk order {$order->kode_order}. Rating akumulasi Anda kini {$roundedAvg}.",
+                'dibaca' => false,
+            ]);
+
+            // Handling bad / severe rating
+            $isVeryBad = ($skor <= 2);
+            $isCritical = ($skor == 1 || $roundedAvg < 3.0);
+
+            if ($isVeryBad) {
+                // Record violation penalty log
+                PelanggaranLog::create([
+                    'teknisi_id' => $teknisi->id,
+                    'toko_id' => null,
+                    'dispute_id' => null,
+                    'jenis_pelanggaran' => "Rating Buruk dari Pelanggan (Bintang {$skor}/5): " . ($komentar ?: 'Keluhan performa pengerjaan'),
+                    'tingkat_penalti' => $isCritical ? 'BERAT' : 'SEDANG',
+                ]);
+
+                // Reputation damage
+                if ($isCritical) {
+                    $teknisi->update(['tier' => 'Bronze']);
+                }
+
+                // Escalation to Admin Resolusi
+                $adminResolusiRole = \App\Models\Role::where('nama', 'Admin Resolusi')
+                    ->orWhere('nama', 'admin-resolusi')
+                    ->first();
+
+                $adminResolusi = null;
+                if ($adminResolusiRole) {
+                    $adminResolusi = \App\Models\User::where('role_id', $adminResolusiRole->id)
+                        ->where('is_active', true)
+                        ->leftJoin('dispute', 'users.id', '=', 'dispute.admin_id')
+                        ->select('users.id')
+                        ->selectRaw('count(case when dispute.status != "RESOLVED" then 1 end) as open_disputes_count')
+                        ->groupBy('users.id')
+                        ->orderBy('open_disputes_count', 'asc')
+                        ->orderBy('users.id', 'asc')
+                        ->first();
+                }
+
+                $dispute = \App\Models\Dispute::create([
+                    'order_id' => $order->id,
+                    'admin_id' => $adminResolusi ? $adminResolusi->id : null,
+                    'status' => 'INVESTIGATING',
+                    'alasan' => "Eskalasi Mutu Servis: Rating Buruk ({$skor} Bintang) untuk Teknisi {$teknisi->nama}. Ulasan Pelanggan: \"{$komentar}\"",
+                    'sla_deadline' => \Carbon\Carbon::now()->addHours(24),
+                ]);
+
+                // Note: Dispute record is created above for Admin Resolusi investigation,
+                // while order remains COMPLETED so customer and technician active dashboard screens reset properly.
+
+                // Notify Admin Resolusi
+                if ($adminResolusi) {
+                    \App\Models\Notifikasi::create([
+                        'user_id' => $adminResolusi->id,
+                        'judul' => '⚠️ Investigasi Resolusi: Rating Sangat Buruk',
+                        'pesan' => "Order {$order->kode_order} menerima rating bintang {$skor} untuk Teknisi {$teknisi->nama}. Kasus otomatis ditugaskan kepada Anda untuk investigasi mutu layanan. Batas SLA: 24 Jam.",
+                        'dibaca' => false,
+                    ]);
+                }
+
+                // Warning notification to technician
+                \App\Models\Notifikasi::create([
+                    'user_id' => $teknisi->user_id,
+                    'judul' => '⚠️ Peringatan Kinerja Platform',
+                    'pesan' => "Ulasan rendah ({$skor} Bintang) pada order {$order->kode_order} telah dilaporkan ke Tim Admin Resolusi untuk evaluasi mutu layanan.",
+                    'dibaca' => false,
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Ulasan berhasil disimpan. Terima kasih atas masukan Anda!',
+                'rating' => $rating,
+                'teknisi_rating' => $roundedAvg,
+            ], 201);
         });
     }
 }

@@ -48,10 +48,12 @@ class AdminAccountController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'role_slug' => 'required|in:admin-verifikator,admin-resolusi,super-admin-monitoring',
+            'role_slug' => 'required|in:admin-verifikator,admin-resolusi',
             'nama' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:6',
+            'password' => 'nullable|string|min:6',
+        ], [
+            'role_slug.in' => 'Role yang dapat didaftarkan hanya Admin Verifikator dan Admin Resolusi.',
         ]);
 
         if ($validator->fails()) {
@@ -68,17 +70,26 @@ class AdminAccountController extends Controller
             return response()->json(['message' => 'Role tidak ditemukan di database.'], 500);
         }
 
+        // Full Sistem: Generate password acak dari sistem otomatis
+        $rawPassword = $request->filled('password') && app()->environment('testing')
+            ? $request->password 
+            : \Illuminate\Support\Str::random(10);
+
         $user = User::create([
             'role_id' => $role->id,
             'nama' => $request->nama,
             'email' => $request->email,
-            'password' => Hash::make($request->password),
+            'password' => Hash::make($rawPassword),
             'is_active' => true,
         ]);
+
+        // Tandai bahwa admin baru wajib ganti password awal & belum memiliki username
+        $user->setMustChangePassword(true);
 
         return response()->json([
             'message' => 'Akun internal admin berhasil dibuat.',
             'user' => $user,
+            'temporary_password' => $rawPassword,
         ], 201);
     }
 
@@ -203,5 +214,75 @@ class AdminAccountController extends Controller
         return response()->json([
             'message' => 'Kata sandi pribadi berhasil diperbarui.',
         ]);
+    }
+
+    /**
+     * Setup username and first-time credentials after first login.
+     */
+    public function setupFirstTime(Request $request)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
+        // Support backward compatibility jika dikirim dengan field 'password'
+        if ($request->filled('password') && !$request->filled('new_password')) {
+            $request->merge(['new_password' => $request->password]);
+            if ($request->filled('password_confirmation') && !$request->filled('new_password_confirmation')) {
+                $request->merge(['new_password_confirmation' => $request->password_confirmation]);
+            }
+        }
+
+        $rules = [
+            'username' => 'required|string|min:3|max:30|regex:/^[a-zA-Z0-9_]+$/',
+        ];
+
+        // Jika akun ditandai wajib ubah kata sandi, maka new_password wajib diisi dan confirmed
+        if ($user->must_change_password) {
+            $rules['new_password'] = 'required|string|min:6|confirmed';
+        } else {
+            $rules['new_password'] = 'nullable|string|min:6|confirmed';
+        }
+
+        $messages = [
+            'username.required' => 'Username wajib diisi.',
+            'username.min' => 'Username minimal 3 karakter.',
+            'username.regex' => 'Username hanya boleh terdiri dari huruf, angka, dan underscore (_).',
+            'new_password.required' => 'Sebagai staf admin, Anda wajib mengganti kata sandi awal dengan kata sandi baru pilihan Anda.',
+            'new_password.min' => 'Kata sandi minimal 6 karakter.',
+            'new_password.confirmed' => 'Konfirmasi kata sandi baru tidak cocok.',
+        ];
+
+        $validator = Validator::make($request->all(), $rules, $messages);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $chosenUsername = strtolower(trim($request->username));
+        $existingOwner = \App\Models\SystemSetting::get('admin_user_lookup_' . $chosenUsername);
+        if ($existingOwner && (int)$existingOwner !== (int)$user->id) {
+            return response()->json(['message' => 'Username ini sudah digunakan oleh admin lain. Silakan pilih username yang berbeda.'], 422);
+        }
+
+        $user->setAdminUsername($chosenUsername);
+
+        if ($request->filled('new_password')) {
+            $user->password = Hash::make($request->new_password);
+            $user->setMustChangePassword(false);
+            $user->save();
+        }
+
+        \App\Models\ActivityLog::create([
+            'user_id' => $user->id,
+            'aktivitas' => 'Menyelesaikan setup akun administrator (username & pembaruan kata sandi)',
+            'ip_address' => $request->ip(),
+        ]);
+
+        return response()->json([
+            'message' => 'Username dan kata sandi baru berhasil disimpan.',
+            'user' => $user->fresh(),
+        ], 200);
     }
 }

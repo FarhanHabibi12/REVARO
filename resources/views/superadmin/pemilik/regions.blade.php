@@ -1,7 +1,7 @@
 @extends('layouts.superadmin')
 
 @section('title', 'Wilayah Operasional — REVARO')
-@section('page-title', '🗺️ Data Master — Wilayah Operasional')
+@section('page-title', 'Data Master — Wilayah Operasional')
 @section('page-subtitle', 'Kelola cakupan wilayah layanan REVARO — tambah, aktifkan, atau nonaktifkan area operasional')
 
 @section('content')
@@ -44,7 +44,7 @@
     <div class="card p-6">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-sm font-extrabold text-white">Daftar Wilayah Operasional</h3>
-            <input type="text" id="searchReg" class="input-field" style="width:220px;" placeholder="🔍 Cari wilayah..." oninput="filterReg()">
+            <input type="text" id="searchReg" class="input-field" style="width:220px;" placeholder="Cari wilayah..." oninput="filterReg()">
         </div>
         <div class="overflow-x-auto">
             <table class="data-table">

@@ -54,13 +54,28 @@
                 <div class="pt-4 border-t border-slate-800 space-y-3">
                     <label class="text-[11px] font-bold text-orange-400 uppercase tracking-wider block">UBAH KATA SANDI (OPSIONAL)</label>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input type="password" id="verifikatorNewPassword" minlength="6" class="input-field" placeholder="Kata sandi baru">
-                        <input type="password" id="verifikatorConfirmPassword" minlength="6" class="input-field" placeholder="Ulangi kata sandi">
+                        <div class="relative">
+                            <input type="password" id="verifikatorNewPassword" minlength="6" class="input-field pr-10" placeholder="Kata sandi baru">
+                            <button type="button" onclick="toggleGenericPassword('verifikatorNewPassword', 'verifEye1')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white">
+                                <span id="verifEye1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                </span>
+                            </button>
+                        </div>
+                        <div class="relative">
+                            <input type="password" id="verifikatorConfirmPassword" minlength="6" class="input-field pr-10" placeholder="Ulangi kata sandi">
+                            <button type="button" onclick="toggleGenericPassword('verifikatorConfirmPassword', 'verifEye2')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white">
+                                <span id="verifEye2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                </span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
                 <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs py-3.5 px-6 rounded-xl border border-slate-700 transition shadow-lg flex items-center justify-center gap-2">
-                    <span>✓</span> Simpan Perubahan Profil & Password
+                    <svg class="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    <span>Simpan Perubahan Profil &amp; Password</span>
                 </button>
             </form>
         </div>
@@ -134,8 +149,8 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <!-- Shortcut 1: Antrian Pending -->
             <a href="/admin/verifikator/dashboard" class="card p-5 hover:border-orange-500/50 transition group flex items-center gap-4">
-                <div class="w-12 h-12 rounded-xl bg-orange-500/10 text-orange-400 flex items-center justify-center text-xl border border-orange-500/20 group-hover:scale-110 transition">
-                    ⏳
+                <div class="w-12 h-12 rounded-xl bg-orange-500/10 text-orange-400 flex items-center justify-center border border-orange-500/20 group-hover:scale-110 transition">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 </div>
                 <div>
                     <h4 class="text-sm font-extrabold text-white group-hover:text-orange-400 transition">Antrian Pending</h4>
@@ -145,8 +160,8 @@
 
             <!-- Shortcut 2: Antrian Resubmit -->
             <a href="/admin/verifikator/resubmitted" class="card p-5 hover:border-blue-500/50 transition group flex items-center gap-4">
-                <div class="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center text-xl border border-blue-500/20 group-hover:scale-110 transition">
-                    🔄
+                <div class="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20 group-hover:scale-110 transition">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                 </div>
                 <div>
                     <h4 class="text-sm font-extrabold text-white group-hover:text-blue-400 transition">Antrian Resubmit</h4>
@@ -156,8 +171,8 @@
 
             <!-- Shortcut 3: Re-Verifikasi Berkala -->
             <a href="/admin/verifikator/reverifications" class="card p-5 hover:border-emerald-500/50 transition group flex items-center gap-4">
-                <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-xl border border-emerald-500/20 group-hover:scale-110 transition">
-                    🕐
+                <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20 group-hover:scale-110 transition">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 </div>
                 <div>
                     <h4 class="text-sm font-extrabold text-white group-hover:text-emerald-400 transition">Re-Verifikasi Berkala</h4>
@@ -198,6 +213,10 @@
         const formData = new FormData();
         formData.append('nama', nama);
         formData.append('email', email);
+        if (newPassword) {
+            formData.append('new_password', newPassword);
+            formData.append('password_confirmation', confirmPassword);
+        }
 
         try {
             Swal.fire({
@@ -208,28 +227,29 @@
                 didOpen: () => Swal.showLoading()
             });
 
-            const res = await fetch('/api/admin/profile', {
+            const res = await fetch('/api/user/profile', {
                 method: 'POST',
-                headers: { 'Authorization': 'Bearer ' + token },
+                headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' },
                 body: formData
             });
 
+            const data = await res.json();
             if (res.ok) {
-                const data = await res.json();
                 user.nama = data.user.nama;
                 user.email = data.user.email;
                 localStorage.setItem('admin_user', JSON.stringify(user));
                 document.getElementById('displayVerifikatorName').textContent = data.user.nama;
+                document.getElementById('badgeVerifikatorInitial').textContent = data.user.nama.charAt(0).toUpperCase();
+                document.getElementById('verifikatorNewPassword').value = '';
+                document.getElementById('verifikatorConfirmPassword').value = '';
 
-                if (newPassword) {
-                    await fetch('/api/admin/profile/password', {
-                        method: 'POST',
-                        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ current_password: '12345678', new_password: newPassword, new_password_confirmation: confirmPassword })
-                    });
+                Swal.fire({ title: 'Profil Disimpan!', text: 'Informasi akun Admin Verifikator dan kata sandi berhasil diperbarui.', icon: 'success', background: '#1E293B', color: '#E2E8F0', confirmButtonColor: '#F97316' });
+            } else {
+                let errMsg = data.message || 'Terjadi kesalahan saat menyimpan.';
+                if (data.errors) {
+                    errMsg = Object.values(data.errors).flat().join('<br>');
                 }
-
-                Swal.fire({ title: 'Profil Disimpan!', text: 'Informasi akun Admin Verifikator berhasil diperbarui.', icon: 'success', background: '#1E293B', color: '#E2E8F0', confirmButtonColor: '#F97316' });
+                Swal.fire({ title: 'Gagal', html: errMsg, icon: 'error', background: '#1E293B', color: '#E2E8F0', confirmButtonColor: '#F97316' });
             }
         } catch (e) {
             console.error(e);

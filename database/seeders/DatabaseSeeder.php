@@ -53,7 +53,7 @@ class DatabaseSeeder extends Seeder
 
         // 2. Seed Admin Accounts
         $pemilik = User::updateOrCreate(
-            ['email' => 'pemilik@revaro.com'],
+            ['email' => 'srz.senn@gmail.com'],
             [
                 'nama' => 'Salman',
                 'password' => Hash::make('12345678'),
@@ -65,9 +65,9 @@ class DatabaseSeeder extends Seeder
         );
 
         $verifikator = User::updateOrCreate(
-            ['email' => 'verifikator@revaro.com'],
+            ['email' => 'farhanhabibi087@gmail.com'],
             [
-                'nama' => 'Jero',
+                'nama' => 'Farhan Habibi',
                 'password' => Hash::make('12345678'),
                 'role_id' => $roleVerifikator,
                 'foto' => 'admins/verifikator1.png',
@@ -77,9 +77,9 @@ class DatabaseSeeder extends Seeder
         );
 
         $resolusi = User::updateOrCreate(
-            ['email' => 'resolusi@revaro.com'],
+            ['email' => 'ibnunugroho1900@gmail.com'],
             [
-                'nama' => 'Nunu Nigas' ,
+                'nama' => 'Ibnu Nugroho',
                 'password' => Hash::make('12345678'),
                 'role_id' => $roleResolusi,
                 'foto' => 'admins/resolusi1.png',
@@ -87,6 +87,17 @@ class DatabaseSeeder extends Seeder
                 'email_verified_at' => now(),
             ]
         );
+
+        // Reset admin meta untuk akun-akun seeder agar siap uji login pertama kali
+        \App\Models\SystemSetting::whereIn('key', [
+            'admin_username_' . $pemilik->id,
+            'admin_username_' . $verifikator->id,
+            'admin_username_' . $resolusi->id,
+            'admin_must_change_pwd_' . $pemilik->id,
+            'admin_must_change_pwd_' . $verifikator->id,
+            'admin_must_change_pwd_' . $resolusi->id,
+        ])->delete();
+        \App\Models\SystemSetting::where('key', 'like', 'admin_user_lookup_%')->delete();
 
         // 3. Seed JasaServis (Service Categories)
         JasaServis::firstOrCreate(

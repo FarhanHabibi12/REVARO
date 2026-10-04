@@ -243,4 +243,242 @@ class MonitoringDashboardController extends Controller
             'dispute_resolved' => $disputeResolved,
         ]);
     }
+
+    /**
+     * Scorecard Admin Verifikator from real database records.
+     */
+    public function scorecardVerifikator(Request $request)
+    {
+        $days = (int) $request->query('days', 30);
+        $since = Carbon::now()->subDays($days);
+
+        $verifikators = User::where('role_id', 4)
+            ->orWhereHas('role', fn($q) => $q->where('nama', 'like', '%Verifikator%'))
+            ->get();
+
+        $scorecard = [];
+
+        foreach ($verifikators as $admin) {
+            // Get decisions made by this admin
+            $decisions = \App\Models\PendaftaranVerifikasi::where('admin_id', $admin->id)
+                ->where('updated_at', '>=', $since)
+                ->get();
+
+            $approvedCount = $decisions->where('status', 'APPROVED')->count();
+            $rejectedCount = $decisions->where('status', 'REJECTED')->count();
+            $revisionCount = $decisions->where('status', 'NEEDS_REVISION')->count();
+            $totalProcessed = $approvedCount + $rejectedCount + $revisionCount;
+
+            // Calculate average response time in hours
+            $totalHours = 0;
+            $under24h = 0;
+            foreach ($decisions as $d) {
+                $hours = Carbon::parse($d->created_at)->diffInHours($d->updated_at);
+                $totalHours += $hours;
+                if ($hours <= 24) {
+                    $under24h++;
+                }
+            }
+            $avgHours = $totalProcessed > 0 ? round($totalHours / $totalProcessed, 1) : 0;
+            $slaPct = $totalProcessed > 0 ? round(($under24h / $totalProcessed) * 100, 1) : 100;
+
+            // Rating / Performance badge
+            $perfRating = 'Sangat Baik';
+            if ($slaPct < 80) $perfRating = 'Perlu Peningkatan';
+            elseif ($slaPct < 90) $perfRating = 'Sesuai Target';
+
+            $scorecard[] = [
+                'id' => $admin->id,
+                'nama' => $admin->nama,
+                'email' => $admin->email,
+                'total_proses' => $totalProcessed,
+                'total_diproses' => $totalProcessed,
+                'approved' => $approvedCount,
+                'approved_count' => $approvedCount,
+                'rejected' => $rejectedCount,
+                'rejected_count' => $rejectedCount,
+                'revisi' => $revisionCount,
+                'avg_waktu_jam' => $avgHours,
+                'avg_response_jam' => $avgHours,
+                'skor_kinerja' => $slaPct,
+                'sla_compliance_pct' => $slaPct,
+                'performance_rating' => $perfRating,
+                'status' => $admin->status ?? 'ACTIVE',
+                'last_active' => $decisions->max('updated_at') ? Carbon::parse($decisions->max('updated_at'))->translatedFormat('d M Y, H:i') : 'Belum Ada',
+            ];
+        }
+
+        return response()->json($scorecard);
+    }
+
+    /**
+     * Scorecard Admin Resolusi from real database records.
+     */
+    public function scorecardResolusi(Request $request)
+    {
+        $days = (int) $request->query('days', 30);
+        $since = Carbon::now()->subDays($days);
+
+        $resolusis = User::where('role_id', 5)
+            ->orWhereHas('role', fn($q) => $q->where('nama', 'like', '%Resolusi%'))
+            ->get();
+
+        $scorecard = [];
+
+        foreach ($resolusis as $admin) {
+            $disputes = Dispute::where('admin_id', $admin->id)
+                ->where('created_at', '>=', $since)
+                ->get();
+
+            $totalDisputes = $disputes->count();
+            $resolvedCount = $disputes->where('status', 'RESOLVED')->count();
+            $activeCount = $disputes->whereIn('status', ['OPEN', 'INVESTIGATING', 'ESCALATED'])->count();
+            $escalatedCount = $disputes->where('status', 'ESCALATED')->count();
+
+            $totalHours = 0;
+            $breachedCount = 0;
+            $onTimeCount = 0;
+            foreach ($disputes as $disp) {
+                if ($disp->status === 'RESOLVED' && $disp->resolved_at) {
+                    $hours = Carbon::parse($disp->created_at)->diffInHours($disp->resolved_at);
+                    $totalHours += $hours;
+                    if ($disp->sla_deadline && Carbon::parse($disp->resolved_at)->gt(Carbon::parse($disp->sla_deadline))) {
+                        $breachedCount++;
+                    } else {
+                        $onTimeCount++;
+                    }
+                } elseif ($disp->sla_deadline && Carbon::now()->gt(Carbon::parse($disp->sla_deadline))) {
+                    $breachedCount++;
+                }
+            }
+            $avgHours = $resolvedCount > 0 ? round($totalHours / $resolvedCount, 1) : 0;
+            $slaPct = $totalDisputes > 0 ? round((max(0, $totalDisputes - $breachedCount) / $totalDisputes) * 100, 1) : 100;
+
+            $perfRating = 'Sangat Baik';
+            if ($slaPct < 75) $perfRating = 'Perlu Akselerasi';
+            elseif ($slaPct < 90) $perfRating = 'Optimal';
+
+            $scorecard[] = [
+                'id' => $admin->id,
+                'nama' => $admin->nama,
+                'email' => $admin->email,
+                'total_ditangani' => $totalDisputes,
+                'total_dispute' => $totalDisputes,
+                'resolved' => $resolvedCount,
+                'resolved_count' => $resolvedCount,
+                'eskalasi' => $escalatedCount,
+                'active_count' => $activeCount,
+                'sla_breached' => $breachedCount,
+                'avg_waktu_jam' => $avgHours,
+                'avg_resolution_jam' => $avgHours,
+                'skor_kinerja' => $slaPct,
+                'sla_compliance_pct' => $slaPct,
+                'performance_rating' => $perfRating,
+                'status' => $admin->status ?? 'ACTIVE',
+                'last_active' => $disputes->max('updated_at') ? Carbon::parse($disputes->max('updated_at'))->translatedFormat('d M Y, H:i') : 'Belum Ada',
+            ];
+        }
+
+        return response()->json($scorecard);
+    }
+
+    /**
+     * Trends & Analytics aggregated from real database records.
+     */
+    public function getTrends(Request $request)
+    {
+        $days = (int) $request->query('days', 30);
+        $since = Carbon::now()->subDays($days);
+
+        $newTechCount = Teknisi::where('created_at', '>=', $since)->count();
+        $newShopCount = Toko::where('created_at', '>=', $since)->count();
+        $newDisputeCount = Dispute::where('created_at', '>=', $since)->count();
+        $newViolationCount = \App\Models\PelanggaranLog::where('created_at', '>=', $since)->count();
+
+        // Interval buckets for charts
+        $intervalDays = max(1, (int) ceil($days / 7));
+        $labels = [];
+        $techSeries = [];
+        $shopSeries = [];
+        $disputeSeries = [];
+        $violationSeries = [];
+
+        for ($i = 6; $i >= 0; $i--) {
+            $bucketStart = Carbon::now()->subDays(($i + 1) * $intervalDays);
+            $bucketEnd = Carbon::now()->subDays($i * $intervalDays);
+
+            $labels[] = $bucketEnd->format('d M');
+            $techSeries[] = Teknisi::whereBetween('created_at', [$bucketStart, $bucketEnd])->count();
+            $shopSeries[] = Toko::whereBetween('created_at', [$bucketStart, $bucketEnd])->count();
+            $disputeSeries[] = Dispute::whereBetween('created_at', [$bucketStart, $bucketEnd])->count();
+            $violationSeries[] = \App\Models\PelanggaranLog::whereBetween('created_at', [$bucketStart, $bucketEnd])->count();
+        }
+
+        return response()->json([
+            'teknisi_baru' => $newTechCount,
+            'toko_baru' => $newShopCount,
+            'dispute_baru' => $newDisputeCount,
+            'pelanggaran_baru' => $newViolationCount,
+            'labels' => $labels,
+            'teknisi_series' => $techSeries,
+            'toko_series' => $shopSeries,
+            'dispute_series' => $disputeSeries,
+            'pelanggaran_series' => $violationSeries,
+        ]);
+    }
+
+    /**
+     * SLA Alerts & Anomalies from real database records.
+     */
+    public function getSlaAlerts(Request $request)
+    {
+        $alerts = collect();
+
+        // 1. Overdue or urgent disputes
+        $disputes = Dispute::with(['admin', 'order'])
+            ->whereIn('status', ['OPEN', 'INVESTIGATING', 'ESCALATED'])
+            ->orderBy('sla_deadline', 'asc')
+            ->get();
+
+        foreach ($disputes as $d) {
+            $deadline = $d->sla_deadline ? Carbon::parse($d->sla_deadline) : Carbon::parse($d->created_at)->addHours(48);
+            $isBreached = $deadline->lt(Carbon::now());
+            $hoursLeft = round(Carbon::now()->diffInHours($deadline, false));
+
+            $alerts->push([
+                'id' => $d->id,
+                'order_id' => $d->order_id,
+                'alasan' => $d->alasan ?? 'Komplain pesanan memerlukan investigasi',
+                'status' => $d->status,
+                'sla_deadline' => $deadline->toIso8601String(),
+                'is_breached' => $isBreached,
+                'hours_left' => $hoursLeft,
+                'admin' => $d->admin ? ['id' => $d->admin->id, 'nama' => $d->admin->nama] : null,
+                'source' => 'DISPUTE_SLA',
+            ]);
+        }
+
+        // 2. Pending verifications exceeding 24 hours
+        $overdueTechs = Teknisi::with('user')
+            ->where('status', 'PENDING_REVIEW')
+            ->where('created_at', '<', Carbon::now()->subHours(24))
+            ->get();
+
+        foreach ($overdueTechs as $tech) {
+            $deadline = Carbon::parse($tech->created_at)->addHours(24);
+            $alerts->push([
+                'id' => $tech->id,
+                'order_id' => '-',
+                'alasan' => "Pendaftaran Teknisi ({$tech->user?->nama}) menunggu verifikasi berkas melebihi SLA 24 jam.",
+                'status' => 'PENDING_REVIEW',
+                'sla_deadline' => $deadline->toIso8601String(),
+                'is_breached' => true,
+                'hours_left' => round(Carbon::now()->diffInHours($deadline, false)),
+                'admin' => null,
+                'source' => 'VERIFIKASI_SLA',
+            ]);
+        }
+
+        return response()->json($alerts->values());
+    }
 }

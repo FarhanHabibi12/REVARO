@@ -1,7 +1,7 @@
 @extends('layouts.superadmin')
 
 @section('title', 'Scorecard Resolusi — REVARO')
-@section('page-title', '🏛️ Scorecard Admin Resolusi')
+@section('page-title', 'Scorecard Admin Resolusi')
 @section('page-subtitle', 'Evaluasi kinerja admin resolusi — volume dispute, tingkat penyelesaian, dan kepatuhan SLA')
 
 @section('content')
@@ -57,7 +57,7 @@
 @section('scripts')
 <script>
 async function loadScorecard() {
-    const token = localStorage.getItem('admin_token');
+    const token = localStorage.getItem('admin_token') || localStorage.getItem('token');
     const days = document.getElementById('periodSelect').value;
     try {
         const r = await fetch(`/api/superadmin/scorecard-resolusi?days=${days}`, { headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' } });

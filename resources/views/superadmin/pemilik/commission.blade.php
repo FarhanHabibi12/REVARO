@@ -1,7 +1,7 @@
 @extends('layouts.superadmin')
 
 @section('title', 'Kebijakan Komisi — REVARO')
-@section('page-title', '⚙️ Data Master — Kebijakan Komisi')
+@section('page-title', 'Data Master — Kebijakan Komisi')
 @section('page-subtitle', 'Atur persentase bagi hasil jasa servis dan fee sparepart yang berlaku di seluruh platform')
 
 @section('content')
@@ -9,13 +9,11 @@
     <!-- Active Policy Card -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div class="card p-6 relative overflow-hidden">
-            <div class="absolute right-4 top-4 text-4xl opacity-10">🔧</div>
             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Komisi Jasa Servis (Aktif)</p>
             <h3 class="text-4xl font-black text-brandOrange mt-2" id="komisiBadge">—%</h3>
             <p class="text-xs text-slate-500 mt-1">Potongan dari biaya jasa teknisi setiap transaksi selesai</p>
         </div>
         <div class="card p-6 relative overflow-hidden">
-            <div class="absolute right-4 top-4 text-4xl opacity-10">📦</div>
             <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Fee Sparepart (Aktif)</p>
             <h3 class="text-4xl font-black text-blue-400 mt-2" id="feeBadge">—%</h3>
             <p class="text-xs text-slate-500 mt-1">Potongan dari nilai transaksi sparepart toko mitra</p>
@@ -40,14 +38,14 @@
         </div>
         <div class="mt-6 flex justify-end gap-3">
             <button onclick="loadPolicy()" class="btn-outline">Reset ke Nilai Saat Ini</button>
-            <button onclick="savePolicy()" class="btn-primary">💾 Simpan Kebijakan</button>
+            <button onclick="savePolicy()" class="btn-primary">Simpan Kebijakan</button>
         </div>
     </div>
 
     <!-- History Note -->
     <div class="card p-5" style="border-color:rgba(234,179,8,0.2);background:rgba(234,179,8,0.04);">
         <div class="flex gap-3 items-start">
-            <span class="text-yellow-400 text-lg">⚠️</span>
+            <svg class="w-5 h-5 text-yellow-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
             <div>
                 <p class="text-yellow-400 text-sm font-bold">Catatan Penting</p>
                 <p class="text-slate-400 text-xs mt-1">Perubahan kebijakan komisi hanya berlaku untuk transaksi <strong class="text-white">baru</strong> setelah disimpan. Transaksi yang sudah berjalan atau selesai <strong class="text-white">tidak terpengaruh</strong>. Pastikan perubahan sudah dikomunikasikan kepada tim operasional sebelum diaplikasikan.</p>

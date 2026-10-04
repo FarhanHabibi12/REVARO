@@ -6,18 +6,20 @@
 <div class="space-y-6">
     <div class="flex justify-between items-center">
         <div>
-            <h2 class="text-xl font-black text-white">📝 2. Antrian Resubmit (Needs Revision)</h2>
+            <h2 class="text-xl font-black text-white">2. Antrian Resubmit (Needs Revision)</h2>
             <p class="text-xs text-slate-400">Mitra yang sebelumnya diminta revisi dokumen dan telah mengunggah berkas terbarunya.</p>
         </div>
-        <button onclick="loadResubmittedData()" class="bg-brandOrange hover:bg-orange-600 text-white font-bold text-xs py-2 px-4 rounded-xl transition shadow">
-            🔄 Refresh Antrian
+        <button onclick="loadResubmittedData()" class="bg-brandOrange hover:bg-orange-600 text-white font-bold text-xs py-2 px-4 rounded-xl transition shadow flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            <span>Refresh Antrian</span>
         </button>
     </div>
 
     <!-- Teknisi Table -->
     <div class="bg-slate-900/40 rounded-2xl p-6 border border-slate-800 space-y-4">
         <h3 class="text-sm font-extrabold text-white flex items-center gap-2">
-            <span>🔧</span> Teknisi (Mengajukan Ulang)
+            <svg class="w-4 h-4 text-brandOrange" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            <span>Teknisi (Mengajukan Ulang)</span>
         </h3>
         <div class="overflow-x-auto">
             <table class="w-full border-collapse">
@@ -41,7 +43,8 @@
     <!-- Toko Table -->
     <div class="bg-slate-900/40 rounded-2xl p-6 border border-slate-800 space-y-4">
         <h3 class="text-sm font-extrabold text-white flex items-center gap-2">
-            <span>🏪</span> Toko Sparepart (Mengajukan Ulang)
+            <svg class="w-4 h-4 text-brandOrange" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+            <span>Toko Sparepart (Mengajukan Ulang)</span>
         </h3>
         <div class="overflow-x-auto">
             <table class="w-full border-collapse">
@@ -68,7 +71,8 @@
     <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-8 shadow-2xl space-y-6">
         <div class="flex justify-between items-center pb-4 border-b border-slate-800">
             <h3 class="text-base font-black text-white flex items-center gap-2">
-                <span>📋</span> Detail & Keputusan Peninjauan Ulang
+                <svg class="w-5 h-5 text-brandOrange" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                <span>Detail &amp; Keputusan Peninjauan Ulang</span>
             </h3>
             <button onclick="closeDecisionModal()" class="text-slate-400 hover:text-white font-bold text-lg">&times;</button>
         </div>
@@ -187,11 +191,11 @@ function openVerifyModal(type, data) {
     
     if (type === 'teknisi') {
         const ktpLink = data.ktp 
-            ? `<a href="/api/mitra/documents/ktp/${data.id}?token=${token}" target="_blank" class="bg-brandOrange hover:bg-orange-600 text-white font-bold text-[10px] px-3 py-1.5 rounded-lg mt-2 inline-block">📄 Buka Foto KTP Baru</a>`
+            ? `<a href="/api/mitra/documents/ktp/${data.id}?token=${token}" target="_blank" class="bg-brandOrange hover:bg-orange-600 text-white font-bold text-[10px] px-3 py-1.5 rounded-lg mt-2 inline-block">Buka Foto KTP Baru</a>`
             : `<span class="text-[10px] text-slate-500 font-semibold block mt-2">KTP Belum Diunggah</span>`;
 
         const certLink = data.sertifikat 
-            ? `<a href="/api/mitra/documents/sertifikat/${data.id}?token=${token}" target="_blank" class="bg-brandOrange hover:bg-orange-600 text-white font-bold text-[10px] px-3 py-1.5 rounded-lg mt-2 inline-block">📜 Buka Sertifikat Baru</a>`
+            ? `<a href="/api/mitra/documents/sertifikat/${data.id}?token=${token}" target="_blank" class="bg-brandOrange hover:bg-orange-600 text-white font-bold text-[10px] px-3 py-1.5 rounded-lg mt-2 inline-block">Buka Sertifikat Baru</a>`
             : `<span class="text-[10px] text-slate-500 font-semibold block mt-2">Sertifikat Belum Diunggah</span>`;
 
         docContainer.innerHTML = `
@@ -201,16 +205,20 @@ function openVerifyModal(type, data) {
                 <p><strong>Kategori Servis:</strong> ${data.kategori}</p>
                 <p><strong>Lokasi Koordinat:</strong> ${data.latitude ? data.latitude + ', ' + data.longitude : '—'}</p>
                 <hr class="border-slate-800" />
-                <p class="font-bold text-yellow-400 text-xs">⚠️ Catatan: Akun ini sebelumnya berstatus 'NEEDS_REVISION'. Tinjau berkas revisi terbaru di bawah ini untuk memastikan kesalahan sebelumnya sudah diperbaiki.</p>
+                <p class="font-bold text-yellow-400 text-xs">Catatan: Akun ini sebelumnya berstatus 'NEEDS_REVISION'. Tinjau berkas revisi terbaru di bawah ini untuk memastikan kesalahan sebelumnya sudah diperbaiki.</p>
                 <div class="grid grid-cols-2 gap-3 mt-3">
                     <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center">
                         <p class="text-[9px] text-slate-500 uppercase font-black">Foto KTP Baru</p>
-                        <div class="text-3xl py-2">🪪</div>
+                        <div class="py-2 flex justify-center text-slate-400">
+                            <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2"/></svg>
+                        </div>
                         ${ktpLink}
                     </div>
                     <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center">
                         <p class="text-[9px] text-slate-500 uppercase font-black">Sertifikasi Terbaru</p>
-                        <div class="text-3xl py-2">📜</div>
+                        <div class="py-2 flex justify-center text-slate-400">
+                            <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138z"/></svg>
+                        </div>
                         ${certLink}
                     </div>
                 </div>
@@ -218,7 +226,7 @@ function openVerifyModal(type, data) {
         `;
     } else {
         const docIzinLink = data.dokumen_izin 
-            ? `<a href="/api/mitra/documents/dokumen_izin/${data.id}?token=${token}" target="_blank" class="bg-brandOrange hover:bg-orange-600 text-white font-bold text-[10px] px-3 py-1.5 rounded-lg mt-2 inline-block">📄 Buka Izin Usaha Baru</a>`
+            ? `<a href="/api/mitra/documents/dokumen_izin/${data.id}?token=${token}" target="_blank" class="bg-brandOrange hover:bg-orange-600 text-white font-bold text-[10px] px-3 py-1.5 rounded-lg mt-2 inline-block">Buka Izin Usaha Baru</a>`
             : `<span class="text-[10px] text-slate-500 font-semibold block mt-2">SIUP/NIB Belum Diunggah</span>`;
 
         docContainer.innerHTML = `
@@ -228,11 +236,13 @@ function openVerifyModal(type, data) {
                 <p><strong>Nomor Izin Usaha (NIB):</strong> <span class="font-mono text-brandOrange">${data.izin_usaha}</span></p>
                 <p><strong>Alamat Baru:</strong> ${data.alamat}</p>
                 <hr class="border-slate-800" />
-                <p class="font-bold text-yellow-400 text-xs">⚠️ Catatan: Akun ini sebelumnya berstatus 'NEEDS_REVISION'. Pastikan keabsahan dokumen NIB dan daftar katalog yang telah mereka perbaiki.</p>
+                <p class="font-bold text-yellow-400 text-xs">Catatan: Akun ini sebelumnya berstatus 'NEEDS_REVISION'. Pastikan keabsahan dokumen NIB dan daftar katalog yang telah mereka perbaiki.</p>
                 <div class="grid grid-cols-1 gap-3 mt-3">
                     <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center">
                         <p class="text-[9px] text-slate-500 uppercase font-black">Izin Usaha / NIB Baru</p>
-                        <div class="text-3xl py-2">📄</div>
+                        <div class="py-2 flex justify-center text-slate-400">
+                            <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        </div>
                         ${docIzinLink}
                     </div>
                 </div>

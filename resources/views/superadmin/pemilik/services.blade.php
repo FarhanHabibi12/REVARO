@@ -1,7 +1,7 @@
 @extends('layouts.superadmin')
 
 @section('title', 'Kategori Servis — REVARO')
-@section('page-title', '🛠️ Data Master — Kategori Servis')
+@section('page-title', 'Data Master — Kategori Servis')
 @section('page-subtitle', 'Kelola daftar jenis servis, masa garansi, dan harga baseline per kategori')
 
 @section('content')
@@ -51,7 +51,7 @@
     <div class="card p-6">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-sm font-extrabold text-white">Daftar Kategori Servis</h3>
-            <input type="text" id="searchSvc" class="input-field" style="width:220px;" placeholder="🔍 Cari jasa..." oninput="filterSvc()">
+            <input type="text" id="searchSvc" class="input-field" style="width:220px;" placeholder="Cari jasa..." oninput="filterSvc()">
         </div>
         <div class="overflow-x-auto">
             <table class="data-table" id="svcTable">
@@ -121,7 +121,7 @@ function editService(id) {
     document.getElementById('svcHarga').value = s.harga_baseline;
     document.getElementById('svcGaransi').value = s.garansi_hari;
     document.getElementById('svcDeskripsi').value = s.deskripsi || '';
-    document.getElementById('saveServiceBtn').textContent = '💾 Update';
+    document.getElementById('saveServiceBtn').textContent = 'Perbarui Data';
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 

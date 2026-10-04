@@ -54,13 +54,28 @@
                 <div class="pt-4 border-t border-slate-800 space-y-3">
                     <label class="text-[11px] font-bold text-blue-400 uppercase tracking-wider block">UBAH KATA SANDI (OPSIONAL)</label>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input type="password" id="resolusiNewPassword" minlength="6" class="input-field" placeholder="Kata sandi baru">
-                        <input type="password" id="resolusiConfirmPassword" minlength="6" class="input-field" placeholder="Ulangi kata sandi">
+                        <div class="relative">
+                            <input type="password" id="resolusiNewPassword" minlength="6" class="input-field pr-10" placeholder="Kata sandi baru">
+                            <button type="button" onclick="toggleGenericPassword('resolusiNewPassword', 'resEye1')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white">
+                                <span id="resEye1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                </span>
+                            </button>
+                        </div>
+                        <div class="relative">
+                            <input type="password" id="resolusiConfirmPassword" minlength="6" class="input-field pr-10" placeholder="Ulangi kata sandi">
+                            <button type="button" onclick="toggleGenericPassword('resolusiConfirmPassword', 'resEye2')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white">
+                                <span id="resEye2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                </span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
                 <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs py-3.5 px-6 rounded-xl border border-slate-700 transition shadow-lg flex items-center justify-center gap-2">
-                    <span>✓</span> Simpan Perubahan Profil & Password
+                    <svg class="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    <span>Simpan Perubahan Profil &amp; Password</span>
                 </button>
             </form>
         </div>
@@ -134,8 +149,8 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <!-- Shortcut 1: Antrian Sengketa Saya -->
             <a href="/admin/resolusi/dashboard" class="card p-5 hover:border-blue-500/50 transition group flex items-center gap-4">
-                <div class="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center text-xl border border-blue-500/20 group-hover:scale-110 transition">
-                    ⚖️
+                <div class="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center border border-blue-500/20 group-hover:scale-110 transition">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/></svg>
                 </div>
                 <div>
                     <h4 class="text-sm font-extrabold text-white group-hover:text-blue-400 transition">Antrian Sengketa Saya</h4>
@@ -145,8 +160,8 @@
 
             <!-- Shortcut 2: Riwayat Keputusan Saya -->
             <a href="/admin/resolusi/history" class="card p-5 hover:border-emerald-500/50 transition group flex items-center gap-4">
-                <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-xl border border-emerald-500/20 group-hover:scale-110 transition">
-                    📜
+                <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20 group-hover:scale-110 transition">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                 </div>
                 <div>
                     <h4 class="text-sm font-extrabold text-white group-hover:text-emerald-400 transition">Riwayat Keputusan Saya</h4>
@@ -187,6 +202,10 @@
         const formData = new FormData();
         formData.append('nama', nama);
         formData.append('email', email);
+        if (newPassword) {
+            formData.append('new_password', newPassword);
+            formData.append('password_confirmation', confirmPassword);
+        }
 
         try {
             Swal.fire({
@@ -197,28 +216,29 @@
                 didOpen: () => Swal.showLoading()
             });
 
-            const res = await fetch('/api/admin/profile', {
+            const res = await fetch('/api/user/profile', {
                 method: 'POST',
-                headers: { 'Authorization': 'Bearer ' + token },
+                headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' },
                 body: formData
             });
 
+            const data = await res.json();
             if (res.ok) {
-                const data = await res.json();
                 user.nama = data.user.nama;
                 user.email = data.user.email;
                 localStorage.setItem('admin_user', JSON.stringify(user));
                 document.getElementById('displayResolusiName').textContent = data.user.nama;
+                document.getElementById('badgeResolusiInitial').textContent = data.user.nama.charAt(0).toUpperCase();
+                document.getElementById('resolusiNewPassword').value = '';
+                document.getElementById('resolusiConfirmPassword').value = '';
 
-                if (newPassword) {
-                    await fetch('/api/admin/profile/password', {
-                        method: 'POST',
-                        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ current_password: '12345678', new_password: newPassword, new_password_confirmation: confirmPassword })
-                    });
+                Swal.fire({ title: 'Profil Disimpan!', text: 'Informasi akun Admin Resolusi dan kata sandi berhasil diperbarui.', icon: 'success', background: '#1E293B', color: '#E2E8F0', confirmButtonColor: '#F97316' });
+            } else {
+                let errMsg = data.message || 'Terjadi kesalahan saat menyimpan.';
+                if (data.errors) {
+                    errMsg = Object.values(data.errors).flat().join('<br>');
                 }
-
-                Swal.fire({ title: 'Profil Disimpan!', text: 'Informasi akun Admin Resolusi berhasil diperbarui.', icon: 'success', background: '#1E293B', color: '#E2E8F0', confirmButtonColor: '#F97316' });
+                Swal.fire({ title: 'Gagal', html: errMsg, icon: 'error', background: '#1E293B', color: '#E2E8F0', confirmButtonColor: '#F97316' });
             }
         } catch (e) {
             console.error(e);

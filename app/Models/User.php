@@ -18,8 +18,11 @@ class User extends Authenticatable
         'role_id',
         'nama',
         'email',
+        'google_id',
         'password',
         'foto',
+        'avatar',
+        'email_verified_at',
         'is_active',
     ];
 
@@ -33,6 +36,69 @@ class User extends Authenticatable
         'password' => 'hashed',
         'is_active' => 'boolean',
     ];
+
+    protected $appends = [
+        'admin_username',
+        'must_change_password',
+    ];
+
+    /**
+     * Get admin username dynamically from system_settings without migrations.
+     */
+    public function getAdminUsernameAttribute(): ?string
+    {
+        return \App\Models\SystemSetting::get('admin_username_' . $this->id);
+    }
+
+    /**
+     * Get must_change_password flag dynamically from system_settings.
+     */
+    public function getMustChangePasswordAttribute(): bool
+    {
+        return \App\Models\SystemSetting::get('admin_must_change_pwd_' . $this->id, '0') === '1';
+    }
+
+    /**
+     * Set admin username and register reverse lookup.
+     */
+    public function setAdminUsername(string $username): void
+    {
+        $normalized = strtolower(trim($username));
+        // Remove old lookup if existing
+        $old = $this->admin_username;
+        if ($old && $old !== $normalized) {
+            \App\Models\SystemSetting::where('key', 'admin_user_lookup_' . $old)->delete();
+        }
+
+        \App\Models\SystemSetting::set('admin_username_' . $this->id, $normalized, 'admin_meta');
+        \App\Models\SystemSetting::set('admin_user_lookup_' . $normalized, (string)$this->id, 'admin_meta');
+    }
+
+    /**
+     * Set must_change_password flag.
+     */
+    public function setMustChangePassword(bool $state): void
+    {
+        \App\Models\SystemSetting::set('admin_must_change_pwd_' . $this->id, $state ? '1' : '0', 'admin_meta');
+    }
+
+    /**
+     * Find admin by username or email.
+     */
+    public static function findAdminByIdentifier(string $identifier): ?self
+    {
+        $clean = trim($identifier);
+        if (str_contains($clean, '@')) {
+            return self::where('email', $clean)->first();
+        }
+
+        $userId = \App\Models\SystemSetting::get('admin_user_lookup_' . strtolower($clean));
+        if ($userId) {
+            return self::find($userId);
+        }
+
+        return self::where('email', $clean)->first();
+    }
 
     /**
      * Get the role of this user.
@@ -124,5 +190,95 @@ class User extends Authenticatable
     public function isSuperAdminMonitoring(): bool
     {
         return $this->role?->nama === 'Super Admin (Monitoring Kinerja)';
+    }
+
+    /**
+     * Get unified wallet balance for the user across all roles.
+     */
+    public function getUnifiedSaldo(): float
+    {
+        $pelSaldo = $this->pelanggan ? (float) $this->pelanggan->saldo : 0.00;
+        $tekSaldo = $this->teknisi ? (float) $this->teknisi->saldo : 0.00;
+        $tokSaldo = $this->toko ? (float) $this->toko->saldo : 0.00;
+
+        // If any profile has balance, take the active/highest balance
+        $maxSaldo = max($pelSaldo, $tekSaldo, $tokSaldo);
+        if ($maxSaldo > 0) {
+            // Keep all existing profiles synchronized to this unified balance
+            if ($this->pelanggan && (float)$this->pelanggan->saldo !== $maxSaldo) {
+                $this->pelanggan->saldo = $maxSaldo;
+                $this->pelanggan->save();
+            }
+            if ($this->teknisi && (float)$this->teknisi->saldo !== $maxSaldo) {
+                $this->teknisi->saldo = $maxSaldo;
+                $this->teknisi->save();
+            }
+            if ($this->toko && (float)$this->toko->saldo !== $maxSaldo) {
+                $this->toko->saldo = $maxSaldo;
+                $this->toko->save();
+            }
+            return $maxSaldo;
+        }
+
+        return 0.00;
+    }
+
+    /**
+     * Add saldo to the unified user wallet and sync across all profiles of the user.
+     */
+    public function addUnifiedSaldo(float $amount): float
+    {
+        $current = $this->getUnifiedSaldo();
+        $newSaldo = $current + $amount;
+
+        if ($this->pelanggan) {
+            $this->pelanggan->saldo = $newSaldo;
+            $this->pelanggan->save();
+        }
+        if ($this->teknisi) {
+            $this->teknisi->saldo = $newSaldo;
+            $this->teknisi->save();
+        }
+        if ($this->toko) {
+            $this->toko->saldo = $newSaldo;
+            $this->toko->save();
+        }
+
+        if (!$this->pelanggan && !$this->teknisi && !$this->toko) {
+            $pel = Pelanggan::create([
+                'user_id' => $this->id,
+                'nama' => $this->nama,
+                'email' => $this->email,
+                'hp' => $this->no_telp ?? '081234567890',
+                'alamat' => 'Alamat Pengguna',
+                'saldo' => $newSaldo,
+            ]);
+        }
+
+        return $newSaldo;
+    }
+
+    /**
+     * Deduct saldo from the unified user wallet and sync across all profiles.
+     */
+    public function deductUnifiedSaldo(float $amount): float
+    {
+        $current = $this->getUnifiedSaldo();
+        $newSaldo = max(0.00, $current - $amount);
+
+        if ($this->pelanggan) {
+            $this->pelanggan->saldo = $newSaldo;
+            $this->pelanggan->save();
+        }
+        if ($this->teknisi) {
+            $this->teknisi->saldo = $newSaldo;
+            $this->teknisi->save();
+        }
+        if ($this->toko) {
+            $this->toko->saldo = $newSaldo;
+            $this->toko->save();
+        }
+
+        return $newSaldo;
     }
 }

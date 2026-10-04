@@ -1,7 +1,8 @@
 @extends('layouts.superadmin')
 
 @section('title', 'Profil Akun Saya — REVARO')
-@section('page-title', '👤 Profil & Pengaturan Akun Pribadi')
+@section('title', 'Profil Akun Saya — REVARO')
+@section('page-title', 'Profil & Pengaturan Akun Pribadi')
 @section('page-subtitle', 'Kelola informasi identitas pribadi, foto avatar, kata sandi, dan preferensi akun administrator Anda.')
 
 @section('content')
@@ -13,11 +14,13 @@
             <div class="w-24 h-24 rounded-full bg-gradient-to-tr from-brandOrange to-amber-500 p-1 shadow-xl">
                 <div class="w-full h-full rounded-full bg-slate-950 flex items-center justify-center overflow-hidden relative">
                     <img id="bannerAvatarPreview" src="" alt="Avatar" class="w-full h-full object-cover hidden">
-                    <span id="bannerAvatarFallback" class="text-3xl font-black text-white">👤</span>
+                    <span id="bannerAvatarFallback" class="text-white">
+                        <svg class="w-10 h-10 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                    </span>
                 </div>
             </div>
-            <button onclick="document.getElementById('profileAvatarInput').click()" class="absolute bottom-0 right-0 bg-brandOrange hover:bg-orange-600 text-white p-2 rounded-full shadow-lg text-xs transition" title="Ubah Foto Profil">
-                📷
+            <button onclick="document.getElementById('profileAvatarInput').click()" class="absolute bottom-0 right-0 bg-brandOrange hover:bg-orange-600 text-white p-2 rounded-full shadow-lg transition" title="Ubah Foto Profil">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
             </button>
         </div>
 
@@ -39,13 +42,16 @@
     <!-- Navigation Tabs -->
     <div class="flex items-center gap-2 overflow-x-auto pb-1 border-b border-slate-800" id="profileTabs">
         <button onclick="switchProfileTab('tab-profile-info')" id="btn-tab-profile-info" class="px-4 py-2.5 rounded-t-xl font-bold text-xs transition flex items-center gap-2 bg-orange-500/15 text-orange-400 border-b-2 border-orange-500">
-            <span>👤</span> Informasi Profil
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+            Informasi Profil
         </button>
         <button onclick="switchProfileTab('tab-profile-security')" id="btn-tab-profile-security" class="px-4 py-2.5 rounded-t-xl font-bold text-xs transition flex items-center gap-2 text-slate-400 hover:text-white">
-            <span>🔐</span> Ganti Kata Sandi
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+            Ganti Kata Sandi
         </button>
         <button onclick="switchProfileTab('tab-profile-preferences')" id="btn-tab-profile-preferences" class="px-4 py-2.5 rounded-t-xl font-bold text-xs transition flex items-center gap-2 text-slate-400 hover:text-white">
-            <span>🎨</span> Preferensi Tampilan
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>
+            Preferensi Tampilan
         </button>
     </div>
 
@@ -53,21 +59,25 @@
     <div id="tab-profile-info" class="profile-tab-content space-y-6">
         <form id="profileInfoForm" onsubmit="event.preventDefault(); saveProfileInfo();" class="card p-6 space-y-6">
             <h3 class="text-sm font-extrabold text-white flex items-center gap-2">
-                <span>👤</span> Data Identitas Administrator
+                <svg class="w-4 h-4 text-brandOrange" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                <span>Data Identitas Administrator</span>
             </h3>
 
             <!-- Photo upload field -->
             <div class="flex items-center gap-5 p-4 bg-slate-900/60 rounded-2xl border border-slate-800">
                 <div class="w-16 h-16 rounded-full bg-slate-950 flex items-center justify-center overflow-hidden border border-slate-800">
                     <img id="formAvatarPreview" src="" alt="Avatar" class="w-full h-full object-cover hidden">
-                    <span id="formAvatarFallback" class="text-2xl">👤</span>
+                    <span id="formAvatarFallback">
+                        <svg class="w-8 h-8 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                    </span>
                 </div>
                 <div class="space-y-1.5 flex-1">
                     <label class="text-xs font-bold text-white uppercase tracking-wider block">Foto Profil Saya</label>
                     <p class="text-[11px] text-slate-400">Pilih foto profil (.png, .jpg, .webp). Ukuran rekomendasi 400x400 px max 5MB.</p>
                     <input type="file" id="profileAvatarInput" accept="image/*" class="hidden" onchange="handleAvatarFileSelect(this)">
                     <button type="button" onclick="document.getElementById('profileAvatarInput').click()" class="btn-outline text-xs px-3 py-1.5 flex items-center gap-1.5">
-                        <span>📷</span> Pilih Berkas Foto
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        <span>Pilih Berkas Foto</span>
                     </button>
                 </div>
             </div>
@@ -96,8 +106,9 @@
             </div>
 
             <div class="pt-4 border-t border-slate-800 text-right">
-                <button type="submit" class="btn-primary font-extrabold text-xs px-6 py-2.5">
-                    💾 Simpan Perubahan Profil
+                <button type="submit" class="btn-primary font-extrabold text-xs px-6 py-2.5 flex items-center gap-2 ml-auto">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                    <span>Simpan Perubahan Profil</span>
                 </button>
             </div>
         </form>
@@ -108,7 +119,8 @@
         <form id="passwordForm" onsubmit="event.preventDefault(); saveNewPassword();" class="card p-6 space-y-6">
             <div>
                 <h3 class="text-sm font-extrabold text-white flex items-center gap-2">
-                    <span>🔐</span> Ganti Kata Sandi Pribadi
+                    <svg class="w-4 h-4 text-brandOrange" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                    <span>Ganti Kata Sandi Pribadi</span>
                 </h3>
                 <p class="text-xs text-slate-400 mt-1">Perbarui kata sandi login Anda secara berkala untuk menjaga keamanan akun.</p>
             </div>
@@ -116,27 +128,49 @@
             <div class="space-y-4 max-w-md">
                 <div>
                     <label class="text-[11px] font-bold text-slate-300 uppercase tracking-wider block mb-1.5">Kata Sandi Saat Ini *</label>
-                    <input type="password" id="inputCurrentPassword" required class="input-field" placeholder="••••••••">
+                    <div class="relative">
+                        <input type="password" id="inputCurrentPassword" required class="input-field pr-10" placeholder="••••••••">
+                        <button type="button" onclick="toggleGenericPassword('inputCurrentPassword', 'profEyeIcon1')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white">
+                            <span id="profEyeIcon1">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                            </span>
+                        </button>
+                    </div>
                 </div>
 
                 <div>
                     <label class="text-[11px] font-bold text-slate-300 uppercase tracking-wider block mb-1.5">Kata Sandi Baru *</label>
-                    <input type="password" id="inputNewPassword" required minlength="6" class="input-field" placeholder="Minimal 6 karakter">
+                    <div class="relative">
+                        <input type="password" id="inputNewPassword" required minlength="6" class="input-field pr-10" placeholder="Minimal 6 karakter">
+                        <button type="button" onclick="toggleGenericPassword('inputNewPassword', 'profEyeIcon2')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white">
+                            <span id="profEyeIcon2">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                            </span>
+                        </button>
+                    </div>
                 </div>
 
                 <div>
                     <label class="text-[11px] font-bold text-slate-300 uppercase tracking-wider block mb-1.5">Konfirmasi Kata Sandi Baru *</label>
-                    <input type="password" id="inputConfirmPassword" required minlength="6" class="input-field" placeholder="Ulangi kata sandi baru">
+                    <div class="relative">
+                        <input type="password" id="inputConfirmPassword" required minlength="6" class="input-field pr-10" placeholder="Ulangi kata sandi baru">
+                        <button type="button" onclick="toggleGenericPassword('inputConfirmPassword', 'profEyeIcon3')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white">
+                            <span id="profEyeIcon3">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                            </span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
             <div class="p-3.5 bg-slate-900/60 rounded-xl border border-slate-800 text-[11px] text-slate-400">
-                🔒 <strong>Ketentuan Password:</strong> Minimal 6 karakter, kombinasi huruf dan angka disarankan. Setelah diubah, sesi token Anda tetap aktif.
+                <strong>Ketentuan Password:</strong> Minimal 6 karakter, kombinasi huruf dan angka disarankan. Setelah diubah, sesi token Anda tetap aktif.
             </div>
 
             <div class="pt-2 border-t border-slate-800 text-right">
-                <button type="submit" class="btn-primary font-extrabold text-xs px-6 py-2.5">
-                    🔑 Perbarui Kata Sandi
+                <button type="submit" class="btn-primary font-extrabold text-xs px-6 py-2.5 flex items-center gap-2 ml-auto">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                    <span>Perbarui Kata Sandi</span>
                 </button>
             </div>
         </form>
@@ -147,7 +181,8 @@
         <div class="card p-6 space-y-6">
             <div>
                 <h3 class="text-sm font-extrabold text-white flex items-center gap-2">
-                    <span>🎨</span> Preferensi Tampilan & Antarmuka Sesi
+                    <svg class="w-4 h-4 text-brandOrange" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>
+                    <span>Preferensi Tampilan &amp; Antarmuka Sesi</span>
                 </h3>
                 <p class="text-xs text-slate-400 mt-1">Pengaturan kustomisasi pengalaman penggunaan portal khusus perangkat ini.</p>
             </div>
@@ -159,7 +194,8 @@
                         <p class="text-[11px] text-slate-400">Ganti antara Mode Gelap (Dark Mode) dan Mode Terang (Light Mode).</p>
                     </div>
                     <button onclick="toggleTheme()" class="btn-outline text-xs px-4 py-2 flex items-center gap-2">
-                        <span>🌓</span> Saklar Mode Tampilan
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+                        <span>Saklar Mode Tampilan</span>
                     </button>
                 </div>
 

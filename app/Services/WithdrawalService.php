@@ -22,22 +22,13 @@ class WithdrawalService
                 throw new InvalidArgumentException('Nominal penarikan harus lebih dari 0.');
             }
 
-            // Lock Pelanggan row for update (Pessimistic Locking)
-            $pelanggan = Pelanggan::where('user_id', $user->id)
-                ->lockForUpdate()
-                ->first();
-
-            if (!$pelanggan) {
-                throw new InvalidArgumentException('Profil pelanggan tidak ditemukan.');
-            }
-
-            if ($pelanggan->saldo < $amount) {
+            $currentSaldo = $user->getUnifiedSaldo();
+            if ($currentSaldo < $amount) {
                 throw new InvalidArgumentException('Saldo Anda tidak mencukupi untuk melakukan penarikan dana ini.');
             }
 
-            // Deduct balance
-            $pelanggan->saldo -= $amount;
-            $pelanggan->save();
+            // Deduct balance across unified user wallet
+            $user->deductUnifiedSaldo($amount);
 
             // Create withdrawal record
             $withdrawal = Withdrawal::create([

@@ -19,6 +19,7 @@ class Teknisi extends Model
         'kategori',
         'tier',
         'hp',
+        'alamat',
         'rating',
         'tersedia',
         'status',

@@ -205,7 +205,7 @@ class OrderLifecycleTest extends TestCase
             'order_id' => $order->id,
             'sparepart_id' => $this->sparepart->id,
             'qty' => 2,
-            'status' => 'PENDING_SHOP',
+            'status' => 'PENDING_CUSTOMER',
         ]);
 
         // 6. Customer Approves Spareparts
@@ -247,7 +247,7 @@ class OrderLifecycleTest extends TestCase
         $this->assertDatabaseHas('transaksi', [
             'order_id' => $order->id,
             'status_pembayaran' => 'PAID',
-            'status_escrow' => 'HELD',
+            'status_escrow' => 'RELEASED',
         ]);
 
         // 10. Confirm Escrow Release -> wallets updated

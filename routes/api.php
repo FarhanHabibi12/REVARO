@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\KebijakanKomisiController;
 use App\Http\Controllers\Api\WilayahOperasionalController;
 use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\SystemSettingController;
+use App\Http\Controllers\Api\TeknisiController;
 use App\Models\Dispute;
 use App\Models\Order;
 use App\Models\PendaftaranVerifikasi;
@@ -29,12 +30,13 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-// --- Public Auth Routes (with Rate Limiting) ---
+// --- Public Auth Routes (with Anti Brute-Force Rate Limiting) ---
 Route::post('/auth/register', [AuthController::class, 'register'])->middleware('throttle:3,1');
 Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
-Route::post('/auth/verify-otp', [AuthController::class, 'verifyOtp']);
-Route::post('/auth/resend-otp', [AuthController::class, 'resendOtp']);
+Route::post('/auth/verify-otp', [AuthController::class, 'verifyOtp'])->middleware('throttle:5,1');
+Route::post('/auth/resend-otp', [AuthController::class, 'resendOtp'])->middleware('throttle:3,1');
 Route::get('/mitra/documents/{type}/{id}', [AuthController::class, 'downloadDocument']);
+Route::get('/settings/maps', [SystemSettingController::class, 'getMapsConfig']);
 
 // --- Protected Routes ---
 Route::middleware(['auth:sanctum', 'read_only'])->group(function () {
@@ -43,6 +45,7 @@ Route::middleware(['auth:sanctum', 'read_only'])->group(function () {
     Route::get('/auth/me', [AuthController::class, 'me']);
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::post('/profile/resubmit', [AuthController::class, 'resubmit']);
+    Route::post('/user/profile', [AuthController::class, 'updateUserProfile']);
 
     // Onboarding & Verification (Admin Verifikator only)
     Route::get('/verifications/pending', [VerificationController::class, 'index'])
@@ -55,6 +58,7 @@ Route::middleware(['auth:sanctum', 'read_only'])->group(function () {
     // Admin personal profile management
     Route::post('/admin/profile', [AdminAccountController::class, 'updateProfile']);
     Route::post('/admin/profile/password', [AdminAccountController::class, 'updatePassword']);
+    Route::post('/admin/setup-first-time', [AdminAccountController::class, 'setupFirstTime']);
 
     // Admin account management (Super Admin Pemilik only)
     Route::get('/admin/accounts', [AdminAccountController::class, 'index'])
@@ -160,6 +164,12 @@ Route::middleware(['auth:sanctum', 'read_only'])->group(function () {
         ->middleware('role:super-admin-pemilik');
     Route::post('/admin/settings/upload-asset', [SystemSettingController::class, 'uploadAsset'])
         ->middleware('role:super-admin-pemilik');
+    Route::get('/admin/settings/maps', [SystemSettingController::class, 'getMapsConfig'])
+        ->middleware('role:super-admin-pemilik');
+    Route::post('/admin/settings/maps', [SystemSettingController::class, 'updateMapsConfig'])
+        ->middleware('role:super-admin-pemilik');
+    Route::post('/admin/settings/maps/test', [SystemSettingController::class, 'testMapsApi'])
+        ->middleware('role:super-admin-pemilik');
 
     // Maintenance Mode System (Super Admin Pemilik only)
     Route::get('/admin/maintenance', [SystemSettingController::class, 'getMaintenance'])
@@ -223,8 +233,16 @@ Route::middleware(['auth:sanctum', 'read_only'])->group(function () {
     Route::get('/monitoring/flags', [MonitoringDashboardController::class, 'getFlags'])
         ->middleware('role:super-admin-pemilik');
 
-    // Monitoring Dashboard Metrics
+    // Monitoring Dashboard Metrics & Scorecards
     Route::get('/monitoring/metrics', [MonitoringDashboardController::class, 'getMetrics'])
+        ->middleware('role:super-admin-monitoring,super-admin-pemilik');
+    Route::get('/superadmin/scorecard-verifikator', [MonitoringDashboardController::class, 'scorecardVerifikator'])
+        ->middleware('role:super-admin-monitoring,super-admin-pemilik');
+    Route::get('/superadmin/scorecard-resolusi', [MonitoringDashboardController::class, 'scorecardResolusi'])
+        ->middleware('role:super-admin-monitoring,super-admin-pemilik');
+    Route::get('/superadmin/trends', [MonitoringDashboardController::class, 'getTrends'])
+        ->middleware('role:super-admin-monitoring,super-admin-pemilik');
+    Route::get('/superadmin/sla-alerts', [MonitoringDashboardController::class, 'getSlaAlerts'])
         ->middleware('role:super-admin-monitoring,super-admin-pemilik');
 
     // --- Order Lifecycle Endpoints ---
@@ -248,12 +266,29 @@ Route::middleware(['auth:sanctum', 'read_only'])->group(function () {
     Route::post('/wallet/withdraw', [\App\Http\Controllers\Api\WalletController::class, 'withdraw']);
     Route::post('/wallet/topup', [\App\Http\Controllers\Api\WalletController::class, 'topup']);
 
+    // --- Teknisi Domicile Location & Profile ---
+    Route::get('/teknisi/location', [TeknisiController::class, 'getLocation']);
+    Route::post('/teknisi/location', [TeknisiController::class, 'updateLocation']);
+    Route::post('/teknisi/profile', [TeknisiController::class, 'updateProfile']);
+
     // --- Sparepart Search ---
     Route::get('/spareparts/search', [SparepartSearchController::class, 'search']);
 
     // --- Chat Messages ---
     Route::post('/orders/{order}/chats', [ChatController::class, 'sendMessage']);
     Route::get('/orders/{order}/chats', [ChatController::class, 'getMessages']);
+
+    // --- In-App Notifications for Users (Pelanggan, Teknisi, Toko) ---
+    Route::get('/notifications', [\App\Http\Controllers\Api\NotificationController::class, 'index']);
+    Route::match(['post', 'patch'], '/notifications/{id}/read', [\App\Http\Controllers\Api\NotificationController::class, 'markAsRead']);
+    Route::post('/notifications/read-all', [\App\Http\Controllers\Api\NotificationController::class, 'markAllAsRead']);
+
+    // --- Order Rating ---
+    Route::post('/orders/{order}/rating', [OrderLifecycleController::class, 'submitRating']);
+
+    // --- Toko Finance Management & Excel Export ---
+    Route::get('/toko/finance', [\App\Http\Controllers\Api\TokoFinanceController::class, 'getFinanceSummary']);
+    Route::get('/toko/finance/export-excel', [\App\Http\Controllers\Api\TokoFinanceController::class, 'exportExcel']);
 
     // --- Dispute Endpoints for Admin Resolusi ---
     Route::get('/disputes/my-assigned', [DisputeController::class, 'myAssigned'])
@@ -262,6 +297,14 @@ Route::middleware(['auth:sanctum', 'read_only'])->group(function () {
         ->middleware('role:admin-resolusi');
     Route::get('/disputes/my-decisions', [DisputeController::class, 'myDecisions'])
         ->middleware('role:admin-resolusi');
+
+    // --- Evaluasi Rating & Disiplin Teknisi (Admin Resolusi) ---
+    Route::get('/admin/resolusi/rating-evaluations', [DisputeController::class, 'ratingEvaluations'])
+        ->middleware('role:admin-resolusi,super-admin-pemilik');
+    Route::post('/admin/resolusi/evaluate-rating/{dispute}', [DisputeController::class, 'evaluateRatingCase'])
+        ->middleware('role:admin-resolusi,super-admin-pemilik');
+    Route::post('/admin/teknisi/{id}/ban', [DisputeController::class, 'banTeknisiDirect'])
+        ->middleware('role:admin-resolusi,super-admin-pemilik');
 
     // --- Dispute Endpoints ---
     Route::get('/disputes', [DisputeController::class, 'index']);
@@ -332,8 +375,8 @@ Route::middleware(['auth:sanctum', 'read_only'])->group(function () {
     });
 
     Route::post('/test/spareparts', function (Request $request) {
-        $user = $request->user();
-        if (!$user->isToko() && !$user->isSuperAdminPemilik()) {
+        $user = $request->user() ?: auth()->user();
+        if (!$user || (!$user->isToko() && !$user->isSuperAdminPemilik())) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
@@ -376,6 +419,31 @@ Route::middleware(['auth:sanctum', 'read_only'])->group(function () {
             'message' => 'Sparepart berhasil disimpan.',
             'sparepart' => $sparepart
         ], 200);
+    });
+
+    Route::delete('/test/spareparts/{sparepart}', function ($sparepart) {
+        $model = $sparepart instanceof Sparepart ? $sparepart : Sparepart::find($sparepart);
+        if (!$model) {
+            return response()->json(['message' => 'Suku cadang tidak ditemukan.'], 404);
+        }
+
+        $user = request()->user() ?: auth()->user();
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
+        $isOwner = $user->isToko() && $user->toko && (int)$user->toko->id === (int)$model->toko_id;
+        $isSuper = $user->isSuperAdminPemilik();
+
+        if (!$isOwner && !$isSuper) {
+            return response()->json(['message' => 'Forbidden.'], 403);
+        }
+
+        $model->delete();
+
+        return response()->json([
+            'message' => 'Suku cadang berhasil dihapus.'
+        ]);
     });
 
     // Transactions

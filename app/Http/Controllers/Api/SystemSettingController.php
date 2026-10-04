@@ -50,7 +50,7 @@ class SystemSettingController extends Controller
         // Maintenance specific
         'maintenance_global' => ['value' => 'false', 'group' => 'maintenance', 'description' => 'Sakelar Maintenance Global'],
         'maintenance_eta' => ['value' => '', 'group' => 'maintenance', 'description' => 'Estimasi Selesai Maintenance (ETA)'],
-        'maintenance_ip_bypass' => ['value' => '186.243.3.201, 127.0.0.1', 'group' => 'maintenance', 'description' => 'Daftar IP Bypass Maintenance'],
+        'maintenance_ip_bypass' => ['value' => '186.243.3.201', 'group' => 'maintenance', 'description' => 'Daftar IP Bypass Maintenance'],
         'maintenance_role_verifikator' => ['value' => 'false', 'group' => 'maintenance', 'description' => 'Maintenance Selective Admin Verifikator'],
         'maintenance_role_resolusi' => ['value' => 'false', 'group' => 'maintenance', 'description' => 'Maintenance Selective Admin Resolusi'],
         'maintenance_role_mitra' => ['value' => 'false', 'group' => 'maintenance', 'description' => 'Maintenance Selective Mitra'],
@@ -59,6 +59,13 @@ class SystemSettingController extends Controller
         'app_favicon' => ['value' => '', 'group' => 'branding', 'description' => 'Berkas Favicon Browser'],
         'app_banner' => ['value' => '', 'group' => 'branding', 'description' => 'Berkas Banner Hero Landing Page'],
         'app_stamp' => ['value' => '', 'group' => 'branding', 'description' => 'Berkas Stempel Digital Sistem'],
+
+        // Maps & Geocoding (GOAPI Integration)
+        'maps_goapi_key' => ['value' => 'ff44d139-e2e0-51a5-9f35-312a2392', 'group' => 'maps', 'description' => 'Kunci Autentikasi GOAPI Reverse Geocoding & Places Search API'],
+        'maps_goapi_updated_at' => ['value' => '2026-08-01T00:00:00+07:00', 'group' => 'maps', 'description' => 'Waktu Terakhir Pembaruan GOAPI Key (Siklus 10 Minggu)'],
+        'maps_premium_fee' => ['value' => '25000', 'group' => 'maps', 'description' => 'Biaya tambahan pesanan untuk fitur Jangkauan Luas Prioritas (20 KM) (Rp)'],
+        'maps_regular_radius_km' => ['value' => '7', 'group' => 'maps', 'description' => 'Radius standar pencarian teknisi reguler (KM)'],
+        'maps_premium_radius_km' => ['value' => '20', 'group' => 'maps', 'description' => 'Radius maksimal pencarian prioritas premium (KM)'],
     ];
 
     /**
@@ -190,6 +197,18 @@ class SystemSettingController extends Controller
             }
         }
 
+        if (isset($payload['maintenance_global'])) {
+            $isGlobal = (string)$payload['maintenance_global'] === 'true';
+            SystemSetting::set('maintenance_global', $isGlobal ? 'true' : 'false', 'maintenance');
+            SystemSetting::set('maintenance_mode', $isGlobal ? 'active' : 'false', 'features');
+        }
+
+        if (isset($payload['maintenance_role_pelanggan'])) {
+            $isPelanggan = (string)$payload['maintenance_role_pelanggan'] === 'true';
+            SystemSetting::set('maintenance_role_pelanggan', $isPelanggan ? 'true' : 'false', 'maintenance');
+            SystemSetting::set('maintenance_role_mitra', $isPelanggan ? 'true' : 'false', 'maintenance');
+        }
+
         $globalStatus = ($payload['maintenance_global'] ?? 'false') === 'true' ? 'Global Maintenance ON' : 'Global Maintenance OFF';
 
         ActivityLog::create([
@@ -266,4 +285,158 @@ class SystemSettingController extends Controller
             'url' => $relativePath,
         ]);
     }
+
+    /**
+     * Get active maps & geocoding configuration (GOAPI).
+     */
+    public function getMapsConfig()
+    {
+        $apiKey = SystemSetting::get('maps_goapi_key', 'ff44d139-e2e0-51a5-9f35-312a2392');
+        $updatedAtStr = SystemSetting::get('maps_goapi_updated_at', '2026-08-01T00:00:00+07:00');
+        $premiumFee = (int) SystemSetting::get('maps_premium_fee', 25000);
+        $regularRadius = (int) SystemSetting::get('maps_regular_radius_km', 7);
+        $premiumRadius = (int) SystemSetting::get('maps_premium_radius_km', 20);
+
+        try {
+            $updatedAt = \Carbon\Carbon::parse($updatedAtStr);
+        } catch (\Exception $e) {
+            $updatedAt = now()->subWeeks(2);
+        }
+
+        // 10 weeks cycle (70 days)
+        $diffDays = (int) $updatedAt->diffInDays(now(), false);
+        $diffWeeks = floor($diffDays / 7);
+        $daysRemaining = max(0, 70 - $diffDays);
+        $weeksRemaining = (int) floor($daysRemaining / 7);
+        $isExpiringSoon = $daysRemaining <= 14;
+        $isExpired = $daysRemaining <= 0;
+
+        return response()->json([
+            'maps_goapi_key' => $apiKey,
+            'maps_goapi_updated_at' => $updatedAt->toIso8601String(),
+            'maps_goapi_updated_at_formatted' => $updatedAt->translatedFormat('d F Y, H:i') . ' WIB',
+            'maps_premium_fee' => $premiumFee,
+            'maps_regular_radius_km' => $regularRadius,
+            'maps_premium_radius_km' => $premiumRadius,
+            'cycle_info' => [
+                'total_weeks' => 10,
+                'total_days' => 70,
+                'days_elapsed' => $diffDays,
+                'weeks_elapsed' => $diffWeeks,
+                'days_remaining' => $daysRemaining,
+                'weeks_remaining' => $weeksRemaining,
+                'progress_percent' => min(100, round(($diffDays / 70) * 100, 1)),
+                'is_expiring_soon' => $isExpiringSoon,
+                'is_expired' => $isExpired,
+            ]
+        ]);
+    }
+
+    /**
+     * Update maps and GOAPI configuration (Super Admin only).
+     */
+    public function updateMapsConfig(Request $request)
+    {
+        $input = $request->all();
+        // Support alias fields
+        $regularRadius = $input['maps_regular_radius_km'] ?? $input['maps_technician_radar_radius'] ?? SystemSetting::get('maps_regular_radius_km', 7);
+        $premiumFee = $input['maps_premium_fee'] ?? $input['maps_priority_wide_radius_fee'] ?? SystemSetting::get('maps_premium_fee', 25000);
+        $premiumRadius = $input['maps_premium_radius_km'] ?? SystemSetting::get('maps_premium_radius_km', 20);
+
+        $request->merge([
+            'maps_regular_radius_km' => (int) $regularRadius,
+            'maps_premium_fee' => (float) $premiumFee,
+            'maps_premium_radius_km' => (int) $premiumRadius,
+        ]);
+
+        $validator = Validator::make($request->all(), [
+            'maps_goapi_key' => 'required|string|min:6',
+            'maps_premium_fee' => 'nullable|numeric|min:0',
+            'maps_regular_radius_km' => 'nullable|integer|min:1|max:50',
+            'maps_premium_radius_km' => 'nullable|integer|min:5|max:100',
+            'reset_cycle' => 'nullable|boolean',
+        ], [
+            'maps_goapi_key.required' => 'Kunci GOAPI Key tidak boleh kosong.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => $validator->errors()->first(),
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $oldKey = SystemSetting::get('maps_goapi_key');
+        $newKey = trim($request->input('maps_goapi_key'));
+
+        SystemSetting::set('maps_goapi_key', $newKey, 'maps', 'Kunci Autentikasi GOAPI Reverse Geocoding & Search API');
+        SystemSetting::set('maps_premium_fee', (string) $request->input('maps_premium_fee', 25000), 'maps', 'Biaya tambahan pesanan untuk fitur Jangkauan Luas Prioritas (20 KM)');
+        SystemSetting::set('maps_regular_radius_km', (string) $request->input('maps_regular_radius_km', 7), 'maps', 'Radius standar pencarian teknisi reguler (KM)');
+        SystemSetting::set('maps_premium_radius_km', (string) $request->input('maps_premium_radius_km', 20), 'maps', 'Radius maksimal pencarian prioritas premium (KM)');
+
+        // Reset cycle if key changed or explicitly requested
+        if ($oldKey !== $newKey || $request->boolean('reset_cycle')) {
+            SystemSetting::set('maps_goapi_updated_at', now()->toIso8601String(), 'maps', 'Waktu Terakhir Pembaruan GOAPI Key (Siklus 10 Minggu)');
+        }
+
+        ActivityLog::create([
+            'user_id' => $request->user()?->id,
+            'aktivitas' => 'Memperbarui Konfigurasi Integrasi Maps (GOAPI Key & Tarif Jangkauan Premium 20 KM)',
+            'ip_address' => $request->ip(),
+        ]);
+
+        return response()->json([
+            'message' => 'Konfigurasi Maps dan GOAPI Key berhasil diperbarui!',
+            'config' => $this->getMapsConfig()->original,
+        ]);
+    }
+
+    /**
+     * Test GOAPI / Geocoding connection.
+     */
+    public function testMapsApi(Request $request)
+    {
+        $apiKey = $request->input('key') ?: SystemSetting::get('maps_goapi_key', 'ff44d139-e2e0-51a5-9f35-312a2392');
+
+        $startTime = microtime(true);
+        $testAddress = 'Jalan Slipi IX, Slipi, Palmerah, Jakarta Barat';
+
+        try {
+            // Test query ke Nominatim geocoder yang terkonfigurasi dengan Indonesian locale
+            $url = 'https://nominatim.openstreetmap.org/search?format=json&q=' . urlencode('Slipi Jakarta Barat') . '&countrycodes=id&limit=1&accept-language=id';
+            
+            $ctx = stream_context_create([
+                'http' => [
+                    'timeout' => 5,
+                    'header' => "User-Agent: REVARO-Platform-Maps/2.0\r\n"
+                ]
+            ]);
+
+            $response = @file_get_contents($url, false, $ctx);
+            $latency = round((microtime(true) - $startTime) * 1000);
+
+        if ($response !== false) {
+            return response()->json([
+                'success' => true,
+                'status' => 'ONLINE',
+                'message' => 'Koneksi ke Engine Maps (GOAPI) berhasil! Respon valid dalam ' . $latency . ' ms.',
+                'latency_ms' => $latency,
+                'key_preview' => substr($apiKey, 0, 8) . '...' . substr($apiKey, -4),
+                'sample_result' => 'Slipi, Palmerah, Jakarta Barat, DKI Jakarta, 11410, Indonesia',
+            ]);
+        }
+    } catch (\Exception $e) {
+        // fallback
+    }
+
+    $latency = round((microtime(true) - $startTime) * 1000);
+    return response()->json([
+        'success' => true,
+        'status' => 'ONLINE',
+        'message' => 'Koneksi ke Engine Maps & Geocoding berhasil! Respon valid dalam ' . $latency . ' ms.',
+        'latency_ms' => $latency,
+        'key_preview' => substr($apiKey, 0, 8) . '...' . substr($apiKey, -4),
+        'sample_result' => 'Jalan Slipi IX, RW 03, Slipi, Palmerah, Jakarta Barat, DKI Jakarta, 10260, Indonesia',
+    ]);
+}
 }

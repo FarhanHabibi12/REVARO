@@ -1,7 +1,7 @@
 @extends('layouts.superadmin')
 
 @section('title', 'Pemeliharaan Database & Performa — REVARO')
-@section('page-title', '💾 Pemeliharaan Database & Performa Sistem')
+@section('page-title', 'Pemeliharaan Database & Performa Sistem')
 @section('page-subtitle', 'Unduh cadangan data basis data, pulihkan data dari file SQL, optimalkan cache Laravel, atau reset riwayat transaksi.')
 
 @section('content')
@@ -12,7 +12,7 @@
         <div class="space-y-3">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center text-xl border border-blue-500/20">
-                    📥
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                 </div>
                 <div>
                     <h3 class="text-sm font-extrabold text-white">Backup Database SQL</h3>
@@ -25,7 +25,8 @@
         </div>
         <div class="pt-2">
             <button onclick="downloadBackup()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs py-3 px-6 rounded-xl transition shadow flex items-center justify-center gap-2">
-                <span>📥</span> Unduh Cadangan SQL (.sql)
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                <span>Unduh Cadangan SQL (.sql)</span>
             </button>
         </div>
     </div>
@@ -35,7 +36,7 @@
         <div class="space-y-3">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-xl border border-amber-500/20">
-                    📤
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
                 </div>
                 <div>
                     <h3 class="text-sm font-extrabold text-white">Pemulihan Database (Restore)</h3>
@@ -52,7 +53,8 @@
                 <span id="fileNameDisplay" class="text-xs text-slate-500">Belum ada file dipilih...</span>
             </div>
             <button onclick="restoreDatabase()" class="w-full bg-amber-700 hover:bg-amber-600 text-white font-extrabold text-xs py-3 px-6 rounded-xl transition shadow flex items-center justify-center gap-2">
-                <span>📤</span> Jalankan Pemulihan Restore Data
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                <span>Jalankan Pemulihan Restore Data</span>
             </button>
         </div>
     </div>
@@ -62,7 +64,7 @@
         <div class="space-y-3">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-xl border border-emerald-500/20">
-                    🔄
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                 </div>
                 <div>
                     <h3 class="text-sm font-extrabold text-white">Bersihkan Cache Framework</h3>
@@ -75,7 +77,8 @@
         </div>
         <div class="pt-2">
             <button onclick="clearCacheFramework()" class="w-full bg-emerald-900/80 hover:bg-emerald-800 text-emerald-300 hover:text-white font-extrabold text-xs py-3 px-6 rounded-xl transition border border-emerald-700/40 flex items-center justify-center gap-2">
-                <span>🔄</span> Bersihkan Seluruh Cache Framework
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                <span>Bersihkan Seluruh Cache Framework</span>
             </button>
         </div>
     </div>
@@ -85,7 +88,7 @@
         <div class="space-y-3">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-red-500/10 text-red-400 flex items-center justify-center text-xl border border-red-500/20">
-                    🗑️
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                 </div>
                 <div>
                     <h3 class="text-sm font-extrabold text-white">Reset Riwayat Transaksi</h3>
@@ -98,7 +101,8 @@
         </div>
         <div class="pt-2">
             <button onclick="resetTransactions()" class="w-full bg-red-800 hover:bg-red-700 text-white font-extrabold text-xs py-3 px-6 rounded-xl transition shadow flex items-center justify-center gap-2">
-                <span>🗑️</span> Reset Seluruh Data Transaksi
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                <span>Reset Seluruh Data Transaksi</span>
             </button>
         </div>
     </div>

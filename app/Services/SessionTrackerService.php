@@ -88,6 +88,11 @@ class SessionTrackerService
                 $query->delete();
             }
 
+            // Remove from active visitors
+            if (Schema::hasTable('active_visitors')) {
+                DB::table('active_visitors')->where('user_id', $userId)->delete();
+            }
+
             // Log security incident
             SecurityLoggerService::log(
                 event: 'SESSION_KICK',

@@ -1,7 +1,7 @@
 @extends('layouts.superadmin')
 
 @section('title', 'Manajemen Akun Admin — REVARO')
-@section('page-title', '👥 Manajemen Akun Admin')
+@section('page-title', 'Manajemen Akun Admin')
 @section('page-subtitle', 'Buat, aktifkan, atau nonaktifkan akun internal (Verifikator, Resolusi, Monitoring)')
 
 @section('content')
@@ -9,14 +9,14 @@
     <!-- Create Account Form -->
     <div class="card p-6">
         <h3 class="text-sm font-extrabold text-white mb-4">Tambah Akun Admin Baru</h3>
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Nama Lengkap</label>
-                <input type="text" id="newAdminNama" class="input-field" placeholder="cth. Budi Santoso">
+                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Nama Lengkap Admin</label>
+                <input type="text" id="newAdminNama" class="input-field" placeholder="cth. Farhan Habibi">
             </div>
             <div>
-                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Alamat Email</label>
-                <input type="email" id="newAdminEmail" class="input-field" placeholder="budi@revaro.com">
+                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Akun Google / Email</label>
+                <input type="email" id="newAdminEmail" class="input-field" placeholder="admin@gmail.com">
             </div>
             <div>
                 <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Role / Jabatan</label>
@@ -26,13 +26,13 @@
                     <option value="admin-resolusi">Admin Resolusi</option>
                 </select>
             </div>
-            <div>
-                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Password Awal</label>
-                <input type="password" id="newAdminPassword" class="input-field" placeholder="Min. 8 karakter">
-            </div>
         </div>
-        <div class="mt-4 flex justify-end">
-            <button onclick="createAdmin()" class="btn-primary">+ Buat Akun</button>
+        <div class="mt-4 flex items-center justify-between">
+            <p class="text-[11px] text-slate-400 flex items-center gap-1.5">
+                <svg class="w-4 h-4 text-orange-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                <span>Password acak sistem 100% full otomatis digenerate. Admin baru wajib mengatur username &amp; kata sandi baru saat login pertama.</span>
+            </p>
+            <button onclick="createAdmin()" class="btn-primary">+ Buat Akun Admin</button>
         </div>
     </div>
 
@@ -40,7 +40,7 @@
     <div class="card p-6">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-sm font-extrabold text-white">Daftar Akun Admin Internal</h3>
-            <input type="text" id="searchAdmin" class="input-field" style="width:220px;" placeholder="🔍 Cari nama atau email..." oninput="filterTable()">
+            <input type="text" id="searchAdmin" class="input-field" style="width:220px;" placeholder="Cari nama atau email..." oninput="filterTable()">
         </div>
         <div class="overflow-x-auto">
             <table class="data-table" id="adminTable">
@@ -63,7 +63,10 @@
 
     <!-- Audit Logs -->
     <div class="card p-6">
-        <h3 class="text-sm font-extrabold text-white mb-4">📜 Audit Log Aktivitas Admin</h3>
+        <h3 class="text-sm font-extrabold text-white mb-4 flex items-center gap-2">
+            <svg class="w-4 h-4 text-brandOrange" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+            <span>Audit Log Aktivitas Admin</span>
+        </h3>
         <div id="auditLogList" class="space-y-2">
             <p class="text-slate-500 text-sm text-center py-4">Memuat log...</p>
         </div>
@@ -120,22 +123,52 @@ function filterTable() {
 
 async function createAdmin() {
     const token = localStorage.getItem('admin_token');
-    const payload = {
-        nama: document.getElementById('newAdminNama').value.trim(),
-        email: document.getElementById('newAdminEmail').value.trim(),
-        role: document.getElementById('newAdminRole').value,
-        password: document.getElementById('newAdminPassword').value,
-    };
-    if (!payload.nama || !payload.email || !payload.role || !payload.password) {
-        Swal.fire({ title: 'Lengkapi Form', text: 'Semua kolom wajib diisi.', icon: 'warning', background: '#1E293B', color: '#E2E8F0', confirmButtonColor: '#F97316' });
+    const nama = document.getElementById('newAdminNama').value.trim();
+    const email = document.getElementById('newAdminEmail').value.trim();
+    const role = document.getElementById('newAdminRole').value;
+
+    if (!nama || !email || !role) {
+        Swal.fire({ title: 'Lengkapi Data', text: 'Nama lengkap, akun email Google, dan role wajib diisi.', icon: 'warning', background: '#1E293B', color: '#E2E8F0', confirmButtonColor: '#F97316' });
         return;
     }
+
+    const payload = { nama, email, role };
+
     try {
-        const r = await fetch('/api/admin/accounts', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json', 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        const r = await fetch('/api/admin/accounts', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
         const d = await r.json();
         if (r.ok) {
-            Swal.fire({ title: 'Berhasil!', text: 'Akun admin baru telah dibuat.', icon: 'success', background: '#1E293B', color: '#E2E8F0', confirmButtonColor: '#F97316' });
-            ['newAdminNama','newAdminEmail','newAdminPassword'].forEach(id => document.getElementById(id).value = '');
+            const tempPwd = d.temporary_password;
+            Swal.fire({
+                title: 'Akun Admin Berhasil Dibuat!',
+                html: `
+                    <div style="text-align: left; font-size: 0.85rem; line-height: 1.6; color: #CBD5E1;">
+                        <p class="mb-2">Password acak dibuat 100% oleh sistem. Berikan kredensial awal berikut kepada Admin terkait:</p>
+                        <div style="background: #0F172A; padding: 12px; border-radius: 8px; border: 1px solid #334155; font-family: monospace;">
+                            <div><b>Email:</b> <span class="text-orange-400">${email}</span></div>
+                            <div class="mt-1"><b>Password Sistem:</b> <span style="background: #EA580C; color: white; padding: 2px 8px; border-radius: 4px; font-weight: bold;">${tempPwd}</span></div>
+                        </div>
+                        <p class="mt-3 text-xs text-amber-400">
+                            <b>Penting:</b> Pada saat pertama kali login di <code>/login-admin</code>, admin wajib mengisi kode OTP, menentukan <b>Username</b> resmi, serta memperbarui <b>Password</b> awal mereka.
+                        </p>
+                    </div>
+                `,
+                icon: 'success',
+                background: '#1E293B',
+                color: '#E2E8F0',
+                confirmButtonColor: '#F97316',
+                confirmButtonText: 'Selesai'
+            });
+            document.getElementById('newAdminNama').value = '';
+            document.getElementById('newAdminEmail').value = '';
             document.getElementById('newAdminRole').value = '';
             loadAdmins();
             loadAuditLogs();
@@ -144,7 +177,7 @@ async function createAdmin() {
             if (d.errors) {
                 errMsg = Object.values(d.errors).flat().join('<br>');
             }
-            Swal.fire({ title: 'Gagal', html: errMsg, icon: 'error', background: '#1E293B', color: '#E2E8F0', confirmButtonColor: '#F97316' });
+            Swal.fire({ title: 'Gagal Membuat Akun', html: errMsg, icon: 'error', background: '#1E293B', color: '#E2E8F0', confirmButtonColor: '#F97316' });
         }
     } catch(e) {
         Swal.fire({ title: 'Error', text: 'Tidak dapat terhubung ke server.', icon: 'error', background: '#1E293B', color: '#E2E8F0', confirmButtonColor: '#F97316' });

@@ -39,7 +39,7 @@
                 </div>
                 <!-- Custom Toggle Switch -->
                 <label class="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" id="switchGlobalMaintenance" class="sr-only peer" onchange="toggleGlobalSwitchUI()">
+                    <input type="checkbox" id="switchGlobalMaintenance" class="sr-only peer" onchange="handleToggleGlobalSwitch()">
                     <div class="w-14 h-7 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-orange-500"></div>
                 </label>
             </div>
@@ -59,7 +59,7 @@
 
                 <div>
                     <label class="text-[11px] font-bold text-slate-300 uppercase tracking-wider block mb-1.5">DAFTAR IP BYPASS (DIPISAHKAN KOMA)</label>
-                    <input type="text" id="maintenanceIpBypass" class="input-field font-mono" placeholder="186.243.3.201, 127.0.0.1">
+                    <input type="text" id="maintenanceIpBypass" class="input-field font-mono" placeholder="186.243.3.201, 203.0.113.195">
                     <p class="text-[10px] text-slate-500 mt-1">Alamat IP pengembang / admin yang diizinkan melewati maintenance.</p>
                 </div>
             </div>
@@ -80,7 +80,7 @@
                         <p class="text-[11px] text-slate-400">Menutup portal admin verifikator (/admin/verifikator/*) — Status: <span id="statusRoleVerifikator" class="font-extrabold text-emerald-400">Normal Active</span></p>
                     </div>
                     <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="switchRoleVerifikator" class="sr-only peer" onchange="updateSelectiveRoleUI()">
+                        <input type="checkbox" id="switchRoleVerifikator" class="sr-only peer" onchange="handleToggleSelectiveSwitch()">
                         <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
                     </label>
                 </div>
@@ -92,7 +92,7 @@
                         <p class="text-[11px] text-slate-400">Menutup portal admin resolusi (/admin/resolusi/*) — Status: <span id="statusRoleResolusi" class="font-extrabold text-emerald-400">Normal Active</span></p>
                     </div>
                     <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="switchRoleResolusi" class="sr-only peer" onchange="updateSelectiveRoleUI()">
+                        <input type="checkbox" id="switchRoleResolusi" class="sr-only peer" onchange="handleToggleSelectiveSwitch()">
                         <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
                     </label>
                 </div>
@@ -104,7 +104,7 @@
                         <p class="text-[11px] text-slate-400">Menutup portal publik & mitra (/pelanggan/*, /teknisi/*, /toko/*) — Status: <span id="statusRolePelanggan" class="font-extrabold text-emerald-400">Normal Active</span></p>
                     </div>
                     <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="switchRolePelanggan" class="sr-only peer" onchange="updateSelectiveRoleUI()">
+                        <input type="checkbox" id="switchRolePelanggan" class="sr-only peer" onchange="handleToggleSelectiveSwitch()">
                         <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
                     </label>
                 </div>
@@ -150,7 +150,7 @@
 
 @section('scripts')
 <script>
-    const token = localStorage.getItem('admin_token');
+    const token = localStorage.getItem('admin_token') || localStorage.getItem('token');
 
     function toggleGlobalSwitchUI() {
         const isChecked = document.getElementById('switchGlobalMaintenance').checked;
@@ -191,6 +191,16 @@
         document.getElementById('statusRolePelanggan').textContent = pel ? 'Maintenance Active' : 'Normal Active';
     }
 
+    async function handleToggleGlobalSwitch() {
+        toggleGlobalSwitchUI();
+        await saveMaintenanceSettings(true);
+    }
+
+    async function handleToggleSelectiveSwitch() {
+        updateSelectiveRoleUI();
+        await saveMaintenanceSettings(true);
+    }
+
     async function loadMaintenanceData() {
         try {
             const res = await fetch('/api/admin/maintenance', {
@@ -200,16 +210,16 @@
             const settings = data.settings || {};
 
             // Populate global switch
-            const globalChecked = settings.maintenance_global === 'true';
+            const globalChecked = settings.maintenance_global === 'true' || settings.maintenance_global === '1';
             document.getElementById('switchGlobalMaintenance').checked = globalChecked;
-            document.getElementById('maintenanceMessage').value = settings.maintenance_message || 'Sistem REVARO sedang dalam pemeliharaan berkala.';
+            document.getElementById('maintenanceMessage').value = settings.maintenance_message || 'Platform REVARO sedang dalam pemeliharaan berkala untuk peningkatan performa. Silakan coba beberapa saat lagi.';
             document.getElementById('maintenanceEta').value = settings.maintenance_eta || '';
-            document.getElementById('maintenanceIpBypass').value = settings.maintenance_ip_bypass || '186.243.3.201, 127.0.0.1';
+            document.getElementById('maintenanceIpBypass').value = settings.maintenance_ip_bypass || '';
 
             // Populate selective switches
-            document.getElementById('switchRoleVerifikator').checked = settings.maintenance_role_verifikator === 'true';
-            document.getElementById('switchRoleResolusi').checked = settings.maintenance_role_resolusi === 'true';
-            document.getElementById('switchRolePelanggan').checked = settings.maintenance_role_pelanggan === 'true';
+            document.getElementById('switchRoleVerifikator').checked = settings.maintenance_role_verifikator === 'true' || settings.maintenance_role_verifikator === '1';
+            document.getElementById('switchRoleResolusi').checked = settings.maintenance_role_resolusi === 'true' || settings.maintenance_role_resolusi === '1';
+            document.getElementById('switchRolePelanggan').checked = settings.maintenance_role_pelanggan === 'true' || settings.maintenance_role_pelanggan === '1';
 
             toggleGlobalSwitchUI();
             updateSelectiveRoleUI();
@@ -253,26 +263,30 @@
         }).join('');
     }
 
-    async function saveMaintenanceSettings() {
+    async function saveMaintenanceSettings(isInstantToggle = false) {
+        const isGlobalOn = document.getElementById('switchGlobalMaintenance').checked;
         const payload = {
-            maintenance_global: document.getElementById('switchGlobalMaintenance').checked ? 'true' : 'false',
+            maintenance_global: isGlobalOn ? 'true' : 'false',
             maintenance_message: document.getElementById('maintenanceMessage').value,
             maintenance_eta: document.getElementById('maintenanceEta').value,
             maintenance_ip_bypass: document.getElementById('maintenanceIpBypass').value,
             maintenance_role_verifikator: document.getElementById('switchRoleVerifikator').checked ? 'true' : 'false',
             maintenance_role_resolusi: document.getElementById('switchRoleResolusi').checked ? 'true' : 'false',
             maintenance_role_pelanggan: document.getElementById('switchRolePelanggan').checked ? 'true' : 'false',
+            maintenance_role_mitra: document.getElementById('switchRolePelanggan').checked ? 'true' : 'false',
         };
 
         try {
-            Swal.fire({
-                title: 'Menyimpan Maintenance...',
-                text: 'Memperbarui status pemeliharaan sistem.',
-                allowOutsideClick: false,
-                background: '#1E293B',
-                color: '#E2E8F0',
-                didOpen: () => Swal.showLoading(),
-            });
+            if (!isInstantToggle) {
+                Swal.fire({
+                    title: 'Menyimpan Pengaturan...',
+                    text: 'Memperbarui status pemeliharaan sistem.',
+                    allowOutsideClick: false,
+                    background: '#1E293B',
+                    color: '#E2E8F0',
+                    didOpen: () => Swal.showLoading(),
+                });
+            }
 
             const res = await fetch('/api/admin/maintenance', {
                 method: 'POST',
@@ -285,17 +299,31 @@
             });
 
             const result = await res.json();
-            Swal.close();
+            if (!isInstantToggle) Swal.close();
 
             if (res.ok) {
-                Swal.fire({
-                    title: 'Berhasil Disimpan!',
-                    text: result.message || 'Pengaturan maintenance berhasil diperbarui.',
-                    icon: 'success',
-                    background: '#1E293B',
-                    color: '#E2E8F0',
-                    confirmButtonColor: '#F97316'
-                });
+                if (isInstantToggle) {
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: isGlobalOn ? 'warning' : 'success',
+                        title: isGlobalOn ? 'Mode Maintenance AKTIF (503)!' : 'Mode Maintenance DINONAKTIFKAN!',
+                        text: isGlobalOn ? 'Portal pengguna & admin sekarang diblokir.' : 'Website kembali normal.',
+                        showConfirmButton: false,
+                        timer: 2500,
+                        background: '#1E293B',
+                        color: '#E2E8F0'
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'Berhasil Disimpan!',
+                        text: result.message || 'Pengaturan maintenance berhasil diperbarui.',
+                        icon: 'success',
+                        background: '#1E293B',
+                        color: '#E2E8F0',
+                        confirmButtonColor: '#F97316'
+                    });
+                }
                 loadMaintenanceData();
             } else {
                 Swal.fire({

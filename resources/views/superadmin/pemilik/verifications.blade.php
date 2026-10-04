@@ -1,7 +1,7 @@
 @extends('layouts.superadmin')
 
 @section('title', 'Verifikasi Mitra — REVARO')
-@section('page-title', '✅ Verifikasi Mitra Baru')
+@section('page-title', 'Verifikasi Mitra Baru')
 @section('page-subtitle', 'Pantau status onboarding teknisi dan toko sparepart yang mendaftar ke platform REVARO')
 
 @section('content')
@@ -9,10 +9,10 @@
     <!-- Filter Tabs -->
     <div class="flex gap-2 flex-wrap">
         <button onclick="filterVerif('all')" id="tabAll" class="btn-primary" style="font-size:0.75rem;padding:7px 16px;">Semua</button>
-        <button onclick="filterVerif('PENDING')" id="tabPending" class="btn-outline" style="font-size:0.75rem;padding:7px 16px;">⏳ Pending</button>
-        <button onclick="filterVerif('APPROVED')" id="tabApproved" class="btn-outline" style="font-size:0.75rem;padding:7px 16px;">✅ Disetujui</button>
-        <button onclick="filterVerif('REJECTED')" id="tabRejected" class="btn-outline" style="font-size:0.75rem;padding:7px 16px;">❌ Ditolak</button>
-        <button onclick="filterVerif('NEEDS_REVISION')" id="tabRevisi" class="btn-outline" style="font-size:0.75rem;padding:7px 16px;">📝 Revisi</button>
+        <button onclick="filterVerif('PENDING')" id="tabPending" class="btn-outline" style="font-size:0.75rem;padding:7px 16px;">Pending</button>
+        <button onclick="filterVerif('APPROVED')" id="tabApproved" class="btn-outline" style="font-size:0.75rem;padding:7px 16px;">Disetujui</button>
+        <button onclick="filterVerif('REJECTED')" id="tabRejected" class="btn-outline" style="font-size:0.75rem;padding:7px 16px;">Ditolak</button>
+        <button onclick="filterVerif('NEEDS_REVISION')" id="tabRevisi" class="btn-outline" style="font-size:0.75rem;padding:7px 16px;">Revisi</button>
     </div>
 
     <!-- Stats -->
@@ -39,7 +39,7 @@
     <div class="card p-6">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-sm font-extrabold text-white">Riwayat Verifikasi Onboarding</h3>
-            <input type="text" id="searchVerif" class="input-field" style="width:220px;" placeholder="🔍 Cari nama..." oninput="applyFilter()">
+            <input type="text" id="searchVerif" class="input-field" style="width:220px;" placeholder="Cari nama..." oninput="applyFilter()">
         </div>
         <div class="overflow-x-auto">
             <table class="data-table">
@@ -105,7 +105,7 @@ function renderVerif(data) {
     if (!data.length) { tbody.innerHTML = '<tr><td colspan="6" class="text-center text-slate-500 py-8">Tidak ada data</td></tr>'; return; }
     tbody.innerHTML = data.map(v => `
         <tr>
-            <td><span class="badge ${v.teknisi_id ? 'badge-blue' : 'badge-yellow'}">${v.teknisi_id ? '🔧 Teknisi' : '🏪 Toko'}</span></td>
+            <td><span class="badge ${v.teknisi_id ? 'badge-blue' : 'badge-yellow'}">${v.teknisi_id ? 'Teknisi' : 'Toko'}</span></td>
             <td class="font-semibold text-white">${v.teknisi?.nama || v.toko?.nama || '—'}</td>
             <td><span class="badge ${vBadge[v.status] || 'badge-gray'}">${v.status}</span></td>
             <td class="text-slate-400 text-xs">${v.admin?.nama || '—'}</td>

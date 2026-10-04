@@ -6,11 +6,12 @@
 <div class="space-y-6">
     <div class="flex justify-between items-center">
         <div>
-            <h2 class="text-xl font-black text-white">📜 5. Riwayat Keputusan Verifikasi Saya</h2>
+            <h2 class="text-xl font-black text-white">5. Riwayat Keputusan Verifikasi Saya</h2>
             <p class="text-xs text-slate-400">Log semua verifikasi onboarding yang pernah Anda ambil keputusannya.</p>
         </div>
-        <button onclick="loadHistoryData()" class="bg-brandOrange hover:bg-orange-600 text-white font-bold text-xs py-2 px-4 rounded-xl transition shadow">
-            🔄 Refresh History
+        <button onclick="loadHistoryData()" class="bg-brandOrange hover:bg-orange-600 text-white font-bold text-xs py-2 px-4 rounded-xl transition shadow flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            <span>Refresh History</span>
         </button>
     </div>
 
@@ -18,9 +19,10 @@
     <div class="bg-slate-900/40 rounded-2xl p-6 border border-slate-800 space-y-4">
         <div class="flex justify-between items-center">
             <h3 class="text-sm font-extrabold text-white flex items-center gap-2">
-                <span>📋</span> Riwayat Audit Keputusan
+                <svg class="w-4 h-4 text-brandOrange" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                <span>Riwayat Audit Keputusan</span>
             </h3>
-            <input type="text" id="searchHistory" class="text-xs bg-slate-950 border border-slate-800 rounded-xl p-2.5 outline-none text-white focus:border-brandOrange transition w-64" placeholder="🔍 Cari nama..." oninput="filterHistory()">
+            <input type="text" id="searchHistory" class="text-xs bg-slate-950 border border-slate-800 rounded-xl p-2.5 outline-none text-white focus:border-brandOrange transition w-64" placeholder="Cari nama mitra..." oninput="filterHistory()">
         </div>
         <div class="overflow-x-auto">
             <table class="w-full border-collapse">
@@ -74,7 +76,7 @@ function renderHistoryTable(data) {
     };
 
     tbody.innerHTML = data.map(h => {
-        const type = h.teknisi_id ? '🔧 Teknisi' : '🏪 Toko';
+        const type = h.teknisi_id ? 'Teknisi' : 'Toko';
         const name = h.teknisi?.nama || h.toko?.nama || '—';
         return `
             <tr class="hover:bg-slate-800/30">

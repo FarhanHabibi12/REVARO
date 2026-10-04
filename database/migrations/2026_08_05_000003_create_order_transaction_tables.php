@@ -20,6 +20,8 @@ return new class extends Migration
             $table->timestamp('tanggal_servis')->nullable();
             $table->decimal('latitude', 10, 8)->nullable();
             $table->decimal('longitude', 11, 8)->nullable();
+            $table->boolean('is_premium')->default(false);
+            $table->decimal('biaya_prioritas', 15, 2)->default(0.00);
             $table->index('pelanggan_id');
             $table->index('teknisi_id');
             $table->timestamps();

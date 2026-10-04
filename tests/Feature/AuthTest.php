@@ -136,9 +136,9 @@ class AuthTest extends TestCase
     }
 
     /**
-     * Test login allowed for PENDING_REVIEW profile.
+     * Test login is blocked for PENDING_REVIEW profile.
      */
-    public function test_login_allowed_for_pending_review_profile()
+    public function test_login_blocked_for_pending_review_profile()
     {
         $role = Role::where('nama', 'Teknisi')->first();
         $user = User::create([
@@ -153,7 +153,7 @@ class AuthTest extends TestCase
             'nama' => 'Pending Tech',
             'hp' => '085611223344',
             'kategori' => 'AC',
-            'status' => 'PENDING_REVIEW', // PENDING_REVIEW is allowed
+            'status' => 'PENDING_REVIEW', // PENDING_REVIEW is blocked until ACC
         ]);
 
         $response = $this->postJson('/api/auth/login', [
@@ -161,8 +161,8 @@ class AuthTest extends TestCase
             'password' => 'password123',
         ]);
 
-        $response->assertStatus(200)
-                 ->assertJsonStructure(['access_token']);
+        $response->assertStatus(403)
+                 ->assertJsonPath('status', 'PENDING_REVIEW');
     }
 
     /**

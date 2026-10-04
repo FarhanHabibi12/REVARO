@@ -18,14 +18,16 @@ class DispatchOrderJob implements ShouldQueue
 
     protected $orderId;
     protected $radius;
+    protected $maxRadius;
 
     /**
      * Create a new job instance.
      */
-    public function __construct($orderId, $radius = 5)
+    public function __construct($orderId, $radius = 7, $maxRadius = 7)
     {
         $this->orderId = $orderId;
         $this->radius = $radius;
+        $this->maxRadius = $maxRadius;
     }
 
     /**
@@ -74,34 +76,32 @@ class DispatchOrderJob implements ShouldQueue
 
             // In real app, we wait for technician acceptance.
             // If none accepts within 3 minutes, we escalate.
-            // For simulation / tests, we chain the escalation.
             if ($order->status === 'SEARCHING') {
-                if ($this->radius < 15) {
-                    $nextRadius = $this->radius + 5;
-                    // Dispatch next check with delay
-                    self::dispatch($this->orderId, $nextRadius)->delay(now()->addMinutes(3));
+                if ($this->radius < $this->maxRadius) {
+                    $nextRadius = min($this->radius + 7, $this->maxRadius);
+                    self::dispatch($this->orderId, $nextRadius, $this->maxRadius)->delay(now()->addMinutes(3));
                 }
             }
         } else {
             // No technicians found in this radius, escalate immediately or cancel if max
-            if ($this->radius < 15) {
-                $nextRadius = $this->radius + 5;
-                // Dispatch next radius check immediately
-                self::dispatchSync($this->orderId, $nextRadius);
+            if ($this->radius < $this->maxRadius) {
+                $nextRadius = min($this->radius + 7, $this->maxRadius);
+                self::dispatchSync($this->orderId, $nextRadius, $this->maxRadius);
             } else {
-                // Reached max radius 15km, cancel order
+                // Reached max radius (7 KM regular or 20 KM premium), cancel order
                 $order->update(['status' => 'CANCELLED']);
 
+                $premiumLabel = $this->maxRadius >= 20 ? 'Jangkauan Premium (20 KM)' : '7 KM';
                 Notifikasi::create([
                     'user_id' => $order->pelanggan->user_id,
                     'judul' => 'Pencarian Teknisi Gagal',
-                    'pesan' => 'Maaf, tidak ada teknisi yang tersedia di sekitar lokasi Anda dalam radius 15 KM saat ini. Silakan coba kembali.',
+                    'pesan' => "Maaf, tidak ada teknisi yang tersedia di sekitar lokasi Anda dalam radius {$premiumLabel} saat ini. Silakan coba kembali.",
                     'dibaca' => false,
                 ]);
 
                 ActivityLog::create([
                     'user_id' => null, // System action
-                    'aktivitas' => "Order {$order->kode_order} dibatalkan otomatis karena tidak menemukan teknisi dalam radius 15 KM",
+                    'aktivitas' => "Order {$order->kode_order} dibatalkan otomatis karena tidak menemukan teknisi dalam radius {$this->maxRadius} KM",
                 ]);
             }
         }

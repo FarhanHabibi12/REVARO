@@ -209,9 +209,12 @@ class DisputeTest extends TestCase
         $this->assertEquals('REFUNDED', $this->transaksi->fresh()->status_escrow);
         $this->assertEquals(600000.00, $this->customer->fresh()->saldo); // 500.000 + 100.000 refund
 
-        // Reset customer wallet & escrow
+        // Reset customer and tech wallet & escrow
         $this->customer = $this->customer->fresh();
         $this->customer->update(['saldo' => 500000.00]);
+        
+        $this->tech = $this->tech->fresh();
+        $this->tech->update(['saldo' => 0.00]);
         
         $this->transaksi = $this->transaksi->fresh();
         $this->transaksi->update(['status_escrow' => 'HELD']);

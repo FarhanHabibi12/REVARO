@@ -42,30 +42,68 @@ body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0B132B; 
 /* Light Mode CSS Overrides */
 body.light-mode { background-color: #FAF9F6; color: #0F172A; }
 body.light-mode .content-bg { background-color: #FAF9F6; }
-body.light-mode .sidebar-bg { background-color: #FFFFFF; border-right: 1px solid rgba(249, 115, 22, 0.15); }
+body.light-mode .sidebar-bg { background-color: #FFFFFF; border-right: 1px solid rgba(249, 115, 22, 0.15); box-shadow: 2px 0 12px rgba(0,0,0,0.02); }
 body.light-mode #adminSidebarMenu a { color: #475569; }
 body.light-mode #adminSidebarMenu a:hover { background-color: rgba(249, 115, 22, 0.08); color: #EA580C; }
-body.light-mode #adminSidebarMenu a.bg-brandOrange { background-color: #F97316; color: #FFFFFF; }
+body.light-mode #adminSidebarMenu a.bg-brandOrange { background-color: #F97316 !important; color: #FFFFFF !important; }
 body.light-mode #adminNavName { color: #0F172A !important; }
 body.light-mode #adminNavRole { color: #EA580C !important; }
 body.light-mode #adminNavInitial { background-color: #F1F5F9; color: #475569; border-color: #CBD5E1; }
-body.light-mode .bg-slate-900\/60 { background-color: #FFFFFF !important; border-color: rgba(71,85,105,0.12) !important; }
-body.light-mode .border-slate-800 { border-color: rgba(71,85,105,0.12) !important; }
-body.light-mode .border-slate-700\/30 { border-color: rgba(71,85,105,0.12) !important; }
-body.light-mode .bg-slate-900\/40 { background-color: #FFFFFF !important; border-color: rgba(71,85,105,0.12) !important; }
-body.light-mode .bg-slate-950 { background-color: #F8FAFC !important; }
+
+body.light-mode .bg-slate-900\/60,
+body.light-mode .bg-slate-900\/50,
+body.light-mode .bg-slate-900\/40,
+body.light-mode .bg-slate-900\/30,
+body.light-mode .bg-slate-900\/80,
+body.light-mode .bg-slate-900\/90,
+body.light-mode .bg-slate-900 { 
+  background-color: #F8FAFC !important; 
+  border-color: rgba(71,85,105,0.14) !important; 
+}
+
+body.light-mode .bg-slate-950,
+body.light-mode .bg-slate-950\/50,
+body.light-mode .bg-slate-950\/80 { 
+  background-color: #F1F5F9 !important; 
+  border-color: rgba(71,85,105,0.14) !important; 
+}
+
+body.light-mode .bg-slate-800,
+body.light-mode .bg-slate-800\/60,
+body.light-mode .bg-slate-800\/50,
+body.light-mode .bg-slate-800\/80 { 
+  background-color: #F1F5F9 !important; 
+  border-color: rgba(71,85,105,0.14) !important; 
+  color: #334155 !important;
+}
+
+body.light-mode .border-slate-800,
+body.light-mode .border-slate-850,
+body.light-mode .border-slate-700,
+body.light-mode .border-slate-700\/30,
+body.light-mode .border-slate-900 { 
+  border-color: rgba(71,85,105,0.14) !important; 
+}
+
 body.light-mode .text-white { color: #0F172A !important; }
 body.light-mode .text-slate-100 { color: #0F172A !important; }
 body.light-mode .text-slate-200 { color: #1E293B !important; }
 body.light-mode .text-slate-300 { color: #334155 !important; }
 body.light-mode .text-slate-400 { color: #475569 !important; }
 body.light-mode .text-slate-500 { color: #64748B !important; }
+
 body.light-mode .divide-slate-800\/50 > :not([hidden]) ~ :not([hidden]) { border-color: rgba(71,85,105,0.1) !important; }
 body.light-mode .divide-y { border-color: rgba(71,85,105,0.12) !important; }
 body.light-mode .divide-slate-800 { border-color: rgba(71,85,105,0.12) !important; }
-body.light-mode .card { background: #FFFFFF; border: 1px solid rgba(71,85,105,0.12); box-shadow: 0 4px 18px rgba(0,0,0,0.03); }
+body.light-mode .card { background: #FFFFFF !important; border: 1px solid rgba(71,85,105,0.14) !important; box-shadow: 0 4px 18px rgba(0,0,0,0.03); }
 body.light-mode footer { border-color: rgba(71,85,105,0.12) !important; }
 body.light-mode .p-4.border-t.border-slate-800 { border-color: rgba(71,85,105,0.12) !important; }
 body.light-mode #themeToggleBtn { color: #0F172A; }
 body.light-mode .brand-text { color: #0F172A !important; }
+
+body.light-mode .btn-outline { color: #475569; border-color: #CBD5E1; }
+body.light-mode .btn-outline:hover { color: #EA580C; border-color: #EA580C; background: rgba(249,115,22,0.06); }
+body.light-mode .input-field { background: #F8FAFC !important; border: 1px solid #CBD5E1 !important; color: #0F172A !important; }
+body.light-mode .input-field:focus { border-color: #EA580C !important; background: #FFFFFF !important; }
+
 

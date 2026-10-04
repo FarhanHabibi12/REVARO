@@ -17,15 +17,7 @@ class WalletController extends Controller
     public function getBalance(Request $request)
     {
         $user = $request->user();
-        $balance = 0.00;
-
-        if ($user->isPelanggan() && $user->pelanggan) {
-            $balance = $user->pelanggan->saldo;
-        } elseif ($user->isTeknisi() && $user->teknisi) {
-            $balance = $user->teknisi->saldo;
-        } elseif ($user->isToko() && $user->toko) {
-            $balance = $user->toko->saldo;
-        }
+        $balance = $user->getUnifiedSaldo();
 
         $transactions = WalletTransaction::where('user_id', $user->id)
             ->orderBy('id', 'desc')
@@ -33,6 +25,7 @@ class WalletController extends Controller
 
         return response()->json([
             'balance' => $balance,
+            'saldo' => $balance,
             'transactions' => $transactions
         ]);
     }
@@ -61,7 +54,8 @@ class WalletController extends Controller
             return response()->json([
                 'message'     => 'Permintaan penarikan dana berhasil diajukan. Admin akan memproses dalam 1x24 jam.',
                 'withdrawal'  => $withdrawal,
-                'new_balance' => $profile ? $profile->fresh()->saldo : 0,
+                'new_balance' => $user->getUnifiedSaldo(),
+                'saldo'       => $user->getUnifiedSaldo(),
             ], 201);
 
         } catch (\InvalidArgumentException $e) {
@@ -85,12 +79,25 @@ class WalletController extends Controller
             return response()->json(['message' => 'Nominal top up minimal adalah Rp 10.000.'], 422);
         }
 
+        $roleContext = $request->input('role', $request->query('role'));
+        $roleName = $user->role ? $user->role->nama : '';
+
         $profile = null;
-        if ($user->isPelanggan() && $user->pelanggan) {
-            $profile = $user->pelanggan;
-        } elseif ($user->isTeknisi() && $user->teknisi) {
+        if ($roleContext === 'teknisi' && $user->teknisi) {
             $profile = $user->teknisi;
-        } elseif ($user->isToko() && $user->toko) {
+        } elseif ($roleContext === 'toko' && $user->toko) {
+            $profile = $user->toko;
+        } elseif ($roleContext === 'pelanggan' && $user->pelanggan) {
+            $profile = $user->pelanggan;
+        } elseif ($roleName === 'Teknisi' && $user->teknisi && !$roleContext) {
+            $profile = $user->teknisi;
+        } elseif ($roleName === 'Toko' && $user->toko && !$roleContext) {
+            $profile = $user->toko;
+        } elseif ($user->pelanggan) {
+            $profile = $user->pelanggan;
+        } elseif ($user->teknisi) {
+            $profile = $user->teknisi;
+        } elseif ($user->toko) {
             $profile = $user->toko;
         } else {
             // Auto-create Pelanggan profile if missing
@@ -106,8 +113,8 @@ class WalletController extends Controller
             );
         }
 
-        return DB::transaction(function () use ($user, $amount, $profile, $request) {
-            $profile->increment('saldo', $amount);
+        return DB::transaction(function () use ($user, $amount, $request) {
+            $newBalance = $user->addUnifiedSaldo($amount);
 
             WalletTransaction::create([
                 'user_id'   => $user->id,
@@ -124,7 +131,8 @@ class WalletController extends Controller
 
             return response()->json([
                 'message'     => 'Top-up saldo berhasil.',
-                'new_balance' => $profile->fresh()->saldo
+                'new_balance' => $newBalance,
+                'saldo'       => $newBalance,
             ]);
         });
     }

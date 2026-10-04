@@ -68,11 +68,12 @@ class DisputeController extends Controller
         }
 
         return DB::transaction(function () use ($order, $request) {
-            // Create Dispute
+            // Create Dispute with INVESTIGATING status and 48-hour SLA
             $dispute = Dispute::create([
                 'order_id' => $order->id,
                 'alasan' => $request->alasan,
-                'status' => 'OPEN',
+                'status' => 'INVESTIGATING',
+                'sla_deadline' => Carbon::now()->addHours(48),
             ]);
 
             // Load-balanced assignment: find the Admin Resolusi with the lowest open disputes load
@@ -80,19 +81,19 @@ class DisputeController extends Controller
             if ($adminResolusiRole) {
                 // Lock row to prevent race conditions during concurrent dispute assignments
                 $admin = User::where('role_id', $adminResolusiRole->id)
+                    ->where('is_active', true)
                     ->lockForUpdate()
                     ->leftJoin('dispute', 'users.id', '=', 'dispute.admin_id')
-                    ->select('users.*')
+                    ->select('users.id')
                     ->selectRaw('count(case when dispute.status != "RESOLVED" then 1 end) as open_disputes_count')
                     ->groupBy('users.id')
                     ->orderBy('open_disputes_count', 'asc')
+                    ->orderBy('users.id', 'asc')
                     ->first();
 
                 if ($admin) {
                     $dispute->update([
                         'admin_id' => $admin->id,
-                        'status' => 'INVESTIGATING',
-                        'sla_deadline' => Carbon::now()->addHours(48),
                     ]);
 
                     Notifikasi::create([
@@ -163,8 +164,8 @@ class DisputeController extends Controller
     {
         $user = $request->user();
 
-        // Only assigned resolver admin or super admin owner can resolve
-        $isAssignedAdmin = $user->isAdminResolusi() && $dispute->admin_id === $user->id;
+        // Any Admin Resolusi or super admin owner can resolve
+        $isAssignedAdmin = $user->isAdminResolusi();
         $isOwner = $user->isSuperAdminPemilik();
 
         if (!$isAssignedAdmin && !$isOwner) {
@@ -184,8 +185,9 @@ class DisputeController extends Controller
         $transaksi = $order->transaksi;
         $decision = $request->keputusan;
 
-        return DB::transaction(function () use ($dispute, $order, $transaksi, $decision, $request) {
+        return DB::transaction(function () use ($dispute, $order, $transaksi, $decision, $request, $user) {
             $dispute->update([
+                'admin_id' => $user->id,
                 'status' => 'RESOLVED',
                 'keputusan' => $decision,
                 'resolusi' => $request->resolusi,
@@ -228,16 +230,16 @@ class DisputeController extends Controller
 
                     Notifikasi::create([
                         'user_id' => $order->teknisi->user_id,
-                        'judul' => 'Sengketa Selesai (Refund)',
-                        'pesan' => "Admin Resolusi memutuskan melakukan pengembalian dana penuh ke Pelanggan untuk order {$order->kode_order}. Saldo Anda telah dipotong kembali.",
+                        'judul' => 'Sengketa Selesai — Pengembalian Dana',
+                        'pesan' => "Admin Resolusi memutuskan melakukan pengembalian dana penuh (refund) ke Pelanggan untuk order {$order->kode_order}. Saldo Anda telah dipotong kembali.",
                         'dibaca' => false,
                     ]);
                 }
 
                 Notifikasi::create([
                     'user_id' => $order->pelanggan->user_id,
-                    'judul' => 'Sengketa Selesai (Dana Dikembalikan)',
-                    'pesan' => "Dana untuk order {$order->kode_order} telah dikembalikan penuh ke saldo Anda.",
+                    'judul' => 'Sengketa Selesai — Dana Dikembalikan',
+                    'pesan' => "Pengaduan sengketa untuk order {$order->kode_order} telah selesai. Dana pembayaran telah dikembalikan penuh ke saldo dompet Anda.",
                     'dibaca' => false,
                 ]);
 
@@ -251,6 +253,37 @@ class DisputeController extends Controller
                     if ($wasHeld && $order->teknisi) {
                         $order->teknisi->increment('saldo', $transaksi->biaya_jasa);
                     }
+
+                    // Also disburse sparepart payment to Toko if held
+                    if ($wasHeld) {
+                        $shopPayments = [];
+                        foreach ($order->spareparts as $sparepart) {
+                            if ($sparepart->pivot->status === 'CONFIRMED') {
+                                $shopPayments[$sparepart->toko_id] = ($shopPayments[$sparepart->toko_id] ?? 0) + $sparepart->pivot->subtotal;
+                            }
+                        }
+                        $kebijakan = \App\Models\KebijakanKomisi::first();
+                        $persenFee = $kebijakan ? (float)$kebijakan->persen_fee_sparepart : 5.0;
+                        foreach ($shopPayments as $tokoId => $subtotal) {
+                            $toko = \App\Models\Toko::find($tokoId);
+                            if ($toko) {
+                                $netAmount = $subtotal - round($subtotal * ($persenFee / 100), 2);
+                                $toko->increment('saldo', $netAmount);
+                                \App\Models\WalletTransaction::create([
+                                    'user_id' => $toko->user_id,
+                                    'tipe' => 'IN',
+                                    'jumlah' => $netAmount,
+                                    'deskripsi' => "Hasil penjualan sparepart order {$order->kode_order}",
+                                ]);
+                                Notifikasi::create([
+                                    'user_id' => $toko->user_id,
+                                    'judul' => 'Pencairan Hasil Penjualan',
+                                    'pesan' => "Dana Rp " . number_format($netAmount, 0, ',', '.') . " hasil penjualan sparepart order {$order->kode_order} telah masuk ke saldo.",
+                                    'dibaca' => false,
+                                ]);
+                            }
+                        }
+                    }
                 }
 
                 if ($order->teknisi) {
@@ -258,16 +291,16 @@ class DisputeController extends Controller
 
                     Notifikasi::create([
                         'user_id' => $order->teknisi->user_id,
-                        'judul' => 'Sengketa Selesai (Dana Dicairkan)',
-                        'pesan' => "Admin Resolusi memutuskan sengketa order {$order->kode_order} selesai. Dana tetap berada di saldo Anda.",
+                        'judul' => 'Sengketa Selesai — Pencairan Dana',
+                        'pesan' => "Admin Resolusi telah menyelesaikan sengketa untuk order {$order->kode_order}. Dana jasa servis berhasil dicairkan ke saldo dompet Anda.",
                         'dibaca' => false,
                     ]);
                 }
 
                 Notifikasi::create([
                     'user_id' => $order->pelanggan->user_id,
-                    'judul' => 'Sengketa Selesai (Dana Dicairkan ke Teknisi)',
-                    'pesan' => "Admin Resolusi memutuskan mencairkan dana sengketa untuk order {$order->kode_order} ke pihak Mitra.",
+                    'judul' => 'Sengketa Selesai — Hasil Resolusi Kasus',
+                    'pesan' => "Admin Resolusi telah memeriksa bukti dan memutuskan mencairkan dana order {$order->kode_order} kepada Teknisi.",
                     'dibaca' => false,
                 ]);
 
@@ -280,16 +313,16 @@ class DisputeController extends Controller
 
                     Notifikasi::create([
                         'user_id' => $order->teknisi->user_id,
-                        'judul' => 'Sengketa Selesai (Kunjungan Ulang)',
-                        'pesan' => "Admin Resolusi memutuskan Kunjungan Ulang. Anda wajib datang kembali untuk menyelesaikan perbaikan order {$order->kode_order} tanpa biaya tambahan.",
+                        'judul' => 'Sengketa Selesai — Instruksi Kunjungan Ulang',
+                        'pesan' => "Admin Resolusi memutuskan Kunjungan Ulang. Anda wajib datang kembali ke lokasi pelanggan untuk menyelesaikan perbaikan order {$order->kode_order} tanpa biaya tambahan.",
                         'dibaca' => false,
                     ]);
                 }
 
                 Notifikasi::create([
                     'user_id' => $order->pelanggan->user_id,
-                    'judul' => 'Sengketa Selesai (Instruksi Servis Ulang)',
-                    'pesan' => "Mitra Teknisi telah diinstruksikan untuk mendatangi lokasi Anda kembali untuk menyelesaikan perbaikan order {$order->kode_order}.",
+                    'judul' => 'Sengketa Selesai — Penjadwalan Servis Ulang',
+                    'pesan' => "Mitra Teknisi telah diinstruksikan oleh Admin Resolusi untuk mendatangi lokasi Anda kembali guna menyelesaikan perbaikan order {$order->kode_order} tanpa biaya tambahan.",
                     'dibaca' => false,
                 ]);
 
@@ -332,37 +365,55 @@ class DisputeController extends Controller
                 if ($teknisi) {
                     Notifikasi::create([
                         'user_id' => $teknisi->user_id,
-                        'judul' => 'Penalti Pelanggaran Sengketa',
-                        'pesan' => "Anda menerima penalti WARNING karena kecurangan terbukti. Jumlah warning: {$warningCount}.",
+                        'judul' => 'Peringatan Pelanggaran Sengketa',
+                        'pesan' => "Anda menerima surat peringatan sanksi pelanggaran (WARNING) karena terbukti melakukan kelalaian/kecurangan pada sengketa order {$order->kode_order}. Total peringatan aktif: {$warningCount}.",
                         'dibaca' => false,
                     ]);
                 }
 
                 Notifikasi::create([
                     'user_id' => $order->pelanggan->user_id,
-                    'judul' => 'Sengketa Selesai (Tindakan Fraud Terhadap Mitra)',
-                    'pesan' => "Mitra terbukti melakukan kecurangan. Akun mereka telah ditindak, dan dana perbaikan {$order->kode_order} dikembalikan penuh ke saldo Anda.",
+                    'judul' => 'Sengketa Selesai — Sanksi Pelanggaran Mitra',
+                    'pesan' => "Mitra terbukti melakukan pelanggaran layanan. Akun mitra telah ditindak sanksi, dan seluruh dana perbaikan order {$order->kode_order} telah dikembalikan penuh ke saldo dompet Anda.",
                     'dibaca' => false,
                 ]);
             }
 
+            $decisionLabels = [
+                'REFUND_PELANGGAN' => 'Pengembalian Dana Penuh (Refund) ke Pelanggan',
+                'RELEASE_TEKNISI' => 'Pencairan Dana ke Mitra Teknisi',
+                'KUNJUNGAN_ULANG' => 'Instruksi Kunjungan Ulang Perbaikan oleh Teknisi',
+                'FREEZE_AKUN' => 'Sanksi Pembekuan Akun Pelaku Pelanggaran',
+            ];
+            $decisionText = $decisionLabels[$decision] ?? $decision;
+
             ActivityLog::create([
                 'user_id' => $request->user()->id,
-                'aktivitas' => "Sengketa untuk order {$order->kode_order} telah diselesaikan dengan keputusan {$decision}.",
+                'aktivitas' => "Sengketa untuk order {$order->kode_order} telah diselesaikan dengan keputusan: {$decisionText}.",
             ]);
 
             return response()->json([
-                'message' => "Sengketa berhasil diselesaikan dengan keputusan: {$decision}."
+                'message' => "Sengketa berhasil diselesaikan dengan keputusan: {$decisionText}."
             ]);
         });
     }
 
     /**
-     * List all disputes for Admins.
+     * List all disputes for Admins or Customer's own disputes.
      */
     public function index(Request $request)
     {
         $user = $request->user();
+
+        if ($user->isPelanggan() && $user->pelanggan) {
+            $disputes = Dispute::with(['order.pelanggan', 'order.teknisi', 'admin'])
+                ->whereHas('order', function ($q) use ($user) {
+                    $q->where('pelanggan_id', $user->pelanggan->id);
+                })
+                ->latest()
+                ->get();
+            return response()->json($disputes);
+        }
 
         if (!$user->isAdminResolusi() && !$user->isSuperAdminPemilik() && !$user->isSuperAdminMonitoring()) {
             return response()->json(['message' => 'Forbidden.'], 403);
@@ -370,23 +421,281 @@ class DisputeController extends Controller
 
         $disputes = Dispute::with(['order.pelanggan', 'order.teknisi', 'admin'])->latest()->get();
 
-        return response()->json([
-            'disputes' => $disputes
-        ]);
+        return response()->json($disputes);
     }
 
     /**
-     * Get disputes assigned to currently logged-in Admin Resolusi.
+     * Get disputes for Admin Resolusi queue.
      */
     public function myAssigned(Request $request)
     {
         $admin = $request->user();
-        $disputes = Dispute::with(['order.pelanggan', 'order.teknisi', 'order.transaksi'])
-            ->where('admin_id', $admin->id)
-            ->where('status', '!=', 'RESOLVED')
+        $query = Dispute::with(['order.pelanggan', 'order.teknisi', 'order.transaksi'])
+            ->where('status', '!=', 'RESOLVED');
+
+        if ($request->query('type') === 'sengketa') {
+            $query->where('alasan', 'not like', 'Eskalasi Mutu Servis%');
+        } elseif ($request->query('type') === 'rating') {
+            $query->where('alasan', 'like', 'Eskalasi Mutu Servis%');
+        }
+
+        $disputes = $query->orderByRaw("CASE WHEN admin_id = ? THEN 0 WHEN admin_id IS NULL THEN 1 ELSE 2 END", [$admin->id])
             ->orderBy('sla_deadline', 'asc')
             ->get();
         return response()->json($disputes);
+    }
+
+    /**
+     * Get rating complaint cases for Admin Resolusi.
+     */
+    public function ratingEvaluations(Request $request)
+    {
+        $admin = $request->user();
+
+        if (!$admin->isAdminResolusi() && !$admin->isSuperAdminPemilik()) {
+            return response()->json(['message' => 'Forbidden.'], 403);
+        }
+
+        $cases = Dispute::with(['order.pelanggan', 'order.teknisi.user', 'order.transaksi'])
+            ->where('alasan', 'like', 'Eskalasi Mutu Servis%')
+            ->orderByRaw("CASE WHEN status != 'RESOLVED' THEN 0 ELSE 1 END")
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($dispute) {
+                $teknisi = $dispute->order->teknisi ?? null;
+                $teknisiId = $teknisi ? $teknisi->id : null;
+
+                $totalBadRatingCases = 0;
+                $violationCount = 0;
+                $currentStatus = 'UNKNOWN';
+                $isUserActive = true;
+
+                if ($teknisi) {
+                    $totalBadRatingCases = Dispute::where('alasan', 'like', 'Eskalasi Mutu Servis%')
+                        ->whereHas('order', function ($q) use ($teknisiId) {
+                            $q->where('teknisi_id', $teknisiId);
+                        })
+                        ->count();
+
+                    $violationCount = PelanggaranLog::where('teknisi_id', $teknisiId)->count();
+                    $currentStatus = $teknisi->status;
+                    $isUserActive = $teknisi->user ? $teknisi->user->is_active : true;
+                }
+
+                $arr = $dispute->toArray();
+                $arr['total_bad_rating_cases'] = $totalBadRatingCases;
+                $arr['violation_count'] = $violationCount;
+                $arr['teknisi_status'] = $currentStatus;
+                $arr['is_banned'] = ($currentStatus === 'FROZEN' || !$isUserActive);
+                return $arr;
+            });
+
+        return response()->json($cases);
+    }
+
+    /**
+     * Admin Resolusi action on bad rating complaint.
+     */
+    public function evaluateRatingCase(Request $request, Dispute $dispute)
+    {
+        $user = $request->user();
+
+        if (!$user->isAdminResolusi() && !$user->isSuperAdminPemilik()) {
+            return response()->json(['message' => 'Forbidden.'], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'keputusan' => 'required|in:BAN_TEKNISI,SURAT_PERINGATAN,TURUNKAN_TIER,SELESAIKAN_EVALUASI',
+            'catatan' => 'required|string|min:5',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $order = $dispute->order;
+        $teknisi = $order ? $order->teknisi : null;
+
+        if (!$teknisi) {
+            return response()->json(['message' => 'Teknisi pada order ini tidak ditemukan.'], 404);
+        }
+
+        $decision = $request->keputusan;
+        $notes = $request->catatan;
+
+        return DB::transaction(function () use ($dispute, $order, $teknisi, $decision, $notes, $user, $request) {
+            $message = '';
+
+            if ($decision === 'BAN_TEKNISI') {
+                $teknisi->update([
+                    'status' => 'FROZEN',
+                    'tersedia' => false,
+                ]);
+                if ($teknisi->user) {
+                    $teknisi->user->update(['is_active' => false]);
+                    $teknisi->user->tokens()->delete();
+                }
+
+                PelanggaranLog::create([
+                    'teknisi_id' => $teknisi->id,
+                    'toko_id' => null,
+                    'dispute_id' => $dispute->id,
+                    'jenis_pelanggaran' => 'BANNED / Pembekuan Akun oleh Admin Resolusi akibat akumulasi rating jelek: ' . $notes,
+                    'tingkat_penalti' => 'BAN',
+                ]);
+
+                Notifikasi::create([
+                    'user_id' => $teknisi->user_id,
+                    'judul' => '🚫 Akun Anda Telah Di-BANNED',
+                    'pesan' => "Akun Mitra Teknisi Anda resmi di-BANNED dan dinonaktifkan oleh Admin Resolusi. Catatan: {$notes}",
+                    'dibaca' => false,
+                ]);
+
+                $message = "Akun Mitra Teknisi {$teknisi->nama} berhasil di-BANNED permanen. Akun dibekukan dan tidak dapat login kembali.";
+
+            } elseif ($decision === 'SURAT_PERINGATAN') {
+                PelanggaranLog::create([
+                    'teknisi_id' => $teknisi->id,
+                    'toko_id' => null,
+                    'dispute_id' => $dispute->id,
+                    'jenis_pelanggaran' => 'Surat Peringatan (SP) Evaluasi Rating Buruk: ' . $notes,
+                    'tingkat_penalti' => 'WARNING',
+                ]);
+
+                $warningCount = PelanggaranLog::where('teknisi_id', $teknisi->id)
+                    ->where('tingkat_penalti', 'WARNING')
+                    ->count();
+
+                if ($warningCount >= 3) {
+                    $teknisi->update(['status' => 'FROZEN', 'tersedia' => false]);
+                    if ($teknisi->user) {
+                        $teknisi->user->update(['is_active' => false]);
+                        $teknisi->user->tokens()->delete();
+                    }
+                    $message = "Surat Peringatan ke-{$warningCount} diterbitkan. Karena mencapai batas 3x pelanggaran, akun teknisi otomatis di-BANNED.";
+                } else {
+                    $message = "Surat Peringatan (SP) ke-{$warningCount} berhasil diterbitkan untuk Teknisi {$teknisi->nama}.";
+                }
+
+                Notifikasi::create([
+                    'user_id' => $teknisi->user_id,
+                    'judul' => '⚠️ Surat Peringatan Kinerja (SP)',
+                    'pesan' => "Anda menerima Surat Peringatan atas kualitas layanan order {$order->kode_order}. Total SP: {$warningCount}/3. Catatan: {$notes}",
+                    'dibaca' => false,
+                ]);
+
+            } elseif ($decision === 'TURUNKAN_TIER') {
+                $tiers = ['Gold' => 'Silver', 'Silver' => 'Bronze', 'Bronze' => 'Bronze'];
+                $oldTier = $teknisi->tier ?? 'Bronze';
+                $newTier = $tiers[$oldTier] ?? 'Bronze';
+                $teknisi->update(['tier' => $newTier]);
+
+                PelanggaranLog::create([
+                    'teknisi_id' => $teknisi->id,
+                    'toko_id' => null,
+                    'dispute_id' => $dispute->id,
+                    'jenis_pelanggaran' => "Penurunan Tier Kinerja dari {$oldTier} ke {$newTier}",
+                    'tingkat_penalti' => 'WARNING',
+                ]);
+
+                Notifikasi::create([
+                    'user_id' => $teknisi->user_id,
+                    'judul' => '📉 Penurunan Tier Kemitraan',
+                    'pesan' => "Tier kemitraan Anda diturunkan dari {$oldTier} ke {$newTier} akibat evaluasi ulasan rendah. Catatan: {$notes}",
+                    'dibaca' => false,
+                ]);
+
+                $message = "Tier teknisi berhasil diturunkan menjadi {$newTier}.";
+
+            } elseif ($decision === 'SELESAIKAN_EVALUASI') {
+                $message = "Kasus evaluasi rating berhasil diselesaikan dan diarsipkan.";
+            }
+
+            $dispute->update([
+                'admin_id' => $user->id,
+                'status' => 'RESOLVED',
+                'keputusan' => $decision,
+                'resolusi' => $notes,
+                'resolved_at' => now(),
+            ]);
+
+            ActivityLog::create([
+                'user_id' => $user->id,
+                'aktivitas' => "Admin Resolusi menyelesaikan evaluasi mutu/rating order {$order->kode_order} dengan keputusan: {$decision}.",
+                'ip_address' => $request->ip(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'dispute' => $dispute->fresh(),
+            ]);
+        });
+    }
+
+    /**
+     * Direct Ban/Freeze technician by Admin Resolusi or Super Admin.
+     */
+    public function banTeknisiDirect(Request $request, $id)
+    {
+        $user = $request->user();
+
+        if (!$user->isAdminResolusi() && !$user->isSuperAdminPemilik()) {
+            return response()->json(['message' => 'Forbidden.'], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'alasan' => 'required|string|min:5',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $teknisi = \App\Models\Teknisi::with('user')->find($id);
+        if (!$teknisi) {
+            return response()->json(['message' => 'Mitra Teknisi tidak ditemukan.'], 404);
+        }
+
+        $alasan = $request->alasan;
+
+        DB::transaction(function () use ($teknisi, $alasan, $user, $request) {
+            $teknisi->update([
+                'status' => 'FROZEN',
+                'tersedia' => false,
+            ]);
+
+            if ($teknisi->user) {
+                $teknisi->user->update(['is_active' => false]);
+                $teknisi->user->tokens()->delete();
+            }
+
+            PelanggaranLog::create([
+                'teknisi_id' => $teknisi->id,
+                'toko_id' => null,
+                'dispute_id' => null,
+                'jenis_pelanggaran' => 'Direct BANNED oleh Admin Resolusi: ' . $alasan,
+                'tingkat_penalti' => 'BAN',
+            ]);
+
+            Notifikasi::create([
+                'user_id' => $teknisi->user_id,
+                'judul' => '🚫 Akun Anda Telah Di-BANNED',
+                'pesan' => "Akun Mitra Teknisi Anda telah di-BANNED oleh Admin Resolusi. Anda tidak dapat login lagi. Alasan: {$alasan}",
+                'dibaca' => false,
+            ]);
+
+            ActivityLog::create([
+                'user_id' => $user->id,
+                'aktivitas' => "Admin Resolusi mem-BANNED akun teknisi {$teknisi->nama} (ID: {$teknisi->id}).",
+                'ip_address' => $request->ip(),
+            ]);
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => "Akun Teknisi {$teknisi->nama} berhasil di-BANNED secara permanen. Pengguna tidak dapat login lagi.",
+        ]);
     }
 
     /**

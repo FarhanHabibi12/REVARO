@@ -39,6 +39,23 @@ class ChatController extends Controller
             'pesan' => $request->pesan,
         ]);
 
+        // Create in-app notification for recipient
+        $targetUserId = null;
+        if ($isCustomer && $order->teknisi && $order->teknisi->user_id) {
+            $targetUserId = $order->teknisi->user_id;
+        } elseif ($isTechnician && $order->pelanggan && $order->pelanggan->user_id) {
+            $targetUserId = $order->pelanggan->user_id;
+        }
+
+        if ($targetUserId) {
+            \App\Models\Notifikasi::create([
+                'user_id' => $targetUserId,
+                'judul' => 'Pesan Baru dari ' . ($user->nama ?? 'Pengguna'),
+                'pesan' => 'Order #' . ($order->kode_order ?? $order->id) . ': ' . \Illuminate\Support\Str::limit($request->pesan, 75),
+                'dibaca' => false,
+            ]);
+        }
+
         return response()->json($chat->load('dariUser'), 201);
     }
 

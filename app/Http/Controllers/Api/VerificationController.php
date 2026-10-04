@@ -113,6 +113,10 @@ class VerificationController extends Controller
                 // Map verification decision to profile status
                 if ($status === 'APPROVED') {
                     $profile->status = 'ACTIVE';
+                    $roleTeknisi = \App\Models\Role::firstOrCreate(['nama' => 'Teknisi']);
+                    if ($profile->user) {
+                        $profile->user->update(['role_id' => $roleTeknisi->id, 'is_active' => true]);
+                    }
                 } elseif ($status === 'NEEDS_REVISION') {
                     $profile->status = 'NEEDS_REVISION';
                 } elseif ($status === 'REJECTED') {
@@ -141,6 +145,10 @@ class VerificationController extends Controller
                 // Map verification decision to profile status
                 if ($status === 'APPROVED') {
                     $profile->status = 'ACTIVE';
+                    $roleToko = \App\Models\Role::firstOrCreate(['nama' => 'Toko Sparepart']);
+                    if ($profile->user) {
+                        $profile->user->update(['role_id' => $roleToko->id, 'is_active' => true]);
+                    }
                 } elseif ($status === 'NEEDS_REVISION') {
                     $profile->status = 'NEEDS_REVISION';
                 } elseif ($status === 'REJECTED') {

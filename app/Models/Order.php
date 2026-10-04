@@ -24,6 +24,17 @@ class Order extends Model
         'tanggal_servis',
         'latitude',
         'longitude',
+        'is_premium',
+        'biaya_prioritas',
+        'is_for_other',
+        'recipient_name',
+        'recipient_phone',
+        'recipient_address',
+        'additional_notes',
+        'formatted_address',
+        'pemesan_nama',
+        'pemesan_hp',
+        'pemesan_alamat',
     ];
 
     protected $casts = [
@@ -72,5 +83,13 @@ class Order extends Model
     public function dispute(): HasOne
     {
         return $this->hasOne(Dispute::class);
+    }
+
+    /**
+     * Get the rating given for this order.
+     */
+    public function rating(): HasOne
+    {
+        return $this->hasOne(Rating::class);
     }
 }

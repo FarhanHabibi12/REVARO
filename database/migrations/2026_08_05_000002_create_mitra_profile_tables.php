@@ -28,6 +28,7 @@ return new class extends Migration
             $table->string('kategori');
             $table->string('tier')->default('Bronze');
             $table->string('hp');
+            $table->text('alamat')->nullable();
             $table->decimal('rating', 3, 2)->default(0.00);
             $table->boolean('tersedia')->default(true)->index();
             $table->string('status')->default('PENDING_REVIEW')->index();

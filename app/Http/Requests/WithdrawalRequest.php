@@ -21,6 +21,12 @@ class WithdrawalRequest extends FormRequest
                 'amount' => $cleanAmount !== '' ? (int) $cleanAmount : 0,
             ]);
         }
+
+        if ($this->has('account_name') && !$this->has('account_holder_name')) {
+            $this->merge([
+                'account_holder_name' => $this->account_name,
+            ]);
+        }
     }
 
     public function rules(): array
