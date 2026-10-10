@@ -18,16 +18,7 @@ class MidtransService
         $this->clientKey = trim((string) config('services.midtrans.client_key', env('MIDTRANS_CLIENT_KEY', '')));
         $this->merchantId = trim((string) config('services.midtrans.merchant_id', env('MIDTRANS_MERCHANT_ID', '')));
         
-        $cfgProduction = (bool) config('services.midtrans.is_production', env('MIDTRANS_IS_PRODUCTION', false));
-        
-        // Cerdas mendeteksi environment dari prefix server key jika tersedia
-        if (str_starts_with(strtoupper($this->serverKey), 'SB-')) {
-            $this->isProduction = false;
-        } elseif (str_starts_with(strtoupper($this->serverKey), 'MID-')) {
-            $this->isProduction = true;
-        } else {
-            $this->isProduction = $cfgProduction;
-        }
+        $this->isProduction = (bool) config('services.midtrans.is_production', env('MIDTRANS_IS_PRODUCTION', false));
     }
 
     /**
@@ -95,7 +86,17 @@ class MidtransService
         $response = $this->requestWithSslFallback('post', $url, $payload);
 
         if (!$response->successful()) {
-            $errorBody = $response->json();
+            // Coba endpoint alternatif jika 401 Unauthorized (Sandbox vs Production mismatch)
+            $altUrl = $this->isProduction
+                ? 'https://app.sandbox.midtrans.com/snap/v1/transactions'
+                : 'https://app.midtrans.com/snap/v1/transactions';
+            $altResponse = $this->requestWithSslFallback('post', $altUrl, $payload);
+            if ($altResponse->successful()) {
+                $this->isProduction = !$this->isProduction;
+                return $altResponse->json();
+            }
+
+            $errorBody = $response->json() ?: $altResponse->json();
             Log::error('Midtrans Snap Error: ' . $response->body(), ['payload' => $payload]);
             $msg = $errorBody['error_messages'][0] ?? ($errorBody['message'] ?? 'Gagal membuat transaksi ke Midtrans.');
             throw new \Exception($msg);
