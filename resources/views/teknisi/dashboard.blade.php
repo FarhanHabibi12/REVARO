@@ -546,8 +546,9 @@
                     listContainer.innerHTML = data.notifications.map(n => {
                         const isUnread = !n.dibaca;
                         const timeStr = new Date(n.created_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' });
+                        const nJson = JSON.stringify(n).replace(/"/g, '&quot;');
                         return `
-                            <div onclick="markNotificationRead(${n.id})" class="p-3.5 transition cursor-pointer hover:bg-accent/30 ${isUnread ? 'bg-orange-50/70 border-l-4 border-secondary' : 'bg-white'}">
+                            <div onclick="handleNotificationClick(${n.id}, ${nJson})" class="p-3.5 transition cursor-pointer hover:bg-accent/30 ${isUnread ? 'bg-orange-50/70 border-l-4 border-secondary' : 'bg-white'}">
                                 <div class="flex items-start justify-between gap-2">
                                     <h5 class="text-xs font-bold ${isUnread ? 'text-primary' : 'text-slate-700'}">${n.judul}</h5>
                                     <span class="text-[10px] text-textLight whitespace-nowrap shrink-0">${timeStr}</span>
@@ -570,6 +571,60 @@
                 });
                 fetchNotifications();
             } catch (e) {}
+        }
+
+        async function handleNotificationClick(id, n) {
+            await markNotificationRead(id);
+            const dd = document.getElementById('notifDropdown');
+            if (dd) dd.classList.add('hidden');
+
+            const title = n.judul || 'Notifikasi';
+            const body = n.pesan || '';
+            const lowerBody = body.toLowerCase();
+            const lowerTitle = title.toLowerCase();
+
+            // Skenario Saldo / Dompet
+            if (lowerTitle.includes('dompet') || lowerTitle.includes('saldo') || lowerTitle.includes('penarikan') || lowerBody.includes('saldo') || lowerBody.includes('escrow')) {
+                Swal.fire({
+                    icon: 'info',
+                    title: title,
+                    text: body,
+                    showCancelButton: true,
+                    confirmButtonText: '💳 Buka Dompet Teknisi',
+                    cancelButtonText: 'Tutup',
+                    confirmButtonColor: '#0B4A8F',
+                    cancelButtonColor: '#64748B'
+                }).then((r) => {
+                    if (r.isConfirmed) window.location.href = '/teknisi/dompet';
+                });
+                return;
+            }
+
+            // Skenario Order / Riwayat
+            if (lowerTitle.includes('pesanan') || lowerTitle.includes('order') || lowerBody.includes('#ord-')) {
+                Swal.fire({
+                    icon: 'info',
+                    title: title,
+                    text: body,
+                    showCancelButton: true,
+                    confirmButtonText: '📋 Buka Riwayat Kerja',
+                    cancelButtonText: 'Tutup',
+                    confirmButtonColor: '#0B4A8F',
+                    cancelButtonColor: '#64748B'
+                }).then((r) => {
+                    if (r.isConfirmed) window.location.href = '/teknisi/riwayat';
+                });
+                return;
+            }
+
+            // Default
+            Swal.fire({
+                icon: 'info',
+                title: title,
+                text: body,
+                confirmButtonText: 'Tutup',
+                confirmButtonColor: '#0B4A8F'
+            });
         }
 
         async function markAllNotificationsAsRead() {
@@ -1110,8 +1165,17 @@
         function showActiveJobPanel(order) {
             document.getElementById('jobsFeedPanel').classList.add('hidden');
             document.getElementById('activeJobPanel').classList.remove('hidden');
-            document.getElementById('activeJobCode').innerText = order.kode_order;
-            document.getElementById('activeJobBadge').innerText = order.status;
+            const techStatusMap = {
+                'DISPATCHED': '🛵 Pesanan Diterima',
+                'ON_THE_WAY': '🛵 Menuju Lokasi Pelanggan',
+                'IN_PROGRESS': '🔧 Pengerjaan Servis',
+                'AWAITING_PAYMENT': '💳 Menunggu Pembayaran Pelanggan',
+                'COMPLETED': '✅ Servis Selesai',
+                'CANCELLED': '❌ Dibatalkan',
+                'DISPUTED': '⚖️ Dalam Penanganan Sengketa',
+                'RESOLVED': '🤝 Selesai Diputuskan'
+            };
+            document.getElementById('activeJobBadge').innerText = techStatusMap[order.status] || order.status;
 
             if (order.pelanggan) {
                 document.getElementById('activeCustomerName').innerText = order.pelanggan.nama;
@@ -1483,7 +1547,7 @@
                     }
                 }
             } catch(e) {}
-        }, 3000);
+        }, 10000);
     </script>
     @include('components.dock')
 </body>

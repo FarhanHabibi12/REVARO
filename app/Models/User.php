@@ -192,6 +192,11 @@ class User extends Authenticatable
         return $this->role?->nama === 'Super Admin (Monitoring Kinerja)';
     }
 
+    public function isAdminSuper(): bool
+    {
+        return $this->isSuperAdminPemilik() || $this->isSuperAdminMonitoring();
+    }
+
     /**
      * Get unified wallet balance for the user across all roles.
      */
@@ -226,59 +231,88 @@ class User extends Authenticatable
     /**
      * Add saldo to the unified user wallet and sync across all profiles of the user.
      */
+    /**
+     * Add saldo to the unified user wallet and sync across all profiles of the user with pessimistic locking.
+     */
     public function addUnifiedSaldo(float $amount): float
     {
-        $current = $this->getUnifiedSaldo();
-        $newSaldo = $current + $amount;
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($amount) {
+            $pel = $this->pelanggan()->lockForUpdate()->first();
+            $tek = $this->teknisi()->lockForUpdate()->first();
+            $tok = $this->toko()->lockForUpdate()->first();
 
-        if ($this->pelanggan) {
-            $this->pelanggan->saldo = $newSaldo;
-            $this->pelanggan->save();
-        }
-        if ($this->teknisi) {
-            $this->teknisi->saldo = $newSaldo;
-            $this->teknisi->save();
-        }
-        if ($this->toko) {
-            $this->toko->saldo = $newSaldo;
-            $this->toko->save();
-        }
+            $current = max(
+                $pel ? (float)$pel->saldo : 0.0,
+                $tek ? (float)$tek->saldo : 0.0,
+                $tok ? (float)$tok->saldo : 0.0
+            );
 
-        if (!$this->pelanggan && !$this->teknisi && !$this->toko) {
-            $pel = Pelanggan::create([
-                'user_id' => $this->id,
-                'nama' => $this->nama,
-                'email' => $this->email,
-                'hp' => $this->no_telp ?? '081234567890',
-                'alamat' => 'Alamat Pengguna',
-                'saldo' => $newSaldo,
-            ]);
-        }
+            $newSaldo = $current + $amount;
 
-        return $newSaldo;
+            if ($pel) {
+                $pel->saldo = $newSaldo;
+                $pel->save();
+            }
+            if ($tek) {
+                $tek->saldo = $newSaldo;
+                $tek->save();
+            }
+            if ($tok) {
+                $tok->saldo = $newSaldo;
+                $tok->save();
+            }
+
+            if (!$pel && !$tek && !$tok) {
+                Pelanggan::create([
+                    'user_id' => $this->id,
+                    'nama' => $this->nama,
+                    'email' => $this->email,
+                    'hp' => $this->no_telp ?? '081234567890',
+                    'alamat' => 'Alamat Pengguna',
+                    'saldo' => $newSaldo,
+                ]);
+            }
+
+            return $newSaldo;
+        });
     }
 
     /**
-     * Deduct saldo from the unified user wallet and sync across all profiles.
+     * Deduct saldo from the unified user wallet and sync across all profiles with pessimistic locking.
      */
     public function deductUnifiedSaldo(float $amount): float
     {
-        $current = $this->getUnifiedSaldo();
-        $newSaldo = max(0.00, $current - $amount);
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($amount) {
+            $pel = $this->pelanggan()->lockForUpdate()->first();
+            $tek = $this->teknisi()->lockForUpdate()->first();
+            $tok = $this->toko()->lockForUpdate()->first();
 
-        if ($this->pelanggan) {
-            $this->pelanggan->saldo = $newSaldo;
-            $this->pelanggan->save();
-        }
-        if ($this->teknisi) {
-            $this->teknisi->saldo = $newSaldo;
-            $this->teknisi->save();
-        }
-        if ($this->toko) {
-            $this->toko->saldo = $newSaldo;
-            $this->toko->save();
-        }
+            $current = max(
+                $pel ? (float)$pel->saldo : 0.0,
+                $tek ? (float)$tek->saldo : 0.0,
+                $tok ? (float)$tok->saldo : 0.0
+            );
 
-        return $newSaldo;
+            if ($current < $amount) {
+                throw new \InvalidArgumentException("Saldo dompet tidak mencukupi untuk melakukan transaksi.");
+            }
+
+            $newSaldo = $current - $amount;
+
+            if ($pel) {
+                $pel->saldo = $newSaldo;
+                $pel->save();
+            }
+            if ($tek) {
+                $tek->saldo = $newSaldo;
+                $tek->save();
+            }
+            if ($tok) {
+                $tok->saldo = $newSaldo;
+                $tok->save();
+            }
+
+            return $newSaldo;
+        });
     }
 }

@@ -15,8 +15,6 @@ class AuditLogController extends Controller
      */
     public function index(Request $request)
     {
-        $this->ensureSeedData();
-
         $query = ActivityLog::with(['user.role'])->orderBy('id', 'desc');
 
         // Search filter (Keyword in aktivitas, ip_address, or user name/email)

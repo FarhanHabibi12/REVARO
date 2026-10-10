@@ -61,7 +61,7 @@ class SystemSettingController extends Controller
         'app_stamp' => ['value' => '', 'group' => 'branding', 'description' => 'Berkas Stempel Digital Sistem'],
 
         // Maps & Geocoding (GOAPI Integration)
-        'maps_goapi_key' => ['value' => 'ff44d139-e2e0-51a5-9f35-312a2392', 'group' => 'maps', 'description' => 'Kunci Autentikasi GOAPI Reverse Geocoding & Places Search API'],
+        'maps_goapi_key' => ['value' => '', 'group' => 'maps', 'description' => 'Kunci Autentikasi GOAPI Reverse Geocoding & Places Search API'],
         'maps_goapi_updated_at' => ['value' => '2026-08-01T00:00:00+07:00', 'group' => 'maps', 'description' => 'Waktu Terakhir Pembaruan GOAPI Key (Siklus 10 Minggu)'],
         'maps_premium_fee' => ['value' => '25000', 'group' => 'maps', 'description' => 'Biaya tambahan pesanan untuk fitur Jangkauan Luas Prioritas (20 KM) (Rp)'],
         'maps_regular_radius_km' => ['value' => '7', 'group' => 'maps', 'description' => 'Radius standar pencarian teknisi reguler (KM)'],
@@ -159,19 +159,6 @@ class SystemSettingController extends Controller
             ->orderBy('id', 'desc')
             ->limit(20)
             ->get();
-
-        if ($history->count() < 5) {
-            $this->seedSampleMaintenanceLogs();
-            $history = ActivityLog::with('user.role')
-                ->where(function($q) {
-                    $q->where('aktivitas', 'like', '%maintenance%')
-                      ->orWhere('aktivitas', 'like', '%pemeliharaan%')
-                      ->orWhere('aktivitas', 'like', '%Global Maintenance%');
-                })
-                ->orderBy('id', 'desc')
-                ->limit(20)
-                ->get();
-        }
 
         return response()->json([
             'settings' => $settings,
@@ -291,7 +278,7 @@ class SystemSettingController extends Controller
      */
     public function getMapsConfig()
     {
-        $apiKey = SystemSetting::get('maps_goapi_key', 'ff44d139-e2e0-51a5-9f35-312a2392');
+        $apiKey = SystemSetting::get('maps_goapi_key', '');
         $updatedAtStr = SystemSetting::get('maps_goapi_updated_at', '2026-08-01T00:00:00+07:00');
         $premiumFee = (int) SystemSetting::get('maps_premium_fee', 25000);
         $regularRadius = (int) SystemSetting::get('maps_regular_radius_km', 7);
@@ -311,8 +298,7 @@ class SystemSettingController extends Controller
         $isExpiringSoon = $daysRemaining <= 14;
         $isExpired = $daysRemaining <= 0;
 
-        return response()->json([
-            'maps_goapi_key' => $apiKey,
+        $responsePayload = [
             'maps_goapi_updated_at' => $updatedAt->toIso8601String(),
             'maps_goapi_updated_at_formatted' => $updatedAt->translatedFormat('d F Y, H:i') . ' WIB',
             'maps_premium_fee' => $premiumFee,
@@ -329,7 +315,15 @@ class SystemSettingController extends Controller
                 'is_expiring_soon' => $isExpiringSoon,
                 'is_expired' => $isExpired,
             ]
-        ]);
+        ];
+
+        // Keamanan: Kunci API GOAPI hanya dikembalikan kepada Super Admin Pemilik
+        $currentUser = auth('sanctum')->user();
+        if ($currentUser && method_exists($currentUser, 'isSuperAdminPemilik') && $currentUser->isSuperAdminPemilik()) {
+            $responsePayload['maps_goapi_key'] = $apiKey;
+        }
+
+        return response()->json($responsePayload);
     }
 
     /**
@@ -396,7 +390,7 @@ class SystemSettingController extends Controller
      */
     public function testMapsApi(Request $request)
     {
-        $apiKey = $request->input('key') ?: SystemSetting::get('maps_goapi_key', 'ff44d139-e2e0-51a5-9f35-312a2392');
+        $apiKey = $request->input('key') ?: SystemSetting::get('maps_goapi_key', '');
 
         $startTime = microtime(true);
         $testAddress = 'Jalan Slipi IX, Slipi, Palmerah, Jakarta Barat';

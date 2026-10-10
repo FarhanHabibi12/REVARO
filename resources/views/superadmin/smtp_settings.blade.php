@@ -73,6 +73,7 @@
 
             <form action="{{ route('superadmin.smtp.update') }}" method="POST" class="space-y-5">
                 @csrf
+                <input type="hidden" name="_admin_token" class="admin-auth-token-input">
 
                 <!-- Status Aktif Toggle -->
                 <div class="p-4 bg-slate-900/80 rounded-2xl border border-slate-800 flex items-center justify-between">
@@ -182,6 +183,7 @@
 
                 <form action="{{ route('superadmin.smtp.test') }}" method="POST" class="space-y-3">
                     @csrf
+                    <input type="hidden" name="_admin_token" class="admin-auth-token-input">
                     <div>
                         <label class="text-[10px] font-bold text-slate-300 uppercase tracking-wider block mb-1">KIRIM KE EMAIL TUJUAN</label>
                         <input type="email" name="test_email" required
@@ -228,6 +230,16 @@
 </div>
 
 <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const token = localStorage.getItem('admin_token') || localStorage.getItem('token');
+        if (token) {
+            document.querySelectorAll('.admin-auth-token-input').forEach(input => {
+                input.value = token;
+            });
+            document.cookie = "admin_token=" + encodeURIComponent(token) + "; path=/; SameSite=Lax";
+        }
+    });
+
     function togglePasswordVisibility(inputId, iconId) {
         const input = document.getElementById(inputId);
         const icon = document.getElementById(iconId);

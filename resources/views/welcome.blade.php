@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>REVARO - Jasa Servis Terpercaya</title>
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="apple-touch-icon" href="/images/revaro-icon-transparent.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -391,7 +393,7 @@
             <div class="flex justify-between items-center h-20">
                 <!-- Logo -->
                 <a href="/" class="flex-shrink-0 flex items-center cursor-pointer">
-                    <span class="text-3xl font-extrabold text-primary tracking-tighter">REVA<span class="text-secondary">RO</span></span>
+                    <img src="/images/revaro-logo-horizontal.png" alt="REVARO" class="h-10 w-auto object-contain">
                 </a>
                 
                 <!-- Desktop Menu (Menu Asli) -->
@@ -536,198 +538,107 @@
         </div>
     </section>
 
-    <!-- Layanan Section (Sesuai Kategori Master Super Admin) -->
-    <section id="layanan" class="py-20 bg-white">
+    <!-- Layanan Section (Carousel 2 Row Dinamis Sesuai Master Data Super Admin) -->
+    <section id="layanan" class="py-20 bg-white relative">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-16">
-                <span class="text-secondary font-bold tracking-wider uppercase text-sm">Layanan Kami</span>
-                <h2 class="text-3xl md:text-4xl font-extrabold text-primary mt-2">Kategori Servis Elektronik Resmi</h2>
-                <p class="text-textLight max-w-2xl mx-auto mt-3 text-sm md:text-base">
-                    Standar tarif baseline transparan dan masa garansi resmi sesuai ketetapan Master Data Super Admin REVARO.
-                </p>
-                <div class="w-24 h-1.5 bg-secondary mx-auto mt-4 rounded-full"></div>
+            <div class="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4">
+                <div>
+                    <span class="text-secondary font-bold tracking-wider uppercase text-sm">Layanan Kami</span>
+                    <h2 class="text-3xl md:text-4xl font-extrabold text-primary mt-2">Kategori Servis Elektronik Resmi</h2>
+                    <p class="text-textLight max-w-2xl mt-2 text-sm md:text-base">
+                        Standar tarif baseline transparan dan masa garansi resmi sesuai ketetapan Master Data Super Admin REVARO.
+                    </p>
+                </div>
+                <!-- Tombol Navigasi Carousel Geser Menyamping -->
+                <div class="flex items-center gap-2 self-end md:self-auto">
+                    <button onclick="scrollServiceCarousel(-1)" type="button" aria-label="Geser ke kiri" class="w-11 h-11 rounded-xl border-2 border-primary bg-white text-primary hover:bg-primary hover:text-white flex items-center justify-center transition-all shadow-[2px_2px_0px_0px_#0B4A8F] active:translate-x-0.5 active:translate-y-0.5">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <button onclick="scrollServiceCarousel(1)" type="button" aria-label="Geser ke kanan" class="w-11 h-11 rounded-xl border-2 border-primary bg-secondary text-white hover:bg-orange-600 flex items-center justify-center transition-all shadow-[2px_2px_0px_0px_#0B4A8F] active:translate-x-0.5 active:translate-y-0.5">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                <!-- Service 1: AC -->
-                <div class="bg-white border-2 border-primary rounded-2xl p-7 hover:-translate-y-2 transition-transform duration-300 shadow-form flex flex-col justify-between">
-                    <div>
-                        <div class="flex items-center justify-between mb-5">
-                            <div class="w-14 h-14 rounded-xl bg-accent flex items-center justify-center text-primary text-2xl border-2 border-primary shadow-sm">
-                                <i class="fas fa-snowflake"></i>
-                            </div>
-                            <span class="px-3 py-1 rounded-full text-xs font-black bg-blue-100 text-primary border border-primary">Kategori AC</span>
-                        </div>
-                        <h3 class="text-xl font-extrabold text-primary mb-2">Servis AC &amp; Pendingin</h3>
-                        <p class="text-textLight text-sm mb-4 leading-relaxed">
-                            Cuci AC berkala, perbaikan AC bocor air/freon, penambahan refrigeran, perbaikan modul inverter, dan kompresor mati total.
-                        </p>
-                    </div>
-                    <div class="pt-4 border-t border-gray-100">
-                        <div class="flex justify-between items-center mb-4">
-                            <div>
-                                <span class="text-[11px] text-textLight font-medium block">Harga Baseline</span>
-                                <span class="text-lg font-black text-primary">Mulai Rp 150.000</span>
-                            </div>
-                            <span class="text-xs font-bold text-secondary bg-orange-50 px-2.5 py-1 rounded-md border border-secondary/40">
-                                <i class="fas fa-shield-alt mr-1"></i> Garansi 30 Hari
-                            </span>
-                        </div>
-                        <button onclick="handleServiceOrder('AC')" class="revaro-btn w-full py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2">
-                            Pesan Servis AC <i class="fas fa-chevron-right text-xs"></i>
-                        </button>
-                    </div>
-                </div>
+            <!-- Wadah Carousel: 2 Baris per Kolom (Render Langsung dari Database Super Admin) -->
+            <div id="serviceCarouselContainer" class="flex gap-6 overflow-x-auto pb-6 pt-2 snap-x snap-mandatory scroll-smooth" style="scrollbar-width: thin;">
+                @php
+                    $chunks = isset($jasaServis) && $jasaServis->count() > 0 
+                        ? $jasaServis->chunk(2) 
+                        : \App\Models\JasaServis::where('is_active', true)->orderBy('id', 'asc')->get()->chunk(2);
+                @endphp
 
-                <!-- Service 2: Kulkas -->
-                <div class="bg-primary text-white rounded-2xl p-7 hover:-translate-y-2 transition-transform duration-300 shadow-[4px_4px_0px_0px_#FF7F00] border-2 border-primary flex flex-col justify-between">
-                    <div>
-                        <div class="flex items-center justify-between mb-5">
-                            <div class="w-14 h-14 rounded-xl bg-white/10 flex items-center justify-center text-secondary text-2xl border border-white/20 shadow-sm">
-                                <i class="fas fa-temperature-low"></i>
-                            </div>
-                            <span class="px-3 py-1 rounded-full text-xs font-black bg-secondary text-white border border-white/20">Kategori Kulkas</span>
-                        </div>
-                        <h3 class="text-xl font-extrabold text-white mb-2">Perbaikan Kulkas &amp; Freezer</h3>
-                        <p class="text-blue-100 text-sm mb-4 leading-relaxed">
-                            Penanganan kulkas 1 &amp; 2 pintu, freezer box tidak dingin, ganti karet pintu, pengisian freon, dan perbaikan kelistrikan defroster.
-                        </p>
-                    </div>
-                    <div class="pt-4 border-t border-blue-700/60">
-                        <div class="flex justify-between items-center mb-4">
-                            <div>
-                                <span class="text-[11px] text-blue-200 font-medium block">Harga Baseline</span>
-                                <span class="text-lg font-black text-white">Mulai Rp 250.000</span>
-                            </div>
-                            <span class="text-xs font-bold text-white bg-white/20 px-2.5 py-1 rounded-md border border-white/30">
-                                <i class="fas fa-shield-alt mr-1 text-secondary"></i> Garansi 45 Hari
-                            </span>
-                        </div>
-                        <button onclick="handleServiceOrder('Kulkas')" class="bg-secondary hover:bg-orange-600 text-white w-full py-2.5 rounded-xl font-bold text-sm border-2 border-secondary shadow-sm transition-colors flex items-center justify-center gap-2">
-                            Pesan Servis Kulkas <i class="fas fa-chevron-right text-xs"></i>
-                        </button>
-                    </div>
-                </div>
+                @forelse($chunks as $pair)
+                    <div class="w-[320px] md:w-[350px] shrink-0 flex flex-col gap-5 snap-start">
+                        @foreach($pair as $s)
+                            @php
+                                $katLower = strtolower($s->kategori ?? '');
+                                $icon = 'fa-wrench';
+                                $iconColor = 'text-secondary bg-orange-50 border-secondary/30';
+                                if (str_contains($katLower, 'ac')) {
+                                    $icon = 'fa-snowflake';
+                                    $iconColor = 'text-blue-600 bg-blue-50 border-blue-200';
+                                } elseif (str_contains($katLower, 'kulkas') || str_contains($katLower, 'freezer')) {
+                                    $icon = 'fa-temperature-low';
+                                    $iconColor = 'text-amber-600 bg-amber-50 border-amber-200';
+                                } elseif (str_contains($katLower, 'cuci')) {
+                                    $icon = 'fa-sync-alt';
+                                    $iconColor = 'text-cyan-600 bg-cyan-50 border-cyan-200';
+                                } elseif (str_contains($katLower, 'tv') || str_contains($katLower, 'layar')) {
+                                    $icon = 'fa-tv';
+                                    $iconColor = 'text-purple-600 bg-purple-50 border-purple-200';
+                                } elseif (str_contains($katLower, 'komputer') || str_contains($katLower, 'laptop')) {
+                                    $icon = 'fa-laptop';
+                                    $iconColor = 'text-emerald-600 bg-emerald-50 border-emerald-200';
+                                } elseif (str_contains($katLower, 'pompa')) {
+                                    $icon = 'fa-water';
+                                    $iconColor = 'text-sky-600 bg-sky-50 border-sky-200';
+                                }
+                            @endphp
+                            <div class="bg-white border-2 border-primary rounded-2xl p-5 hover:-translate-y-1 hover:border-secondary transition-all duration-200 shadow-[4px_4px_0px_0px_#0B4A8F] flex flex-col justify-between min-h-[160px]">
+                                <div>
+                                    <div class="flex items-center justify-between gap-3 mb-2.5">
+                                        <div class="w-11 h-11 rounded-xl flex items-center justify-center text-xl border-2 {{ $iconColor }} shadow-sm shrink-0">
+                                            <i class="fas {{ $icon }}"></i>
+                                        </div>
+                                        <span class="px-3 py-1 rounded-full text-[11px] font-black bg-blue-50 text-primary border border-primary/40 uppercase tracking-wider shrink-0 truncate max-w-[150px]">
+                                            Kategori {{ $s->kategori }}
+                                        </span>
+                                    </div>
+                                    <h3 class="text-base font-extrabold text-primary line-clamp-1 leading-snug" title="{{ $s->nama_jasa }}">
+                                        {{ $s->nama_jasa }}
+                                    </h3>
+                                </div>
 
-                <!-- Service 3: Mesin Cuci -->
-                <div class="bg-white border-2 border-primary rounded-2xl p-7 hover:-translate-y-2 transition-transform duration-300 shadow-form flex flex-col justify-between">
-                    <div>
-                        <div class="flex items-center justify-between mb-5">
-                            <div class="w-14 h-14 rounded-xl bg-orange-50 flex items-center justify-center text-secondary text-2xl border-2 border-secondary shadow-sm">
-                                <i class="fas fa-sync-alt"></i>
+                                <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 mt-2">
+                                    <div>
+                                        <span class="text-[10px] text-textLight font-medium block">Harga Baseline</span>
+                                        <span class="text-sm font-black text-primary">Rp {{ number_format($s->harga_baseline, 0, ',', '.') }}</span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-[11px] font-extrabold text-secondary bg-orange-50 px-2.5 py-1 rounded-lg border border-secondary/40 whitespace-nowrap shadow-sm">
+                                            <i class="fas fa-shield-alt mr-0.5"></i> {{ $s->garansi_hari ?? 30 }} Hari
+                                        </span>
+                                        <button onclick="handleServiceOrder('{{ addslashes($s->kategori) }}')" type="button" class="revaro-btn w-8 h-8 rounded-xl font-black text-xs flex items-center justify-center shadow-[2px_2px_0px_0px_#0B4A8F] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition" title="Pesan Layanan {{ $s->nama_jasa }}">
+                                            <i class="fas fa-arrow-right"></i>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
-                            <span class="px-3 py-1 rounded-full text-xs font-black bg-blue-100 text-primary border border-primary">Kategori Mesin Cuci</span>
-                        </div>
-                        <h3 class="text-xl font-extrabold text-primary mb-2">Servis Mesin Cuci</h3>
-                        <p class="text-textLight text-sm mb-4 leading-relaxed">
-                            Servis mesin cuci front loading, top loading, dan 2 tabung. Perbaikan putaran drum macet, dinamo pengering, selang air, dan modul error.
-                        </p>
-                    </div>
-                    <div class="pt-4 border-t border-gray-100">
-                        <div class="flex justify-between items-center mb-4">
-                            <div>
-                                <span class="text-[11px] text-textLight font-medium block">Harga Baseline</span>
-                                <span class="text-lg font-black text-primary">Mulai Rp 200.000</span>
-                            </div>
-                            <span class="text-xs font-bold text-secondary bg-orange-50 px-2.5 py-1 rounded-md border border-secondary/40">
-                                <i class="fas fa-shield-alt mr-1"></i> Garansi 30 Hari
-                            </span>
-                        </div>
-                        <button onclick="handleServiceOrder('Mesin Cuci')" class="revaro-btn w-full py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2">
-                            Pesan Servis Mesin Cuci <i class="fas fa-chevron-right text-xs"></i>
-                        </button>
-                    </div>
-                </div>
+                        @endforeach
 
-                <!-- Service 4: TV -->
-                <div class="bg-white border-2 border-primary rounded-2xl p-7 hover:-translate-y-2 transition-transform duration-300 shadow-form flex flex-col justify-between">
-                    <div>
-                        <div class="flex items-center justify-between mb-5">
-                            <div class="w-14 h-14 rounded-xl bg-accent flex items-center justify-center text-primary text-2xl border-2 border-primary shadow-sm">
-                                <i class="fas fa-tv"></i>
+                        @if($pair->count() === 1)
+                            <div class="min-h-[160px] rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 flex flex-col items-center justify-center text-slate-400 text-xs italic p-4 text-center">
+                                <i class="fas fa-plus-circle text-lg mb-1 opacity-40"></i>
+                                <span>Kategori baru akan ditambahkan oleh Super Admin</span>
                             </div>
-                            <span class="px-3 py-1 rounded-full text-xs font-black bg-blue-100 text-primary border border-primary">Kategori TV</span>
-                        </div>
-                        <h3 class="text-xl font-extrabold text-primary mb-2">Perbaikan TV &amp; Layar</h3>
-                        <p class="text-textLight text-sm mb-4 leading-relaxed">
-                            Perbaikan Smart TV, Android TV, LED &amp; LCD. Solusi layar gelap/bergaris, penggantian lampu backlight, audio mati, hingga unit mati total.
-                        </p>
+                        @endif
                     </div>
-                    <div class="pt-4 border-t border-gray-100">
-                        <div class="flex justify-between items-center mb-4">
-                            <div>
-                                <span class="text-[11px] text-textLight font-medium block">Harga Baseline</span>
-                                <span class="text-lg font-black text-primary">Mulai Rp 150.000</span>
-                            </div>
-                            <span class="text-xs font-bold text-secondary bg-orange-50 px-2.5 py-1 rounded-md border border-secondary/40">
-                                <i class="fas fa-shield-alt mr-1"></i> Garansi 30 Hari
-                            </span>
-                        </div>
-                        <button onclick="handleServiceOrder('TV')" class="revaro-btn w-full py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2">
-                            Pesan Servis TV <i class="fas fa-chevron-right text-xs"></i>
-                        </button>
+                @empty
+                    <div class="py-12 text-center text-slate-400 w-full text-sm">
+                        Belum ada layanan servis yang diaktifkan oleh Super Admin di database.
                     </div>
-                </div>
-
-                <!-- Service 5: Komputer & Laptop -->
-                <div class="bg-white border-2 border-primary rounded-2xl p-7 hover:-translate-y-2 transition-transform duration-300 shadow-form flex flex-col justify-between">
-                    <div>
-                        <div class="flex items-center justify-between mb-5">
-                            <div class="w-14 h-14 rounded-xl bg-orange-50 flex items-center justify-center text-secondary text-2xl border-2 border-secondary shadow-sm">
-                                <i class="fas fa-laptop"></i>
-                            </div>
-                            <span class="px-3 py-1 rounded-full text-xs font-black bg-blue-100 text-primary border border-primary">Kategori Komputer</span>
-                        </div>
-                        <h3 class="text-xl font-extrabold text-primary mb-2">Servis Komputer &amp; Laptop</h3>
-                        <p class="text-textLight text-sm mb-4 leading-relaxed">
-                            Perbaikan motherboard PC/Laptop, penggantian LCD pecah, baterai drop, instalasi software, upgrade SSD/RAM, dan pembersihan thermal paste.
-                        </p>
-                    </div>
-                    <div class="pt-4 border-t border-gray-100">
-                        <div class="flex justify-between items-center mb-4">
-                            <div>
-                                <span class="text-[11px] text-textLight font-medium block">Harga Baseline</span>
-                                <span class="text-lg font-black text-primary">Mulai Rp 120.000</span>
-                            </div>
-                            <span class="text-xs font-bold text-secondary bg-orange-50 px-2.5 py-1 rounded-md border border-secondary/40">
-                                <i class="fas fa-shield-alt mr-1"></i> Garansi 30 Hari
-                            </span>
-                        </div>
-                        <button onclick="handleServiceOrder('Komputer')" class="revaro-btn w-full py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2">
-                            Pesan Servis Komputer <i class="fas fa-chevron-right text-xs"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Service 6: Pompa Air -->
-                <div class="bg-white border-2 border-primary rounded-2xl p-7 hover:-translate-y-2 transition-transform duration-300 shadow-form flex flex-col justify-between">
-                    <div>
-                        <div class="flex items-center justify-between mb-5">
-                            <div class="w-14 h-14 rounded-xl bg-accent flex items-center justify-center text-primary text-2xl border-2 border-primary shadow-sm">
-                                <i class="fas fa-water"></i>
-                            </div>
-                            <span class="px-3 py-1 rounded-full text-xs font-black bg-blue-100 text-primary border border-primary">Kategori Pompa Air</span>
-                        </div>
-                        <h3 class="text-xl font-extrabold text-primary mb-2">Perbaikan Pompa Air</h3>
-                        <p class="text-textLight text-sm mb-4 leading-relaxed">
-                            Servis pompa air sumur dangkal &amp; Jet Pump. Perbaikan otomatis cetek-cetek, gulung dinamo motor terbakar, penggantian seal &amp; pipa hisap bocor.
-                        </p>
-                    </div>
-                    <div class="pt-4 border-t border-gray-100">
-                        <div class="flex justify-between items-center mb-4">
-                            <div>
-                                <span class="text-[11px] text-textLight font-medium block">Harga Baseline</span>
-                                <span class="text-lg font-black text-primary">Mulai Rp 150.000</span>
-                            </div>
-                            <span class="text-xs font-bold text-secondary bg-orange-50 px-2.5 py-1 rounded-md border border-secondary/40">
-                                <i class="fas fa-shield-alt mr-1"></i> Garansi 30 Hari
-                            </span>
-                        </div>
-                        <button onclick="handleServiceOrder('Pompa Air')" class="revaro-btn w-full py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2">
-                            Pesan Servis Pompa Air <i class="fas fa-chevron-right text-xs"></i>
-                        </button>
-                    </div>
-                </div>
+                @endforelse
             </div>
         </div>
     </section>
@@ -888,7 +799,9 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
                 <!-- Brand Info -->
                 <div>
-                    <span class="text-3xl font-extrabold text-white tracking-tighter mb-4 inline-block">REVA<span class="text-secondary">RO</span></span>
+                    <div class="mb-4 inline-block bg-white/95 px-4 py-2 rounded-2xl shadow-md border-2 border-secondary/40">
+                        <img src="/images/revaro-logo-horizontal.png" alt="REVARO Logo" class="h-10 w-auto object-contain">
+                    </div>
                     <p class="text-xs text-blue-200 uppercase tracking-widest font-bold mb-3">Repair &amp; Restore Platform</p>
                     <p class="text-blue-100 text-sm mb-6 max-w-sm leading-relaxed">
                         Marketplace jasa servis elektronik on-demand terpercaya. Menghubungkan Pelanggan, Teknisi Terverifikasi, dan Toko Sparepart resmi dengan sistem Rekening Bersama (Escrow) dan garansi baku terlacak.
@@ -929,15 +842,15 @@
                     <ul class="space-y-4 text-sm text-blue-100">
                         <li class="flex items-start gap-3">
                             <i class="fas fa-map-marker-alt mt-1 text-secondary text-base"></i>
-                            <span>Menara REVARO, Jl. Raya Kebayoran Baru No. 88, Jakarta Selatan, Indonesia</span>
+                            <span>5, Jl. G1 No.7, RT.1/RW.3, Slipi, Kec. Palmerah, Kota Jakarta Barat, Daerah Khusus Ibukota Jakarta 11410</span>
                         </li>
                         <li class="flex items-center gap-3">
                             <i class="fas fa-phone text-secondary text-base"></i>
-                            <span>+62 812 3456 7890</span>
+                            <span>+62 857 7248 4190</span>
                         </li>
                         <li class="flex items-center gap-3">
                             <i class="fas fa-envelope text-secondary text-base"></i>
-                            <span>support@revaro.id</span>
+                            <span>s.elfairuzi@gmail.com</span>
                         </li>
                         <li class="flex items-center gap-3">
                             <i class="fas fa-clock text-secondary text-base"></i>
@@ -1731,6 +1644,14 @@
                     confirmButtonText: 'Siap, Mengerti'
                 });
             }
+        }
+
+        // === Carousel Geser Menyamping ===
+        function scrollServiceCarousel(direction) {
+            const container = document.getElementById('serviceCarouselContainer');
+            if (!container) return;
+            const scrollDistance = 370; // geser 1 kolom
+            container.scrollBy({ left: direction * scrollDistance, behavior: 'smooth' });
         }
 
         async function handleLogout() {

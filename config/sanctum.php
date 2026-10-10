@@ -46,7 +46,7 @@ return [
     |
     */
 
-    'expiration' => null,
+    'expiration' => env('SANCTUM_EXPIRATION', 10080), // 7 hari (10080 menit) default masa berlaku token
 
     /*
     |--------------------------------------------------------------------------

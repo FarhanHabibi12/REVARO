@@ -25,18 +25,18 @@ class RouteServiceProvider extends ServiceProvider
     public function boot(): void
     {
         RateLimiter::for('api', function (Request $request) {
-            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+            return Limit::perMinute(120)->by($request->user()?->id ?: $request->ip());
         });
 
-        // Anti Brute-Force Rate Limiting for Login & Auth
+        // Anti Brute-Force Rate Limiting for Login & Auth (generous to avoid false positives)
         RateLimiter::for('login', function (Request $request) {
             $key = strtolower(trim((string)$request->input('email'))) . '|' . $request->ip();
-            return Limit::perMinute(5)->by($key);
+            return Limit::perMinute(20)->by($key);
         });
 
         RateLimiter::for('otp', function (Request $request) {
             $key = strtolower(trim((string)$request->input('email'))) . '|' . $request->ip();
-            return Limit::perMinute(5)->by($key);
+            return Limit::perMinute(15)->by($key);
         });
 
         $this->routes(function () {

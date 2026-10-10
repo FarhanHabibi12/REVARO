@@ -12,10 +12,64 @@ use Illuminate\Support\Facades\Log;
 class SmtpConfigController extends Controller
 {
     /**
+     * Pastikan hanya Super Admin Pemilik yang berhak mengakses pengaturan SMTP.
+     */
+    protected function authorizeSuperAdmin(): void
+    {
+        // 1. Cek User dari Auth Web Guard
+        $user = auth()->user();
+
+        // 2. Cek Token dari Bearer Header, Query, Request Body, Header kustom, atau Cookie
+        if (!$user) {
+            $tokenString = request()->bearerToken()
+                ?? request()->input('_admin_token')
+                ?? request()->header('X-Admin-Token')
+                ?? request()->cookie('admin_token')
+                ?? session('admin_bearer_token');
+
+            if ($tokenString) {
+                $user = \Laravel\Sanctum\PersonalAccessToken::findToken($tokenString)?->tokenable;
+                if ($user) {
+                    \Illuminate\Support\Facades\Auth::login($user);
+                }
+            }
+        }
+
+        // 3. Jika user ditemukan, pastikan dia Super Admin Pemilik
+        if ($user) {
+            if ($user->isSuperAdminPemilik() || (method_exists($user, 'isAdminSuper') && $user->isAdminSuper())) {
+                session([
+                    'is_admin_logged_in' => true,
+                    'superadmin_authenticated' => true,
+                    'admin_id' => $user->id,
+                ]);
+                return;
+            } else {
+                abort(403, 'Akses Ditolak: Hanya Super Admin (Pemilik Sistem) yang diizinkan mengelola konfigurasi SMTP.');
+            }
+        }
+
+        // 4. Jika sesi web sudah menandai login superadmin yang sah
+        if (session('is_admin_logged_in') && session('superadmin_authenticated')) {
+            return;
+        }
+
+        // 5. Jika request adalah GET browser biasa (bukan API/AJAX)
+        // Izinkan lewat ke Blade view karena layouts.superadmin memvalidasi token dan role di browser
+        if (request()->isMethod('get') && !request()->expectsJson() && !request()->ajax()) {
+            return;
+        }
+
+        // 6. Tolak request jika tidak memiliki sesi atau token yang valid
+        abort(403, 'Akses Ditolak: Sesi Super Admin tidak ditemukan atau telah berakhir.');
+    }
+
+    /**
      * Menampilkan form pengaturan SMTP.
      */
     public function edit()
     {
+        $this->authorizeSuperAdmin();
         $smtp = SmtpSetting::first();
         
         if (!$smtp) {
@@ -37,6 +91,7 @@ class SmtpConfigController extends Controller
      */
     public function update(Request $request)
     {
+        $this->authorizeSuperAdmin();
         $validated = $request->validate([
             'mail_mailer' => 'required|string|max:50',
             'mail_host' => 'required|string|max:255',
@@ -70,7 +125,8 @@ class SmtpConfigController extends Controller
             $smtp->mail_password = $validated['mail_password'];
         }
         
-        $smtp->mail_encryption = $validated['mail_encryption'] === 'null' ? null : $validated['mail_encryption'];
+        $encryption = $validated['mail_encryption'] ?? $request->input('mail_encryption');
+        $smtp->mail_encryption = ($encryption === 'null' || empty($encryption)) ? null : $encryption;
         $smtp->mail_from_address = $validated['mail_from_address'];
         $smtp->mail_from_name = $validated['mail_from_name'];
         $smtp->is_active = $request->has('is_active') ? (bool)$request->is_active : true;
@@ -101,6 +157,7 @@ class SmtpConfigController extends Controller
      */
     public function testConnection(Request $request)
     {
+        $this->authorizeSuperAdmin();
         $request->validate([
             'test_email' => 'required|email',
         ], [

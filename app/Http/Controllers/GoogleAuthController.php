@@ -23,7 +23,7 @@ class GoogleAuthController extends Controller
 
         // Konfigurasi sertifikat CA bundle untuk lingkungan Windows Laragon
         $caPath = 'C:/laragon/etc/ssl/cacert.pem';
-        $verify = file_exists($caPath) ? $caPath : false;
+        $verify = file_exists($caPath) ? $caPath : true;
 
         if (method_exists($driver, 'setHttpClient')) {
             $driver->setHttpClient(new \GuzzleHttp\Client([
@@ -69,6 +69,27 @@ class GoogleAuthController extends Controller
 
         // 3. Jika user sudah ada
         if ($user) {
+            // Cek apakah akun aktif
+            if (!$user->is_active) {
+                return redirect('/')->with('error', 'Akun Anda dinonaktifkan atau diblokir.');
+            }
+
+            // Proteksi: Larang akun staf/admin login melalui Google OAuth
+            $adminRoleNames = [
+                'Super Admin (Pemilik Sistem)',
+                'Super Admin (Monitoring Kinerja)',
+                'Admin Verifikator',
+                'Admin Resolusi'
+            ];
+            if ($user->role && in_array($user->role->nama, $adminRoleNames)) {
+                return redirect('/')->with('error', 'Akun administrator/staf wajib masuk menggunakan email & password melalui portal resmi.');
+            }
+
+            // Cek mode maintenance sistem
+            if (\App\Models\SystemSetting::get('maintenance_mode', 'false') === 'true') {
+                return redirect('/')->with('error', 'Sistem REVARO sedang dalam pemeliharaan (maintenance).');
+            }
+
             // Update google_id & avatar jika belum tersimpan
             $updateData = [];
             if (!$user->google_id) {
@@ -87,11 +108,32 @@ class GoogleAuthController extends Controller
             // Muat relasi
             $user->load(['role', 'pelanggan', 'teknisi', 'toko']);
 
-            // Cek apakah user sudah memiliki biodata lengkap (khususnya untuk peran pelanggan)
-            $pelanggan = $user->pelanggan;
-            $hasCompleteProfile = false;
+            // Cek status profil jika ada
+            if ($user->teknisi && $user->teknisi->status === 'FROZEN') {
+                return redirect('/')->with('error', 'Akun Teknisi Anda sedang dibekukan (FROZEN).');
+            }
+            if ($user->toko && $user->toko->status === 'FROZEN') {
+                return redirect('/')->with('error', 'Akun Toko Anda sedang dibekukan (FROZEN).');
+            }
 
-            if ($user->role && in_array($user->role->nama, ['Teknisi', 'Toko Sparepart', 'Super Admin Pemilik', 'Admin Verifikator', 'Admin Resolusi'])) {
+            // Pastikan jika mitra PENDING_REVIEW memiliki profil pelanggan untuk berbelanja/order
+            $pelanggan = $user->pelanggan;
+            if (!$pelanggan) {
+                $pelanggan = Pelanggan::firstOrCreate(
+                    ['user_id' => $user->id],
+                    [
+                        'nama' => $user->nama ?: $googleUser->getName(),
+                        'email' => $user->email,
+                        'hp' => $user->no_telp ?? '',
+                        'alamat' => '',
+                        'saldo' => 0.00,
+                    ]
+                );
+            }
+
+            // Cek kelengkapan biodata
+            $hasCompleteProfile = false;
+            if ($user->role && in_array($user->role->nama, ['Teknisi', 'Toko Sparepart'])) {
                 $hasCompleteProfile = true;
             } elseif ($pelanggan && !empty($pelanggan->hp) && !empty($pelanggan->alamat)) {
                 $hasCompleteProfile = true;
@@ -102,13 +144,14 @@ class GoogleAuthController extends Controller
                 Auth::login($user, true);
                 $token = $user->createToken('auth-token')->plainTextToken;
 
-                $profile = $pelanggan ?? $user->teknisi ?? $user->toko;
                 $redirectUrl = '/pelanggan/dashboard';
-                if ($user->role && $user->role->nama === 'Teknisi') {
+                if ($user->role && $user->role->nama === 'Teknisi' && $user->teknisi?->status === 'ACTIVE') {
                     $redirectUrl = '/teknisi/dashboard';
-                } elseif ($user->role && $user->role->nama === 'Toko Sparepart') {
+                } elseif ($user->role && $user->role->nama === 'Toko Sparepart' && $user->toko?->status === 'ACTIVE') {
                     $redirectUrl = '/toko/dashboard';
                 }
+
+                $profile = ($redirectUrl === '/pelanggan/dashboard') ? $pelanggan : ($user->teknisi ?? $user->toko ?? $pelanggan);
 
                 // Render view transisi untuk sinkronisasi ke localStorage
                 return view('auth.google_callback_success', [

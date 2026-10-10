@@ -51,21 +51,38 @@ class AutoReleaseEscrow extends Command
                 // 1. Release escrow state
                 $transaksi->update(['status_escrow' => 'RELEASED']);
 
-                // 2. Transfer service fee to Technician
+                // Ambil persentase komisi platform
+                $kebijakan = \App\Models\KebijakanKomisi::first();
+                $persenKomisi = $kebijakan ? (float)$kebijakan->persen_komisi_jasa : 10.0;
+                $komisi = round($transaksi->biaya_jasa * ($persenKomisi / 100));
+                $teknisiShare = max(0, $transaksi->biaya_jasa - $komisi);
+
+                // 2. Transfer service fee to Technician (setelah komisi platform)
                 $teknisi = $order->teknisi;
                 if ($teknisi) {
-                    $teknisi->increment('saldo', $transaksi->biaya_jasa);
+                    $teknisiUser = $teknisi->user;
+                    if ($teknisiUser) {
+                        $teknisiUser->addUnifiedSaldo((float) $teknisiShare);
+                    } else {
+                        $teknisi->increment('saldo', $teknisiShare);
+                    }
+
+                    \App\Models\WalletTransaction::create([
+                        'user_id'   => $teknisi->user_id,
+                        'tipe'      => 'IN',
+                        'jumlah'    => $teknisiShare,
+                        'deskripsi' => "Pencairan otomatis dana escrow order {$order->kode_order} (Komisi platform {$persenKomisi}%: Rp " . number_format($komisi, 0, ',', '.') . ")",
+                    ]);
 
                     Notifikasi::create([
                         'user_id' => $teknisi->user_id,
                         'judul' => 'Pencairan Dana Escrow',
-                        'pesan' => "Dana jasa servis sebesar Rp " . number_format($transaksi->biaya_jasa, 0, ',', '.') . " untuk order {$order->kode_order} telah dicairkan ke saldo Anda.",
+                        'pesan' => "Dana jasa servis sebesar Rp " . number_format($teknisiShare, 0, ',', '.') . " untuk order {$order->kode_order} telah dicairkan ke saldo Anda (setelah potongan komisi platform {$persenKomisi}% Rp " . number_format($komisi, 0, ',', '.') . ").",
                         'dibaca' => false,
                     ]);
                 }
 
                 // 3. Transfer sparepart costs to Shop(s)
-                // Group by shop to aggregate payments if multiple parts from same shop
                 $shopPayments = [];
                 foreach ($order->spareparts as $sparepart) {
                     if ($sparepart->pivot->status === 'CONFIRMED') {
@@ -78,7 +95,19 @@ class AutoReleaseEscrow extends Command
                 foreach ($shopPayments as $tokoId => $amount) {
                     $toko = \App\Models\Toko::find($tokoId);
                     if ($toko) {
-                        $toko->increment('saldo', $amount);
+                        $tokoUser = $toko->user;
+                        if ($tokoUser) {
+                            $tokoUser->addUnifiedSaldo((float) $amount);
+                        } else {
+                            $toko->increment('saldo', $amount);
+                        }
+
+                        \App\Models\WalletTransaction::create([
+                            'user_id'   => $toko->user_id,
+                            'tipe'      => 'IN',
+                            'jumlah'    => $amount,
+                            'deskripsi' => "Pencairan otomatis penjualan sparepart order {$order->kode_order}",
+                        ]);
 
                         Notifikasi::create([
                             'user_id' => $toko->user_id,

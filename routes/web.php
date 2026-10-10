@@ -11,7 +11,10 @@ use Illuminate\Support\Facades\Route;
 */
 
 // Welcome & Public
-Route::get('/', fn() => view('welcome'));
+Route::get('/', function() {
+    $jasaServis = \App\Models\JasaServis::where('is_active', true)->orderBy('id', 'asc')->get();
+    return view('welcome', compact('jasaServis'));
+});
 
 // Google OAuth 2.0 (Socialite)
 Route::get('/auth/google', [GoogleAuthController::class, 'redirectToGoogle'])->name('auth.google');
@@ -19,13 +22,11 @@ Route::get('/auth/google/callback', [GoogleAuthController::class, 'handleGoogleC
 Route::get('/auth/google/complete-profile', [GoogleAuthController::class, 'showCompleteProfile'])->name('auth.google.complete');
 Route::post('/auth/google/complete-profile', [GoogleAuthController::class, 'saveCompleteProfile'])->name('auth.google.complete.save');
 
-// Auth — Login & Register (Anti Brute-Force Rate Limiting)
-Route::middleware('throttle:30,1')->group(function () {
-    Route::get('/login',            fn() => redirect('/?auth=login'))->name('login');
-    Route::get('/login-admin',      fn() => view('auth.admin_login'))->name('admin.login');
-    Route::get('/admin/login',      fn() => redirect('/login-admin'));
-    Route::get('/partner/register', fn() => view('auth.partner_register'));
-});
+// Auth — Login & Register
+Route::get('/login',            fn() => redirect('/?auth=login'))->name('login');
+Route::get('/login-admin',      fn() => view('auth.admin_login'))->name('admin.login');
+Route::get('/admin/login',      fn() => redirect('/login-admin'));
+Route::get('/partner/register', fn() => view('auth.partner_register'));
 Route::get('/session-expired',   fn() => response()->view('errors.419', [], 419))->name('session.expired');
 Route::get('/error/419',        fn() => response()->view('errors.419', [], 419));
 Route::get('/error/403',        fn() => response()->view('errors.403', [], 403));

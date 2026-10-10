@@ -156,6 +156,18 @@ class AuthController extends Controller
             );
         }
 
+        // Pastikan profil Pelanggan juga tersedia agar pendaftar mitra baru dapat langsung mengakses dasbor pelanggan
+        Pelanggan::firstOrCreate(
+            ['user_id' => $user->id],
+            [
+                'nama' => $request->nama,
+                'email' => $request->email,
+                'hp' => $request->hp,
+                'alamat' => $request->alamat ?? '',
+                'saldo' => 0.00,
+            ]
+        );
+
         if (app()->environment('testing')) {
             $user->email_verified_at = now();
             $user->save();
@@ -163,8 +175,8 @@ class AuthController extends Controller
 
         if (!$loggedInUser && !app()->environment('testing')) {
             $cleanEmail = trim(strtolower($user->email));
-            // Generate & send 6-digit OTP to new registered user email
-            $otp = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
+            // Generate & send 6-digit OTP to new registered user email via CSPRNG
+            $otp = (string) random_int(100000, 999999);
             \Illuminate\Support\Facades\DB::table('email_otps')->where('expires_at', '<', now())->delete();
             \Illuminate\Support\Facades\DB::table('email_otps')->insert([
                 'email' => $cleanEmail,
@@ -174,8 +186,6 @@ class AuthController extends Controller
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-
-            \Illuminate\Support\Facades\Log::info("Register OTP for {$cleanEmail}: {$otp}");
 
             try {
                 \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\RegisterOtpMail($otp));
@@ -287,6 +297,10 @@ class AuthController extends Controller
         $profile = null;
 
         // Check profile freeze or reject state before proceeding
+        $partnerStatus = null;
+        $partnerType = null;
+
+        // Check profile freeze or reject state before proceeding
         if ($user->isTeknisi()) {
             $profile = $user->teknisi;
             if ($profile) {
@@ -297,10 +311,19 @@ class AuthController extends Controller
                     return response()->json(['message' => 'Akun Teknisi Anda ditangguhkan.'], 403);
                 }
                 if ($profile->status === 'PENDING_REVIEW') {
-                    return response()->json([
-                        'message' => 'Akun Teknisi Anda sedang dalam proses peninjauan verifikasi Admin. Anda belum dapat masuk sebelum disetujui (ACC).',
-                        'status' => 'PENDING_REVIEW'
-                    ], 403);
+                    // Beri akses sebagai Pelanggan selagi pendaftaran teknisi menunggu persetujuan admin
+                    $partnerStatus = 'PENDING_REVIEW';
+                    $partnerType = 'teknisi';
+                    $profile = $user->pelanggan ?: \App\Models\Pelanggan::firstOrCreate(
+                        ['user_id' => $user->id],
+                        [
+                            'nama' => $user->nama,
+                            'email' => $user->email,
+                            'hp' => $user->no_telp ?? '',
+                            'alamat' => '',
+                            'saldo' => 0.00,
+                        ]
+                    );
                 }
             }
         } elseif ($user->isToko()) {
@@ -313,10 +336,19 @@ class AuthController extends Controller
                     return response()->json(['message' => 'Akun Toko Anda ditangguhkan.'], 403);
                 }
                 if ($profile->status === 'PENDING_REVIEW') {
-                    return response()->json([
-                        'message' => 'Akun Toko Sparepart Anda sedang dalam proses peninjauan verifikasi Admin. Anda belum dapat masuk sebelum disetujui (ACC).',
-                        'status' => 'PENDING_REVIEW'
-                    ], 403);
+                    // Beri akses sebagai Pelanggan selagi pendaftaran toko menunggu persetujuan admin
+                    $partnerStatus = 'PENDING_REVIEW';
+                    $partnerType = 'toko';
+                    $profile = $user->pelanggan ?: \App\Models\Pelanggan::firstOrCreate(
+                        ['user_id' => $user->id],
+                        [
+                            'nama' => $user->nama,
+                            'email' => $user->email,
+                            'hp' => $user->no_telp ?? '',
+                            'alamat' => '',
+                            'saldo' => 0.00,
+                        ]
+                    );
                 }
             }
         } elseif ($user->isPelanggan()) {
@@ -341,7 +373,7 @@ class AuthController extends Controller
         // Send OTP verification to prove email ownership before giving session token (unless testing environment)
         if (!app()->environment('testing')) {
             $cleanEmail = trim(strtolower($user->email));
-            $otp = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
+            $otp = (string) random_int(100000, 999999);
             \Illuminate\Support\Facades\DB::table('email_otps')->where('expires_at', '<', now())->delete();
             \Illuminate\Support\Facades\DB::table('email_otps')->insert([
                 'email' => $cleanEmail,
@@ -352,8 +384,6 @@ class AuthController extends Controller
                 'updated_at' => now()
             ]);
 
-            \Illuminate\Support\Facades\Log::info("Login OTP for {$cleanEmail}: {$otp}");
-
             try {
                 \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\RegisterOtpMail($otp));
             } catch (\Throwable $e) {
@@ -363,6 +393,8 @@ class AuthController extends Controller
             return response()->json([
                 'requires_otp' => true,
                 'email' => $user->email,
+                'partner_status' => $partnerStatus,
+                'partner_type' => $partnerType,
                 'message' => 'Kode verifikasi 6-digit telah dikirim ke email Anda. Masukkan kode untuk melanjutkan.',
             ]);
         }
@@ -372,8 +404,11 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'Login berhasil.',
             'user' => $user,
-            'role' => $user->role->nama,
+            'role' => $partnerStatus ? 'Pelanggan' : ($user->role ? $user->role->nama : 'Pelanggan'),
             'profile' => $profile,
+            'partner_status' => $partnerStatus,
+            'partner_type' => $partnerType,
+            'redirect_url' => $partnerStatus ? '/pelanggan/dashboard' : null,
             'access_token' => $token,
             'token_type' => 'Bearer',
         ]);
@@ -488,7 +523,7 @@ class AuthController extends Controller
         if ($targetType === 'teknisi') {
             $profile = $user->teknisi;
             if (!$profile || $profile->status !== 'NEEDS_REVISION') {
-                return response()->json(['message' => 'Hanya profil dengan status NEEDS_REVISION yang dapat mengajukan ulang.'], 400);
+                return response()->json(['message' => 'Pengajuan ulang berkas hanya dapat dilakukan jika berkas Anda berstatus memerlukan revisi.'], 400);
             }
 
             $validator = Validator::make($request->all(), [
@@ -535,7 +570,7 @@ class AuthController extends Controller
         } elseif ($targetType === 'toko') {
             $profile = $user->toko;
             if (!$profile || $profile->status !== 'NEEDS_REVISION') {
-                return response()->json(['message' => 'Hanya profil dengan status NEEDS_REVISION yang dapat mengajukan ulang.'], 400);
+                return response()->json(['message' => 'Pengajuan ulang berkas hanya dapat dilakukan jika berkas Anda berstatus memerlukan revisi.'], 400);
             }
 
             $validator = Validator::make($request->all(), [
@@ -595,7 +630,7 @@ class AuthController extends Controller
         }
 
         if (!$user) {
-            abort(401, 'Unauthenticated.');
+            abort(401, 'Sesi Anda tidak valid atau telah berakhir. Silakan login kembali.');
         }
 
         if (!in_array($type, ['sertifikat', 'ktp', 'dokumen_izin'])) {
@@ -759,6 +794,9 @@ class AuthController extends Controller
 
             // Check profile freeze or reject state
             $profile = null;
+            $partnerStatus = null;
+            $partnerType = null;
+
             if ($user->isTeknisi()) {
                 $profile = $user->teknisi;
                 if ($profile) {
@@ -769,10 +807,18 @@ class AuthController extends Controller
                         return response()->json(['message' => 'Akun Teknisi Anda ditangguhkan.'], 403);
                     }
                     if ($profile->status === 'PENDING_REVIEW') {
-                        return response()->json([
-                            'message' => 'Akun Teknisi Anda sedang dalam proses peninjauan verifikasi Admin. Anda belum dapat masuk sebelum disetujui (ACC).',
-                            'status' => 'PENDING_REVIEW'
-                        ], 403);
+                        $partnerStatus = 'PENDING_REVIEW';
+                        $partnerType = 'teknisi';
+                        $profile = $user->pelanggan ?: \App\Models\Pelanggan::firstOrCreate(
+                            ['user_id' => $user->id],
+                            [
+                                'nama' => $user->nama,
+                                'email' => $user->email,
+                                'hp' => $user->no_telp ?? '',
+                                'alamat' => '',
+                                'saldo' => 0.00,
+                            ]
+                        );
                     }
                 }
             } elseif ($user->isToko()) {
@@ -785,10 +831,18 @@ class AuthController extends Controller
                         return response()->json(['message' => 'Akun Toko Anda ditangguhkan.'], 403);
                     }
                     if ($profile->status === 'PENDING_REVIEW') {
-                        return response()->json([
-                            'message' => 'Akun Toko Sparepart Anda sedang dalam proses peninjauan verifikasi Admin. Anda belum dapat masuk sebelum disetujui (ACC).',
-                            'status' => 'PENDING_REVIEW'
-                        ], 403);
+                        $partnerStatus = 'PENDING_REVIEW';
+                        $partnerType = 'toko';
+                        $profile = $user->pelanggan ?: \App\Models\Pelanggan::firstOrCreate(
+                            ['user_id' => $user->id],
+                            [
+                                'nama' => $user->nama,
+                                'email' => $user->email,
+                                'hp' => $user->no_telp ?? '',
+                                'alamat' => '',
+                                'saldo' => 0.00,
+                            ]
+                        );
                     }
                 }
             } elseif ($user->isPelanggan()) {
@@ -809,8 +863,11 @@ class AuthController extends Controller
             return response()->json([
                 'message' => 'Verifikasi email berhasil.',
                 'user' => $user,
-                'role' => $user->role ? $user->role->nama : null,
+                'role' => $partnerStatus ? 'Pelanggan' : ($user->role ? $user->role->nama : 'Pelanggan'),
                 'profile' => $profile,
+                'partner_status' => $partnerStatus,
+                'partner_type' => $partnerType,
+                'redirect_url' => $partnerStatus ? '/pelanggan/dashboard' : null,
                 'access_token' => $token,
                 'token_type' => 'Bearer',
             ], 200);
@@ -844,7 +901,7 @@ class AuthController extends Controller
             ], 429);
         }
 
-        $otp = str_pad(mt_rand(0, 999999), 6, '0', STR_PAD_LEFT);
+        $otp = (string) random_int(100000, 999999);
         \Illuminate\Support\Facades\DB::table('email_otps')->where('expires_at', '<', now())->delete();
         \Illuminate\Support\Facades\DB::table('email_otps')->insert([
             'email' => $email,
@@ -854,8 +911,6 @@ class AuthController extends Controller
             'created_at' => now(),
             'updated_at' => now()
         ]);
-
-        \Illuminate\Support\Facades\Log::info("Resend OTP for {$email}: {$otp}");
 
         // Set 60-second cooldown in cache
         \Illuminate\Support\Facades\Cache::put($cacheKey, time() + 60, 60);

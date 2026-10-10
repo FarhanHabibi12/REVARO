@@ -168,11 +168,26 @@ class VerificationController extends Controller
                 ]);
             }
 
+            // Terjemahkan status database ke pesan ramah bahasa Indonesia
+            $statusText = match ($status) {
+                'APPROVED' => 'Disetujui (Aktif)',
+                'NEEDS_REVISION' => 'Perlu Revisi Dokumen',
+                'REJECTED' => 'Ditolak',
+                default => 'Sedang Diproses'
+            };
+
+            $pesanNotif = match ($status) {
+                'APPROVED' => "Selamat! Pendaftaran kemitraan Anda telah disetujui oleh tim verifikator. Akun Anda kini aktif.",
+                'NEEDS_REVISION' => "Dokumen pendaftaran kemitraan Anda memerlukan perbaikan. Catatan admin: {$catatan}. Silakan unggah berkas yang diminta melalui aplikasi.",
+                'REJECTED' => "Mohon maaf, pendaftaran kemitraan Anda belum dapat disetujui. Catatan admin: {$catatan}",
+                default => "Pendaftaran Anda telah diperbarui ke status {$statusText}."
+            };
+
             // Create notification for the user
             Notifikasi::create([
                 'user_id' => $userId,
-                'judul' => 'Status Verifikasi Pendaftaran',
-                'pesan' => "Pendaftaran Anda telah diproses. Hasil: {$status}. Catatan: {$catatan}",
+                'judul' => 'Status Verifikasi Berkas: ' . $statusText,
+                'pesan' => $pesanNotif,
                 'dibaca' => false,
             ]);
 

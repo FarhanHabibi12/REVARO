@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pengaturan Akun Pelanggan — REVARO</title>
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="apple-touch-icon" href="/images/revaro-icon-transparent.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -83,12 +85,34 @@
     <!-- Top Navigation Bar -->
     <header class="bg-white border-b-2 border-primary sticky top-0 z-50 shadow-sm">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex justify-between items-center">
-            <a href="/pelanggan/dashboard" class="flex items-center space-x-3">
-                <span class="text-2xl font-extrabold text-primary tracking-tighter">REVA<span class="text-secondary">RO</span></span>
+            <a href="/pelanggan/dashboard" class="flex items-center space-x-3 py-1">
+                <img src="/images/revaro-logo-horizontal.png" alt="REVARO" class="h-11 sm:h-12 w-auto max-w-[210px] object-contain drop-shadow-sm">
                 <span class="text-xs px-2.5 py-0.5 rounded-full bg-accent text-primary font-bold border border-primary hidden sm:inline-block">Pelanggan</span>
             </a>
 
             <div class="flex items-center space-x-3">
+                <!-- Notifikasi Bell -->
+                <div class="relative inline-block text-left" id="notifBellWrapper">
+                    <button onclick="toggleNotificationDropdown()" type="button" class="relative p-2 text-primary hover:text-secondary rounded-xl border-2 border-primary bg-white shadow-[2px_2px_0px_0px_#0B4A8F] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition flex items-center justify-center focus:outline-none" title="Notifikasi">
+                        <i class="fa-solid fa-bell text-base"></i>
+                        <span id="notifBadge" class="absolute -top-1.5 -right-1.5 bg-red-600 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full min-w-[18px] text-center border-2 border-white hidden animate-pulse">0</span>
+                    </button>
+                    
+                    <div id="notifDropdown" class="hidden absolute right-0 mt-2 w-80 sm:w-96 bg-white border-2 border-primary rounded-2xl shadow-[4px_4px_0px_0px_#0B4A8F] z-50 overflow-hidden">
+                        <div class="p-3.5 bg-accent/60 border-b-2 border-primary flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-bell text-primary text-sm"></i>
+                                <h4 class="font-extrabold text-sm text-primary">Notifikasi</h4>
+                                <span id="notifCountLabel" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary text-white">0 Baru</span>
+                            </div>
+                            <button onclick="markAllNotificationsAsRead()" type="button" class="text-xs font-bold text-secondary hover:underline">Tandai Semua Dibaca</button>
+                        </div>
+                        <div id="notifListContainer" class="max-h-80 overflow-y-auto divide-y divide-gray-100">
+                            <p class="text-xs text-textLight text-center py-6">Memuat notifikasi...</p>
+                        </div>
+                    </div>
+                </div>
+
                 <a href="/pelanggan/dashboard" class="revaro-btn-outline text-xs px-3.5 py-1.5 rounded-xl font-bold flex items-center gap-1.5">
                     <i class="fas fa-arrow-left"></i> <span>Kembali ke Dasbor</span>
                 </a>
@@ -248,9 +272,18 @@
                         <p class="text-xs text-textLight">Daftar sebagai teknisi independen atau toko sparepart</p>
                     </div>
                 </a>
-            </div>
         </div>
     </main>
+
+    <!-- Footer Pelanggan dengan Logo REVARO -->
+    <footer class="bg-white border-t-2 border-primary py-6 text-center text-xs text-textLight">
+        <div class="max-w-6xl mx-auto px-4 space-y-2">
+            <div class="flex justify-center items-center">
+                <img src="/images/revaro-logo-horizontal.png" alt="REVARO Logo" class="h-8 w-auto object-contain">
+            </div>
+            <p class="font-bold text-textDark">&copy; 2026 REVARO &mdash; Ekosistem Reparasi &amp; Restorasi Terpercaya Indonesia.</p>
+        </div>
+    </footer>
 
     <script>
         const token = localStorage.getItem('token') || localStorage.getItem('admin_token');
@@ -340,7 +373,156 @@
             window.location.href = '/';
         }
 
-        document.addEventListener('DOMContentLoaded', loadData);
+        document.addEventListener('DOMContentLoaded', () => {
+            loadData();
+            fetchNotifications();
+        });
+
+        // --- In-App Notifications Controller ---
+        let isNotifOpen = false;
+        function toggleNotificationDropdown() {
+            const dropdown = document.getElementById('notifDropdown');
+            isNotifOpen = !isNotifOpen;
+            if (isNotifOpen) {
+                dropdown.classList.remove('hidden');
+                fetchNotifications();
+            } else {
+                dropdown.classList.add('hidden');
+            }
+        }
+
+        document.addEventListener('click', (e) => {
+            const wrapper = document.getElementById('notifBellWrapper');
+            if (wrapper && !wrapper.contains(e.target)) {
+                const dropdown = document.getElementById('notifDropdown');
+                if (dropdown && !dropdown.classList.contains('hidden')) {
+                    dropdown.classList.add('hidden');
+                    isNotifOpen = false;
+                }
+            }
+        });
+
+        async function fetchNotifications() {
+            const token = localStorage.getItem('token');
+            if (!token) return;
+            try {
+                const res = await fetch('/api/notifications', {
+                    headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                
+                const badge = document.getElementById('notifBadge');
+                const countLabel = document.getElementById('notifCountLabel');
+                const listContainer = document.getElementById('notifListContainer');
+
+                if (badge) {
+                    if (data.unread_count > 0) {
+                        badge.textContent = data.unread_count > 99 ? '99+' : data.unread_count;
+                        badge.classList.remove('hidden');
+                    } else {
+                        badge.classList.add('hidden');
+                    }
+                }
+
+                if (countLabel) {
+                    countLabel.textContent = `${data.unread_count} Baru`;
+                }
+
+                if (listContainer) {
+                    if (!data.notifications || data.notifications.length === 0) {
+                        listContainer.innerHTML = `
+                            <div class="py-8 text-center text-textLight space-y-2">
+                                <i class="fa-regular fa-bell-slash text-2xl text-slate-300"></i>
+                                <p class="text-xs">Tidak ada notifikasi saat ini.</p>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    listContainer.innerHTML = data.notifications.map(n => {
+                        const isUnread = !n.dibaca;
+                        const timeStr = new Date(n.created_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' });
+                        const nJson = JSON.stringify(n).replace(/"/g, '&quot;');
+                        return `
+                            <div onclick="handleNotificationClick(${n.id}, ${nJson})" class="p-3.5 transition cursor-pointer hover:bg-accent/30 ${isUnread ? 'bg-orange-50/70 border-l-4 border-secondary' : 'bg-white'}">
+                                <div class="flex items-start justify-between gap-2">
+                                    <h5 class="text-xs font-bold ${isUnread ? 'text-primary' : 'text-slate-700'}">${n.judul}</h5>
+                                    <span class="text-[10px] text-textLight whitespace-nowrap shrink-0">${timeStr}</span>
+                                </div>
+                                <p class="text-xs text-textDark mt-1 leading-snug">${n.pesan}</p>
+                            </div>
+                        `;
+                    }).join('');
+                }
+            } catch (e) {}
+        }
+
+        async function handleNotificationClick(id, n) {
+            await markNotificationRead(id);
+            const dd = document.getElementById('notifDropdown');
+            if (dd) dd.classList.add('hidden');
+
+            const title = n.judul || 'Notifikasi';
+            const body = n.pesan || '';
+            const lowerBody = body.toLowerCase();
+            const lowerTitle = title.toLowerCase();
+
+            if (lowerTitle.includes('verifikasi') || lowerTitle.includes('mitra') || lowerBody.includes('verifikasi')) {
+                const isApproved = lowerBody.includes('disetujui') || lowerBody.includes('acc') || lowerBody.includes('aktif');
+                Swal.fire({
+                    icon: isApproved ? 'success' : 'info',
+                    title: title,
+                    text: body,
+                    confirmButtonText: isApproved ? '🚀 Buka Dasbor Mitra' : 'Tutup',
+                    confirmButtonColor: '#0B4A8F',
+                    showCancelButton: isApproved
+                }).then((r) => {
+                    if (isApproved && r.isConfirmed) {
+                        window.location.href = lowerBody.includes('toko') ? '/toko/dashboard' : '/teknisi/dashboard';
+                    }
+                });
+                return;
+            }
+
+            if (lowerTitle.includes('dompet') || lowerTitle.includes('saldo') || lowerBody.includes('saldo')) {
+                Swal.fire({
+                    icon: 'info',
+                    title: title,
+                    text: body,
+                    confirmButtonText: '💳 Buka Dompet',
+                    showCancelButton: true,
+                    confirmButtonColor: '#0B4A8F'
+                }).then((r) => {
+                    if (r.isConfirmed) window.location.href = '/pelanggan/dompet';
+                });
+                return;
+            }
+
+            Swal.fire({ icon: 'info', title: title, text: body, confirmButtonColor: '#0B4A8F' });
+        }
+
+        async function markNotificationRead(id) {
+            const token = localStorage.getItem('token');
+            try {
+                await fetch(`/api/notifications/${id}/read`, {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+                });
+                fetchNotifications();
+            } catch (e) {}
+        }
+
+        async function markAllNotificationsAsRead() {
+            const token = localStorage.getItem('token');
+            try {
+                await fetch('/api/notifications/read-all', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+                });
+                fetchNotifications();
+            } catch (e) {}
+        }
     </script>
     @include('components.dock')
 </body>

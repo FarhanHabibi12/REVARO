@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Riwayat Transaksi &amp; Sengketa — Pelanggan REVARO</title>
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="apple-touch-icon" href="/images/revaro-icon-transparent.png">
     
     <!-- Google Fonts & Tailwind -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -82,8 +84,8 @@
     <!-- Top Navigation Bar -->
     <header class="bg-white border-b-2 border-primary sticky top-0 z-50 shadow-sm">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex justify-between items-center">
-            <a href="/pelanggan/dashboard" class="flex items-center space-x-3">
-                <span class="text-2xl font-extrabold text-primary tracking-tighter">REVA<span class="text-secondary">RO</span></span>
+            <a href="/pelanggan/dashboard" class="flex items-center space-x-3 py-1">
+                <img src="/images/revaro-logo-horizontal.png" alt="REVARO" class="h-11 sm:h-12 w-auto max-w-[210px] object-contain drop-shadow-sm">
                 <span class="text-xs px-2.5 py-0.5 rounded-full bg-accent text-primary font-bold border border-primary hidden sm:inline-block">Pelanggan</span>
             </a>
 
@@ -227,8 +229,17 @@
                     </div>
                 </div>
             </div>
-        </div>
     </main>
+
+    <!-- Footer Pelanggan dengan Logo REVARO -->
+    <footer class="bg-white border-t-2 border-primary py-6 text-center text-xs text-textLight">
+        <div class="max-w-6xl mx-auto px-4 space-y-2">
+            <div class="flex justify-center items-center">
+                <img src="/images/revaro-logo-horizontal.png" alt="REVARO Logo" class="h-8 w-auto object-contain">
+            </div>
+            <p class="font-bold text-textDark">&copy; 2026 REVARO &mdash; Ekosistem Reparasi &amp; Restorasi Terpercaya Indonesia.</p>
+        </div>
+    </footer>
 
     @include('components.dock')
 
@@ -438,8 +449,9 @@
                     listContainer.innerHTML = data.notifications.map(n => {
                         const isUnread = !n.dibaca;
                         const timeStr = new Date(n.created_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' });
+                        const nJson = JSON.stringify(n).replace(/"/g, '&quot;');
                         return `
-                            <div onclick="markNotificationRead(${n.id})" class="p-3.5 transition cursor-pointer hover:bg-accent/30 ${isUnread ? 'bg-orange-50/70 border-l-4 border-secondary' : 'bg-white'}">
+                            <div onclick="handleNotificationClick(${n.id}, ${nJson})" class="p-3.5 transition cursor-pointer hover:bg-accent/30 ${isUnread ? 'bg-orange-50/70 border-l-4 border-secondary' : 'bg-white'}">
                                 <div class="flex items-start justify-between gap-2">
                                     <h5 class="text-xs font-bold ${isUnread ? 'text-primary' : 'text-slate-700'}">${n.judul}</h5>
                                     <span class="text-[10px] text-textLight whitespace-nowrap shrink-0">${timeStr}</span>
@@ -450,6 +462,50 @@
                     }).join('');
                 }
             } catch (e) {}
+        }
+
+        async function handleNotificationClick(id, n) {
+            await markNotificationRead(id);
+            const dd = document.getElementById('notifDropdown');
+            if (dd) dd.classList.add('hidden');
+
+            const title = n.judul || 'Notifikasi';
+            const body = n.pesan || '';
+            const lowerBody = body.toLowerCase();
+            const lowerTitle = title.toLowerCase();
+
+            if (lowerTitle.includes('verifikasi') || lowerTitle.includes('mitra') || lowerBody.includes('verifikasi')) {
+                const isApproved = lowerBody.includes('disetujui') || lowerBody.includes('acc') || lowerBody.includes('aktif');
+                Swal.fire({
+                    icon: isApproved ? 'success' : 'info',
+                    title: title,
+                    text: body,
+                    confirmButtonText: isApproved ? '🚀 Buka Dasbor Mitra' : 'Tutup',
+                    confirmButtonColor: '#0B4A8F',
+                    showCancelButton: isApproved
+                }).then((r) => {
+                    if (isApproved && r.isConfirmed) {
+                        window.location.href = lowerBody.includes('toko') ? '/toko/dashboard' : '/teknisi/dashboard';
+                    }
+                });
+                return;
+            }
+
+            if (lowerTitle.includes('dompet') || lowerTitle.includes('saldo') || lowerBody.includes('saldo')) {
+                Swal.fire({
+                    icon: 'info',
+                    title: title,
+                    text: body,
+                    confirmButtonText: '💳 Buka Dompet',
+                    showCancelButton: true,
+                    confirmButtonColor: '#0B4A8F'
+                }).then((r) => {
+                    if (r.isConfirmed) window.location.href = '/pelanggan/dompet';
+                });
+                return;
+            }
+
+            Swal.fire({ icon: 'info', title: title, text: body, confirmButtonColor: '#0B4A8F' });
         }
 
         async function markNotificationRead(id) {

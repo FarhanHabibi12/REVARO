@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dompet Saldo &amp; Top Up — Pelanggan REVARO</title>
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="apple-touch-icon" href="/images/revaro-icon-transparent.png">
     
     <!-- Google Fonts & Tailwind -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -30,9 +32,13 @@
         }
     </script>
 
-    <!-- FontAwesome & SweetAlert2 -->
+    <!-- FontAwesome & SweetAlert2 & Midtrans Snap -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="{{ config('services.midtrans.is_production', false) ? 'https://app.midtrans.com/snap/snap.js' : 'https://app.sandbox.midtrans.com/snap/snap.js' }}" data-client-key="{{ config('services.midtrans.client_key') }}"></script>
+    <script>
+        window.snapLanguage = 'id';
+    </script>
 
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
@@ -82,8 +88,8 @@
     <!-- Top Navigation Bar -->
     <header class="bg-white border-b-2 border-primary sticky top-0 z-50 shadow-sm">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex justify-between items-center">
-            <a href="/pelanggan/dashboard" class="flex items-center space-x-3">
-                <span class="text-2xl font-extrabold text-primary tracking-tighter">REVA<span class="text-secondary">RO</span></span>
+            <a href="/pelanggan/dashboard" class="flex items-center space-x-3 py-1">
+                <img src="/images/revaro-logo-horizontal.png" alt="REVARO" class="h-11 sm:h-12 w-auto max-w-[210px] object-contain drop-shadow-sm">
                 <span class="text-xs px-2.5 py-0.5 rounded-full bg-accent text-primary font-bold border border-primary hidden sm:inline-block">Pelanggan</span>
             </a>
 
@@ -190,7 +196,7 @@
                     </p>
                 </div>
                 <div class="flex items-center gap-3">
-                    <button onclick="loadWalletData()" type="button" class="revaro-btn text-xs font-bold py-2.5 px-4 rounded-xl flex items-center gap-2">
+                    <button onclick="loadWalletData(true)" type="button" class="revaro-btn text-xs font-bold py-2.5 px-4 rounded-xl flex items-center gap-2">
                         <i class="fas fa-sync-alt"></i> <span>Refresh Saldo</span>
                     </button>
                 </div>
@@ -269,8 +275,17 @@
                     </div>
                 </div>
             </div>
-        </div>
     </main>
+
+    <!-- Footer Pelanggan dengan Logo REVARO -->
+    <footer class="bg-white border-t-2 border-primary py-6 text-center text-xs text-textLight">
+        <div class="max-w-6xl mx-auto px-4 space-y-2">
+            <div class="flex justify-center items-center">
+                <img src="/images/revaro-logo-horizontal.png" alt="REVARO Logo" class="h-8 w-auto object-contain">
+            </div>
+            <p class="font-bold text-textDark">&copy; 2026 REVARO &mdash; Ekosistem Reparasi &amp; Restorasi Terpercaya Indonesia.</p>
+        </div>
+    </footer>
 
     @include('components.dock')
 
@@ -320,8 +335,31 @@
             } catch (e) {}
         }
 
-        async function loadWalletData() {
+        async function loadWalletData(checkPending = false) {
             try {
+                if (checkPending) {
+                    try {
+                        const checkRes = await fetch('/api/wallet/check-status', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify({})
+                        });
+                        const checkData = await checkRes.json();
+                        if (checkRes.ok && checkData.is_newly_settled) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Pembayaran Berhasil!',
+                                text: checkData.message || 'Saldo Anda telah berhasil ditambahkan.',
+                                confirmButtonColor: '#0B4A8F'
+                            });
+                        }
+                    } catch (errCheck) {}
+                }
+
                 const res = await fetch('/api/wallet/balance?role=pelanggan', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
@@ -417,18 +455,88 @@
                         body: JSON.stringify({ jumlah: amount, amount: amount, role: 'pelanggan' })
                     });
                     const result = await res.json();
-                    if (res.ok) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Top-Up Berhasil!',
-                            text: result.message || `Saldo Anda bertambah Rp ${amount.toLocaleString('id-ID')}`,
-                            confirmButtonColor: '#0B4A8F'
-                        });
-                        loadWalletData();
+                    if (res.ok && result.snap_token) {
+                        const currentOrderId = result.order_id;
+
+                        if (window.snap) {
+                            window.snap.pay(result.snap_token, {
+                                language: 'id',
+                                onSuccess: function(snapRes) {
+                                    verifyMidtransPayment(currentOrderId, false);
+                                },
+                                onPending: function(snapRes) {
+                                    verifyMidtransPayment(currentOrderId, true);
+                                    loadWalletData();
+                                },
+                                onError: function(snapRes) {
+                                    Swal.fire('Pembayaran Gagal', 'Silakan coba lagi.', 'error');
+                                },
+                                onClose: function() {
+                                    // Pengguna mungkin telah membayar di tab / jendela lain (mis. Gopay simulator)
+                                    verifyMidtransPayment(currentOrderId, true);
+                                    loadWalletData();
+                                }
+                            });
+                        } else if (result.redirect_url) {
+                            window.open(result.redirect_url, '_blank');
+                        }
                     } else {
                         Swal.fire('Gagal', result.message || 'Periksa input Anda.', 'error');
                     }
-                } catch (e) {}
+                } catch (e) {
+                    Swal.fire('Gagal', 'Terjadi kesalahan sistem saat menghubungi gerbang pembayaran.', 'error');
+                }
+            }
+        }
+
+        async function verifyMidtransPayment(orderId, isSilent = false) {
+            try {
+                if (!isSilent) {
+                    Swal.fire({
+                        title: 'Memverifikasi Pembayaran...',
+                        text: 'Memeriksa status pembayaran langsung dari Midtrans...',
+                        allowOutsideClick: false,
+                        didOpen: () => { Swal.showLoading(); }
+                    });
+                }
+
+                const res = await fetch('/api/wallet/check-status', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ order_id: orderId })
+                });
+
+                const data = await res.json();
+
+                if (res.ok && data.status === 'success') {
+                    if (data.is_newly_settled || !isSilent) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Pembayaran Berhasil!',
+                            text: data.message || 'Saldo Anda telah berhasil ditambahkan.',
+                            confirmButtonColor: '#0B4A8F'
+                        });
+                    }
+                    loadWalletData();
+                } else if (!isSilent && data.transaction_status === 'pending') {
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Menunggu Pembayaran',
+                        text: 'Silakan selesaikan pembayaran Anda di Midtrans.',
+                        confirmButtonColor: '#0B4A8F'
+                    });
+                    loadWalletData();
+                } else if (!isSilent && !res.ok) {
+                    Swal.fire('Info', data.message || 'Pembayaran belum diselesaikan atau sedang diproses.', 'info');
+                }
+            } catch (err) {
+                if (!isSilent) {
+                    Swal.fire('Error', 'Gagal memverifikasi status pembayaran.', 'error');
+                }
             }
         }
 
@@ -602,8 +710,9 @@
                     listContainer.innerHTML = data.notifications.map(n => {
                         const isUnread = !n.dibaca;
                         const timeStr = new Date(n.created_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' });
+                        const nJson = JSON.stringify(n).replace(/"/g, '&quot;');
                         return `
-                            <div onclick="markNotificationRead(${n.id})" class="p-3.5 transition cursor-pointer hover:bg-accent/30 ${isUnread ? 'bg-orange-50/70 border-l-4 border-secondary' : 'bg-white'}">
+                            <div onclick="handleNotificationClick(${n.id}, ${nJson})" class="p-3.5 transition cursor-pointer hover:bg-accent/30 ${isUnread ? 'bg-orange-50/70 border-l-4 border-secondary' : 'bg-white'}">
                                 <div class="flex items-start justify-between gap-2">
                                     <h5 class="text-xs font-bold ${isUnread ? 'text-primary' : 'text-slate-700'}">${n.judul}</h5>
                                     <span class="text-[10px] text-textLight whitespace-nowrap shrink-0">${timeStr}</span>
@@ -614,6 +723,52 @@
                     }).join('');
                 }
             } catch (e) {}
+        }
+
+        async function handleNotificationClick(id, n) {
+            await markNotificationRead(id);
+            const dd = document.getElementById('notifDropdown');
+            if (dd) dd.classList.add('hidden');
+
+            const title = n.judul || 'Notifikasi';
+            const body = n.pesan || '';
+            const lowerBody = body.toLowerCase();
+            const lowerTitle = title.toLowerCase();
+            const orderMatch = body.match(/#?ORD-(\d+)/i);
+            const orderId = orderMatch ? orderMatch[1] : null;
+
+            if (lowerTitle.includes('verifikasi') || lowerTitle.includes('mitra') || lowerBody.includes('verifikasi')) {
+                const isApproved = lowerBody.includes('disetujui') || lowerBody.includes('acc') || lowerBody.includes('aktif');
+                Swal.fire({
+                    icon: isApproved ? 'success' : 'info',
+                    title: title,
+                    text: body,
+                    confirmButtonText: isApproved ? '🚀 Buka Dasbor Mitra' : 'Tutup',
+                    confirmButtonColor: '#0B4A8F',
+                    showCancelButton: isApproved
+                }).then((r) => {
+                    if (isApproved && r.isConfirmed) {
+                        window.location.href = lowerBody.includes('toko') ? '/toko/dashboard' : '/teknisi/dashboard';
+                    }
+                });
+                return;
+            }
+
+            if (orderId || lowerTitle.includes('pesanan') || lowerTitle.includes('order')) {
+                Swal.fire({
+                    icon: 'info',
+                    title: title,
+                    text: body,
+                    confirmButtonText: '📋 Buka Riwayat Pesanan',
+                    showCancelButton: true,
+                    confirmButtonColor: '#0B4A8F'
+                }).then((r) => {
+                    if (r.isConfirmed) window.location.href = '/pelanggan/riwayat';
+                });
+                return;
+            }
+
+            Swal.fire({ icon: 'info', title: title, text: body, confirmButtonColor: '#0B4A8F' });
         }
 
         async function markNotificationRead(id) {

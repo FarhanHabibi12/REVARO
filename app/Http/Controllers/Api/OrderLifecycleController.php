@@ -592,59 +592,52 @@ class OrderLifecycleController extends Controller
             return response()->json(['message' => 'Saldo dompet tidak mencukupi untuk pembayaran.'], 400);
         }
 
-        return DB::transaction(function () use ($order, $transaksi, $pelanggan) {
-            // Deduct customer balance
-            $pelanggan->decrement('saldo', $transaksi->total);
+        return DB::transaction(function () use ($user, $order, $transaksi, $pelanggan) {
+            // Deduct customer balance with pessimistic locking
+            $user->deductUnifiedSaldo((float) $transaksi->total);
 
-            // Update transaction payment & escrow status (LANGSUNG RELEASE)
+            // Update transaction payment & escrow status (MASUK ESCROW HELD)
             $transaksi->update([
                 'status_pembayaran' => 'PAID',
-                'status_escrow' => 'RELEASED', // Dana langsung cair
+                'status_escrow' => 'HELD', // Dana diamankan di Escrow REVARO
                 'paid_at' => now(),
             ]);
 
             $order->update(['status' => 'COMPLETED']);
 
             // Set technician back to available
-            $order->teknisi->update(['tersedia' => true]);
+            if ($order->teknisi) {
+                $order->teknisi->update(['tersedia' => true]);
+            }
 
-            // Disperse service fee to technician (LANGSUNG MASUK)
-            $teknisi = $order->teknisi;
-            if ($teknisi) {
-                $teknisi->increment('saldo', $transaksi->biaya_jasa);
-                
+            // Catat ledger wallet transaksi keluar untuk pelanggan
+            \App\Models\WalletTransaction::create([
+                'user_id'   => $user->id,
+                'tipe'      => 'OUT',
+                'jumlah'    => $transaksi->total,
+                'deskripsi' => "Pembayaran order {$order->kode_order} (Escrow HELD)",
+            ]);
+
+            // Kirim notifikasi ke pelanggan
+            Notifikasi::create([
+                'user_id' => $user->id,
+                'judul'   => 'Pembayaran Berhasil (Dana di Escrow)',
+                'pesan'   => "Pembayaran order {$order->kode_order} sebesar Rp " . number_format($transaksi->total, 0, ',', '.') . " berhasil. Dana Anda diamankan di Escrow REVARO.",
+                'dibaca'  => false,
+            ]);
+
+            // Kirim notifikasi ke teknisi bahwa pembayaran sudah masuk ke escrow
+            if ($order->teknisi) {
                 Notifikasi::create([
-                    'user_id' => $teknisi->user_id,
-                    'judul' => 'Pembayaran & Pencairan Diterima',
-                    'pesan' => "Pelanggan telah membayar order {$order->kode_order}. Dana Rp " . number_format($transaksi->biaya_jasa, 0, ',', '.') . " langsung masuk ke saldo Anda.",
-                    'dibaca' => false,
+                    'user_id' => $order->teknisi->user_id,
+                    'judul'   => 'Pembayaran Pelanggan Masuk ke Escrow',
+                    'pesan'   => "Pelanggan telah membayar order {$order->kode_order}. Dana Rp " . number_format($transaksi->biaya_jasa, 0, ',', '.') . " tersimpan aman di Escrow REVARO dan akan dicairkan saat konfirmasi selesai.",
+                    'dibaca'  => false,
                 ]);
             }
 
-            // Disperse sparepart subtotals to shop(s) (LANGSUNG MASUK)
-            $shopPayments = [];
-            foreach ($order->spareparts as $sparepart) {
-                if ($sparepart->pivot->status === 'CONFIRMED') {
-                    $shopPayments[$sparepart->toko_id] = ($shopPayments[$sparepart->toko_id] ?? 0) + $sparepart->pivot->subtotal;
-                }
-            }
-
-            foreach ($shopPayments as $tokoId => $amount) {
-                $toko = \App\Models\Toko::find($tokoId);
-                if ($toko) {
-                    $toko->increment('saldo', $amount);
-
-                    Notifikasi::create([
-                        'user_id' => $toko->user_id,
-                        'judul' => 'Pencairan Hasil Penjualan',
-                        'pesan' => "Dana Rp " . number_format($amount, 0, ',', '.') . " hasil penjualan sparepart order {$order->kode_order} telah masuk ke saldo.",
-                        'dibaca' => false,
-                    ]);
-                }
-            }
-
             return response()->json([
-                'message' => 'Pembayaran berhasil. Dana langsung diteruskan ke Teknisi dan Toko (jika ada).',
+                'message' => 'Pembayaran berhasil. Dana diamankan di Escrow REVARO.',
                 'transaksi' => $transaksi
             ]);
         });
@@ -652,7 +645,7 @@ class OrderLifecycleController extends Controller
 
     /**
      * Customer confirms service completion.
-     * Escrow RELEASED, wallets updated.
+     * Escrow RELEASED, platform commission 10% deducted, wallets updated.
      */
     public function confirmRelease(Request $request, Order $order)
     {
@@ -682,16 +675,34 @@ class OrderLifecycleController extends Controller
         return DB::transaction(function () use ($order, $transaksi) {
             $transaksi->update(['status_escrow' => 'RELEASED']);
 
-            // Disperse service fee to technician
+            // Ambil persentase komisi dari KebijakanKomisi (default 10%)
+            $kebijakan = \App\Models\KebijakanKomisi::first();
+            $persenKomisi = $kebijakan ? (float)$kebijakan->persen_komisi_jasa : 10.0;
+            $komisi = round($transaksi->biaya_jasa * ($persenKomisi / 100));
+            $teknisiShare = max(0, $transaksi->biaya_jasa - $komisi);
+
+            // Disperse service fee to technician (setelah potongan komisi)
             $teknisi = $order->teknisi;
             if ($teknisi) {
-                $teknisi->increment('saldo', $transaksi->biaya_jasa);
+                $teknisiUser = $teknisi->user;
+                if ($teknisiUser) {
+                    $teknisiUser->addUnifiedSaldo((float) $teknisiShare);
+                } else {
+                    $teknisi->increment('saldo', $teknisiShare);
+                }
                 
+                \App\Models\WalletTransaction::create([
+                    'user_id'   => $teknisi->user_id,
+                    'tipe'      => 'IN',
+                    'jumlah'    => $teknisiShare,
+                    'deskripsi' => "Pencairan jasa servis order {$order->kode_order} (Komisi platform {$persenKomisi}%: Rp " . number_format($komisi, 0, ',', '.') . ")",
+                ]);
+
                 Notifikasi::create([
                     'user_id' => $teknisi->user_id,
-                    'judul' => 'Pencairan Jasa Servis',
-                    'pesan' => "Dana Rp " . number_format($transaksi->biaya_jasa, 0, ',', '.') . " untuk order {$order->kode_order} telah dicairkan ke dompet Anda.",
-                    'dibaca' => false,
+                    'judul'   => 'Pencairan Jasa Servis',
+                    'pesan'   => "Dana Rp " . number_format($teknisiShare, 0, ',', '.') . " untuk order {$order->kode_order} telah dicairkan ke dompet Anda (Potongan komisi {$persenKomisi}%: Rp " . number_format($komisi, 0, ',', '.') . ").",
+                    'dibaca'  => false,
                 ]);
             }
 
@@ -706,13 +717,25 @@ class OrderLifecycleController extends Controller
             foreach ($shopPayments as $tokoId => $amount) {
                 $toko = Toko::find($tokoId);
                 if ($toko) {
-                    $toko->increment('saldo', $amount);
+                    $tokoUser = $toko->user;
+                    if ($tokoUser) {
+                        $tokoUser->addUnifiedSaldo((float) $amount);
+                    } else {
+                        $toko->increment('saldo', $amount);
+                    }
+
+                    \App\Models\WalletTransaction::create([
+                        'user_id'   => $toko->user_id,
+                        'tipe'      => 'IN',
+                        'jumlah'    => $amount,
+                        'deskripsi' => "Pencairan penjualan sparepart order {$order->kode_order}",
+                    ]);
 
                     Notifikasi::create([
                         'user_id' => $toko->user_id,
-                        'judul' => 'Pencairan Hasil Penjualan',
-                        'pesan' => "Dana Rp " . number_format($amount, 0, ',', '.') . " hasil penjualan alat untuk order {$order->kode_order} telah dicairkan.",
-                        'dibaca' => false,
+                        'judul'   => 'Pencairan Hasil Penjualan',
+                        'pesan'   => "Dana Rp " . number_format($amount, 0, ',', '.') . " hasil penjualan alat untuk order {$order->kode_order} telah dicairkan.",
+                        'dibaca'  => false,
                     ]);
                 }
             }

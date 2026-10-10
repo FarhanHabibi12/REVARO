@@ -4,9 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Customer Dashboard — REVARO</title>
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="apple-touch-icon" href="/images/revaro-icon-transparent.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="{{ config('services.midtrans.is_production', false) ? 'https://app.midtrans.com/snap/snap.js' : 'https://app.sandbox.midtrans.com/snap/snap.js' }}" data-client-key="{{ config('services.midtrans.client_key') }}"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -126,8 +129,8 @@
     <!-- Top Navigation Bar -->
     <header class="bg-white border-b-2 border-primary sticky top-0 z-50 shadow-sm">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex justify-between items-center">
-            <a href="/pelanggan/dashboard" class="flex items-center space-x-3">
-                <span class="text-2xl font-extrabold text-primary tracking-tighter">REVA<span class="text-secondary">RO</span></span>
+            <a href="/pelanggan/dashboard" class="flex items-center space-x-3 py-1">
+                <img src="/images/revaro-logo-horizontal.png" alt="REVARO" class="h-11 sm:h-12 w-auto max-w-[210px] object-contain drop-shadow-sm">
                 <span class="text-xs px-2.5 py-0.5 rounded-full bg-accent text-primary font-bold border border-primary hidden sm:inline-block">Pelanggan</span>
             </a>
 
@@ -624,9 +627,12 @@
 
     </main>
 
-    <!-- Footer Pelanggan dengan Kredit GOAPI Halus & Elegan -->
+    <!-- Footer Pelanggan dengan Logo REVARO & Kredit GOAPI -->
     <footer class="bg-white border-t-2 border-primary py-6 mt-12 text-center text-xs text-textLight">
-        <div class="max-w-6xl mx-auto px-4 space-y-1">
+        <div class="max-w-6xl mx-auto px-4 space-y-2">
+            <div class="flex justify-center items-center">
+                <img src="/images/revaro-logo-horizontal.png" alt="REVARO Logo" class="h-8 w-auto object-contain">
+            </div>
             <p class="font-bold text-textDark">&copy; 2026 REVARO &mdash; Ekosistem Reparasi &amp; Restorasi Terpercaya Indonesia.</p>
             <p class="text-[11px] text-slate-400 font-medium">
                 Sistem pemetaan lokasi dan penunjuk arah didukung oleh teknologi GOAPI Platform.
@@ -654,8 +660,8 @@
             fetchClientMapsSettings();
             fetchNotifications();
             if(document.getElementById('map')) initMap();
-            orderPollInterval = setInterval(checkActiveOrders, 4000);
-            setInterval(fetchNotifications, 8000);
+            orderPollInterval = setInterval(checkActiveOrders, 6000);
+            setInterval(fetchNotifications, 15000);
 
             // Handle service deep link or pesan action parameter
             try {
@@ -710,6 +716,17 @@
                 }
             }
         });
+
+        // Helper perlindungan XSS: Escape HTML strings sebelum dirender ke innerHTML
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
 
         // --- In-App Notifications Controller ---
         let isNotifOpen = false;
@@ -775,13 +792,14 @@
                     listContainer.innerHTML = data.notifications.map(n => {
                         const isUnread = !n.dibaca;
                         const timeStr = new Date(n.created_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' });
+                        const nJson = JSON.stringify(n).replace(/"/g, '&quot;');
                         return `
-                            <div onclick="markNotificationRead(${n.id})" class="p-3.5 transition cursor-pointer hover:bg-accent/30 ${isUnread ? 'bg-orange-50/70 border-l-4 border-secondary' : 'bg-white'}">
+                            <div onclick="handleNotificationClick(${n.id}, ${nJson})" class="p-3.5 transition cursor-pointer hover:bg-accent/30 ${isUnread ? 'bg-orange-50/70 border-l-4 border-secondary' : 'bg-white'}">
                                 <div class="flex items-start justify-between gap-2">
-                                    <h5 class="text-xs font-bold ${isUnread ? 'text-primary' : 'text-slate-700'}">${n.judul}</h5>
+                                    <h5 class="text-xs font-bold ${isUnread ? 'text-primary' : 'text-slate-700'}">${escapeHtml(n.judul)}</h5>
                                     <span class="text-[10px] text-textLight whitespace-nowrap shrink-0">${timeStr}</span>
                                 </div>
-                                <p class="text-xs text-textDark mt-1 leading-snug">${n.pesan}</p>
+                                <p class="text-xs text-textDark mt-1 leading-snug">${escapeHtml(n.pesan)}</p>
                             </div>
                         `;
                     }).join('');
@@ -799,6 +817,134 @@
                 });
                 fetchNotifications();
             } catch (e) {}
+        }
+
+        async function handleNotificationClick(id, n) {
+            // 1. Tandai sebagai telah dibaca
+            await markNotificationRead(id);
+
+            // 2. Tutup dropdown notifikasi jika terbuka
+            const dd = document.getElementById('notifDropdown');
+            if (dd) dd.classList.add('hidden');
+
+            const title = n.judul || 'Notifikasi';
+            const body = n.pesan || '';
+            const lowerBody = body.toLowerCase();
+            const lowerTitle = title.toLowerCase();
+
+            // Deteksi ID Order jika ada
+            const orderMatch = body.match(/#?ORD-(\d+)/i);
+            const orderId = orderMatch ? orderMatch[1] : null;
+
+            // Kasus 1: Status Verifikasi Mitra
+            if (lowerTitle.includes('verifikasi') || lowerTitle.includes('mitra') || lowerBody.includes('verifikasi')) {
+                const isApproved = lowerBody.includes('disetujui') || lowerBody.includes('acc') || lowerBody.includes('aktif');
+                Swal.fire({
+                    icon: isApproved ? 'success' : 'info',
+                    title: title,
+                    html: `
+                        <div class="text-left space-y-2 text-xs text-textDark">
+                            <p class="leading-relaxed">${body}</p>
+                            ${isApproved ? '<div class="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 font-semibold">🎉 Selamat! Kemitraan Anda telah disetujui dan aktif.</div>' : ''}
+                        </div>
+                    `,
+                    confirmButtonText: isApproved ? '🚀 Buka Dasbor Mitra' : 'Tutup',
+                    confirmButtonColor: '#0B4A8F',
+                    showCancelButton: isApproved,
+                    cancelButtonText: 'Tetap di Sini'
+                }).then((r) => {
+                    if (isApproved && r.isConfirmed) {
+                        window.location.href = lowerBody.includes('toko') ? '/toko/dashboard' : '/teknisi/dashboard';
+                    }
+                });
+                return;
+            }
+
+            // Kasus 2: Status Pesanan / Teknisi
+            if (orderId || lowerTitle.includes('pesanan') || lowerTitle.includes('order') || lowerBody.includes('teknisi')) {
+                const activeCard = document.getElementById('activeOrderCard') || document.getElementById('activeOrderSection');
+                if (activeCard && !activeCard.classList.contains('hidden')) {
+                    activeCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    activeCard.classList.add('ring-4', 'ring-secondary');
+                    setTimeout(() => activeCard.classList.remove('ring-4', 'ring-secondary'), 3500);
+                }
+
+                Swal.fire({
+                    icon: 'info',
+                    title: title,
+                    html: `
+                        <div class="text-left space-y-2 text-xs text-textDark">
+                            <p class="leading-relaxed">${body}</p>
+                            ${orderId ? `<div class="p-2 bg-blue-50 border border-blue-200 rounded-lg text-primary font-mono text-[11px]">ID Pesanan: #ORD-${orderId}</div>` : ''}
+                        </div>
+                    `,
+                    confirmButtonText: '📋 Buka Riwayat Pesanan',
+                    cancelButtonText: 'Tutup',
+                    showCancelButton: true,
+                    confirmButtonColor: '#0B4A8F',
+                    cancelButtonColor: '#64748B'
+                }).then((r) => {
+                    if (r.isConfirmed) {
+                        window.location.href = '/pelanggan/riwayat';
+                    }
+                });
+                return;
+            }
+
+            // Kasus 3: Dompet / Saldo / Pembayaran
+            if (lowerTitle.includes('dompet') || lowerTitle.includes('saldo') || lowerTitle.includes('topup') || lowerTitle.includes('top up') || lowerBody.includes('saldo') || lowerBody.includes('pembayaran') || lowerBody.includes('escrow')) {
+                Swal.fire({
+                    icon: 'info',
+                    title: title,
+                    html: `
+                        <div class="text-left space-y-2 text-xs text-textDark">
+                            <p class="leading-relaxed">${body}</p>
+                        </div>
+                    `,
+                    confirmButtonText: '💳 Buka Dompet Digital',
+                    cancelButtonText: 'Tutup',
+                    showCancelButton: true,
+                    confirmButtonColor: '#0B4A8F',
+                    cancelButtonColor: '#64748B'
+                }).then((r) => {
+                    if (r.isConfirmed) {
+                        window.location.href = '/pelanggan/dompet';
+                    }
+                });
+                return;
+            }
+
+            // Kasus 4: Garansi / Sengketa / Dispute
+            if (lowerTitle.includes('garansi') || lowerTitle.includes('sengketa') || lowerTitle.includes('dispute') || lowerBody.includes('garansi') || lowerBody.includes('sengketa')) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: title,
+                    html: `
+                        <div class="text-left space-y-2 text-xs text-textDark">
+                            <p class="leading-relaxed">${body}</p>
+                        </div>
+                    `,
+                    confirmButtonText: '🛡️ Buka Pusat Garansi / Resolusi',
+                    cancelButtonText: 'Tutup',
+                    showCancelButton: true,
+                    confirmButtonColor: '#FF7F00',
+                    cancelButtonColor: '#64748B'
+                }).then((r) => {
+                    if (r.isConfirmed) {
+                        window.location.href = '/pelanggan/riwayat';
+                    }
+                });
+                return;
+            }
+
+            // Kasus 5: Default
+            Swal.fire({
+                icon: 'info',
+                title: title,
+                text: body,
+                confirmButtonText: 'Tutup',
+                confirmButtonColor: '#0B4A8F'
+            });
         }
 
         async function markAllNotificationsAsRead() {
@@ -1096,19 +1242,91 @@
                         body: JSON.stringify({ jumlah: amount, amount: amount, role: 'pelanggan' })
                     });
                     const result = await res.json();
-                    if (res.ok) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Top-Up Berhasil!',
-                            text: result.message || `Saldo Anda bertambah Rp ${amount.toLocaleString('id-ID')}`,
-                            confirmButtonColor: '#0A4C8A'
-                        });
-                        fetchUserProfile();
-                        loadWalletLedger();
+                    if (res.ok && result.snap_token) {
+                        const currentOrderId = result.order_id;
+
+                        if (window.snap) {
+                            window.snap.pay(result.snap_token, {
+                                language: 'id',
+                                onSuccess: function(snapRes) {
+                                    verifyMidtransPayment(currentOrderId, false);
+                                },
+                                onPending: function(snapRes) {
+                                    verifyMidtransPayment(currentOrderId, true);
+                                    fetchUserProfile();
+                                    loadWalletLedger();
+                                },
+                                onError: function(snapRes) {
+                                    Swal.fire('Pembayaran Gagal', 'Silakan coba lagi.', 'error');
+                                },
+                                onClose: function() {
+                                    verifyMidtransPayment(currentOrderId, true);
+                                    fetchUserProfile();
+                                    loadWalletLedger();
+                                }
+                            });
+                        } else if (result.redirect_url) {
+                            window.open(result.redirect_url, '_blank');
+                        }
                     } else {
                         Swal.fire('Gagal', result.message || 'Periksa input Anda.', 'error');
                     }
-                } catch (e) { console.error(e); }
+                } catch (e) {
+                    Swal.fire('Gagal', 'Terjadi kesalahan sistem saat menghubungi gerbang pembayaran.', 'error');
+                }
+            }
+        }
+
+        async function verifyMidtransPayment(orderId, isSilent = false) {
+            try {
+                if (!isSilent) {
+                    Swal.fire({
+                        title: 'Memverifikasi Pembayaran...',
+                        text: 'Memeriksa status pembayaran langsung dari Midtrans...',
+                        allowOutsideClick: false,
+                        didOpen: () => { Swal.showLoading(); }
+                    });
+                }
+
+                const res = await fetch('/api/wallet/check-status', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ order_id: orderId })
+                });
+
+                const data = await res.json();
+
+                if (res.ok && data.status === 'success') {
+                    if (data.is_newly_settled || !isSilent) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Pembayaran Berhasil!',
+                            text: data.message || 'Saldo Anda telah berhasil ditambahkan.',
+                            confirmButtonColor: '#0A4C8A'
+                        });
+                    }
+                    fetchUserProfile();
+                    loadWalletLedger();
+                } else if (!isSilent && data.transaction_status === 'pending') {
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Menunggu Pembayaran',
+                        text: 'Silakan selesaikan pembayaran Anda di Midtrans.',
+                        confirmButtonColor: '#0A4C8A'
+                    });
+                    fetchUserProfile();
+                    loadWalletLedger();
+                } else if (!isSilent && !res.ok) {
+                    Swal.fire('Info', data.message || 'Pembayaran belum diselesaikan atau sedang diproses.', 'info');
+                }
+            } catch (err) {
+                if (!isSilent) {
+                    Swal.fire('Error', 'Gagal memverifikasi status pembayaran.', 'error');
+                }
             }
         }
 
@@ -1294,6 +1512,41 @@
                 .replace(/\bSouth Sulawesi\b/gi, 'Sulawesi Selatan');
         }
 
+        // Helper untuk normalisasi pencarian alamat detail Indonesia (RT/RW, No. Rumah, K.H., dsb)
+        function prepareAddressVariants(raw) {
+            if (!raw) return [];
+            let clean = raw;
+            // 1. Bersihkan format RT / RW
+            clean = clean.replace(/\b(?:RT|RW)\.?\s*\d+(?:\s*[\/\-]\s*(?:RW|RT)\.?\s*\d+)?\b/gi, '');
+            clean = clean.replace(/\b(?:RT|RW)\.?\s*\d+\b/gi, '');
+            // 2. Bersihkan nomor rumah / nomor blok
+            clean = clean.replace(/\bNo\.?\s*\d+(\s*[a-zA-Z0-9]+)?\b/gi, '');
+            clean = clean.replace(/\bBlok\s*[a-zA-Z0-9\-\.]+\b/gi, '');
+            // 3. Bersihkan kode pos 5 digit
+            clean = clean.replace(/\b\d{5}\b/g, '');
+            // 4. Normalisasi singkatan jalan dan gelar
+            clean = clean.replace(/\bJl\.?\b/gi, 'Jalan');
+            clean = clean.replace(/\bKp\.?\b/gi, 'Kampung');
+            clean = clean.replace(/\bK\.?H\.?\b/gi, 'KH');
+            clean = clean.replace(/\bKel\.?\b/gi, 'Kelurahan');
+            clean = clean.replace(/\bKec\.?\b/gi, 'Kecamatan');
+            clean = clean.replace(/\bDaerah Khusus Ibukota Jakarta\b/gi, 'Jakarta');
+            clean = clean.replace(/\bDKI Jakarta\b/gi, 'Jakarta');
+            clean = clean.replace(/\bKota Jakarta Pusat\b/gi, 'Jakarta Pusat');
+            clean = clean.replace(/\bKota Jakarta Barat\b/gi, 'Jakarta Barat');
+            clean = clean.replace(/\bKota Jakarta Selatan\b/gi, 'Jakarta Selatan');
+            clean = clean.replace(/\bKota Jakarta Timur\b/gi, 'Jakarta Timur');
+            clean = clean.replace(/\bKota Jakarta Utara\b/gi, 'Jakarta Utara');
+            // 5. Bersihkan koma dan spasi ganda
+            clean = clean.replace(/[,]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+            // Varian sederhana (menghilangkan kata kunci administratif)
+            let simplified = clean.replace(/\b(?:Kecamatan|Kelurahan|Kampung|Daerah|Khusus|Ibukota)\b/gi, '').replace(/\s+/g, ' ').trim();
+
+            const variants = [clean, simplified, raw];
+            return [...new Set(variants.filter(v => v && v.length >= 3))];
+        }
+
         function initMap() {
             const initialLat = parseFloat(document.getElementById('geoLat').value) || -6.2088;
             const initialLong = parseFloat(document.getElementById('geoLong').value) || 106.8456;
@@ -1455,27 +1708,67 @@
             if (spinner) spinner.classList.remove('hidden');
 
             try {
-                // Gunakan Nominatim Indonesia dengan accept-language=id dan integrasi key GOAPI
-                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=id&limit=5&addressdetails=1&accept-language=id`);
-                const results = await res.json();
+                const variants = prepareAddressVariants(query);
+                let items = [];
 
-                if (results && results.length > 0) {
-                    box.innerHTML = results.map(item => {
-                        const cleanName = cleanIndonesianAddress(item.display_name);
+                // 1. Coba Nominatim dengan query dan varian normalisasi
+                for (const v of variants.slice(0, 2)) {
+                    try {
+                        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(v)}&countrycodes=id&limit=4&addressdetails=1&accept-language=id`);
+                        const results = await res.json();
+                        if (results && results.length > 0) {
+                            items = results.map(item => ({
+                                lat: parseFloat(item.lat),
+                                lon: parseFloat(item.lon),
+                                displayName: cleanIndonesianAddress(item.display_name)
+                            }));
+                            break;
+                        }
+                    } catch (e) {}
+                }
+
+                // 2. Jika hasil sedikit / kosong, fallback ke Photon (fuzzy search jalan & tempat di Indonesia)
+                if (items.length < 2) {
+                    for (const v of variants.slice(0, 2)) {
+                        try {
+                            const pres = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(v)}&limit=4`);
+                            const pdata = await pres.json();
+                            if (pdata && pdata.features && pdata.features.length > 0) {
+                                pdata.features.forEach(f => {
+                                    const p = f.properties;
+                                    const parts = [p.name, p.street, p.district, p.city, p.state].filter(Boolean);
+                                    const fullName = cleanIndonesianAddress(parts.join(', '));
+                                    if (!items.some(it => Math.abs(it.lat - f.geometry.coordinates[1]) < 0.001 && Math.abs(it.lon - f.geometry.coordinates[0]) < 0.001)) {
+                                        items.push({
+                                            lat: f.geometry.coordinates[1],
+                                            lon: f.geometry.coordinates[0],
+                                            displayName: fullName
+                                        });
+                                    }
+                                });
+                                if (items.length > 0) break;
+                            }
+                        } catch (e) {}
+                    }
+                }
+
+                if (items && items.length > 0) {
+                    box.innerHTML = items.slice(0, 5).map(item => {
+                        const cleanName = item.displayName;
                         const parts = cleanName.split(',');
                         const mainTitle = parts.slice(0, 2).join(',').trim();
                         const subTitle = parts.slice(2).join(',').trim();
 
                         return `
-                            <div onclick="selectGoApiLocation(${parseFloat(item.lat)}, ${parseFloat(item.lon)}, '${cleanName.replace(/'/g, "\\'")}')" 
+                            <div onclick="selectGoApiLocation(${item.lat}, ${item.lon}, '${cleanName.replace(/'/g, "\\'")}')" 
                                  class="p-3 hover:bg-accent/40 cursor-pointer transition flex items-start gap-2.5">
                                 <span class="text-secondary text-sm mt-0.5 shrink-0"><i class="fas fa-map-marker-alt"></i></span>
                                 <div class="flex-1 min-w-0">
                                     <div class="flex items-center justify-between gap-1">
                                         <p class="text-xs font-bold text-primary truncate">${mainTitle}</p>
-                                        <span class="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-accent text-primary border border-primary/20 shrink-0">📍 Lokasi Resmi</span>
+                                        <span class="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-accent text-primary border border-primary/20 shrink-0">📍 Lokasi</span>
                                     </div>
-                                    <p class="text-[11px] text-textLight truncate">${subTitle}</p>
+                                    <p class="text-[11px] text-textLight truncate">${subTitle || mainTitle}</p>
                                 </div>
                             </div>
                         `;
@@ -1505,7 +1798,10 @@
             
             const bookingAddr = document.getElementById('bookingAddress');
             const searchInput = document.getElementById('searchMapInput');
-            if (bookingAddr) bookingAddr.value = cleanName;
+            // Jika bookingAddress kosong atau generik, isi dengan cleanName
+            if (bookingAddr && (!bookingAddr.value || !bookingAddr.value.trim())) {
+                bookingAddr.value = cleanName;
+            }
             if (searchInput) searchInput.value = cleanName;
 
             const box = document.getElementById('goapiSuggestions');
@@ -1518,35 +1814,68 @@
                 toast: true,
                 position: 'top-end',
                 icon: 'success',
-                title: 'Lokasi & Alamat Diterapkan!',
+                title: 'Lokasi & Titik GPS Diterapkan!',
                 showConfirmButton: false,
                 timer: 1800
             });
         }
 
         async function searchLocation() {
-            const query = document.getElementById('searchMapInput').value.trim();
-            if (!query) {
+            const rawQuery = document.getElementById('searchMapInput').value.trim();
+            if (!rawQuery) {
                 Swal.fire('Input Kosong', 'Ketikkan nama jalan, kelurahan, atau daerah yang ingin dicari.', 'warning');
                 return;
             }
 
-            try {
-                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=id&limit=1&accept-language=id`);
-                const results = await res.json();
-                if (results && results.length > 0) {
-                    const item = results[0];
-                    const lat = parseFloat(item.lat);
-                    const lon = parseFloat(item.lon);
-                    const cleanName = cleanIndonesianAddress(item.display_name);
+            const variants = prepareAddressVariants(rawQuery);
+            let found = null;
 
-                    selectGoApiLocation(lat, lon, cleanName);
-                } else {
-                    Swal.fire('Tidak Ditemukan', 'Lokasi tidak ditemukan. Coba ketikkan kata kunci yang lebih spesifik.', 'info');
+            // 1. Coba pencarian bertahap ke Nominatim
+            for (const v of variants) {
+                try {
+                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(v)}&countrycodes=id&limit=1&accept-language=id`);
+                    const results = await res.json();
+                    if (results && results.length > 0) {
+                        found = {
+                            lat: parseFloat(results[0].lat),
+                            lon: parseFloat(results[0].lon),
+                            displayName: cleanIndonesianAddress(results[0].display_name)
+                        };
+                        break;
+                    }
+                } catch (e) {}
+            }
+
+            // 2. Jika Nominatim belum menemukan karena detail RT/RW/No Rumah, fallback ke Photon
+            if (!found) {
+                for (const v of variants) {
+                    try {
+                        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(v)}&limit=1`);
+                        const data = await res.json();
+                        if (data && data.features && data.features.length > 0) {
+                            const feat = data.features[0];
+                            const props = feat.properties;
+                            const parts = [props.name, props.street, props.district, props.city, props.state].filter(Boolean);
+                            found = {
+                                lat: feat.geometry.coordinates[1],
+                                lon: feat.geometry.coordinates[0],
+                                displayName: cleanIndonesianAddress(parts.join(', ')) || rawQuery
+                            };
+                            break;
+                        }
+                    } catch (e) {}
                 }
-            } catch (err) {
-                console.error(err);
-                Swal.fire('Error', 'Gagal mencari lokasi.', 'error');
+            }
+
+            if (found) {
+                // Pastikan alamat pesanan tetap menggunakan detail lengkap yang diinput pengguna
+                const bookingAddr = document.getElementById('bookingAddress');
+                if (bookingAddr) {
+                    bookingAddr.value = rawQuery;
+                }
+                selectGoApiLocation(found.lat, found.lon, rawQuery);
+            } else {
+                Swal.fire('Tidak Ditemukan', 'Lokasi tidak ditemukan. Coba ketikkan nama jalan atau nama daerah utama.', 'info');
             }
         }
 
@@ -2024,8 +2353,18 @@
         function showLiveOrderPanel(order) {
             document.getElementById('bookingFormPanel').classList.add('hidden');
             document.getElementById('liveOrderPanel').classList.remove('hidden');
-            document.getElementById('orderCodeTitle').innerText = order.kode_order;
-            document.getElementById('orderBadge').innerText = order.status;
+            const orderStatusMap = {
+                'SEARCHING': '🔍 Mencari Teknisi Terdekat',
+                'DISPATCHED': '🛵 Teknisi Ditemukan',
+                'ON_THE_WAY': '🛵 Teknisi Sedang Menuju Lokasi',
+                'IN_PROGRESS': '🔧 Servis Sedang Dikerjakan',
+                'AWAITING_PAYMENT': '💳 Menunggu Pembayaran',
+                'COMPLETED': '✅ Servis Selesai',
+                'CANCELLED': '❌ Dibatalkan',
+                'DISPUTED': '⚖️ Dalam Investigasi Sengketa',
+                'RESOLVED': '🤝 Kasus Selesai'
+            };
+            document.getElementById('orderBadge').innerText = orderStatusMap[order.status] || order.status;
             
             // Handle cancel button visibility
             const cancelBtn = document.getElementById('cancelOrderBtn');
@@ -2163,7 +2502,7 @@
                     return `
                         <div class="${alignment}">
                             <div class="inline-block p-2 rounded-xl text-xs max-w-xs ${bubbleBg}">
-                                ${m.pesan}
+                                ${escapeHtml(m.pesan)}
                             </div>
                         </div>
                     `;
@@ -2588,7 +2927,7 @@
                     }
                 }
             } catch(e) {}
-        }, 3000);
+        }, 10000);
     </script>
 
     <!-- Modal Revisi Dokumen Mitra (Teknisi / Toko) -->

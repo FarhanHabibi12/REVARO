@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'Admin Portal — REVARO')</title>
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="apple-touch-icon" href="/images/revaro-icon-transparent.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
@@ -238,7 +240,7 @@
                         }
                     }
                 } catch(e) {}
-            }, 3000);
+            }, 10000);
 
             const token = localStorage.getItem('admin_token') || localStorage.getItem('token');
             const userRaw = localStorage.getItem('admin_user') || localStorage.getItem('user');

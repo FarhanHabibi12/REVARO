@@ -274,7 +274,7 @@
                 </div>
 
                 <div class="p-4 rounded-xl border-2 border-primary/20 bg-accent/30 text-xs text-textLight leading-relaxed">
-                    🔒 <strong>Kebijakan Privasi &amp; Verifikasi:</strong> Berkas sertifikat kompetensi dan NIB/SIUP yang Anda lampirkan diverifikasi ketat oleh tim Verifikator REVARO. Akun Anda akan berstatus <strong>PENDING_REVIEW</strong> dan diaktivasi setelah verifikasi dinyatakan sah.
+                    🔒 <strong>Kebijakan Privasi &amp; Verifikasi:</strong> Berkas sertifikat kompetensi dan NIB/SIUP yang Anda lampirkan diverifikasi ketat oleh tim Verifikator REVARO. Akun Anda akan berstatus <strong>Menunggu Verifikasi Admin</strong> dan langsung aktif setelah dokumen disetujui.
                 </div>
 
                 <button type="submit" class="w-full revaro-btn font-extrabold text-sm py-3.5 rounded-xl transition flex items-center justify-center gap-2">
@@ -527,42 +527,108 @@
             );
         }
 
+        // Helper untuk normalisasi pencarian alamat detail Indonesia (RT/RW, No. Rumah, K.H., dsb)
+        function prepareAddressVariants(raw) {
+            if (!raw) return [];
+            let clean = raw;
+            // 1. Bersihkan format RT / RW
+            clean = clean.replace(/\b(?:RT|RW)\.?\s*\d+(?:\s*[\/\-]\s*(?:RW|RT)\.?\s*\d+)?\b/gi, '');
+            clean = clean.replace(/\b(?:RT|RW)\.?\s*\d+\b/gi, '');
+            // 2. Bersihkan nomor rumah / nomor blok
+            clean = clean.replace(/\bNo\.?\s*\d+(\s*[a-zA-Z0-9]+)?\b/gi, '');
+            clean = clean.replace(/\bBlok\s*[a-zA-Z0-9\-\.]+\b/gi, '');
+            // 3. Bersihkan kode pos 5 digit
+            clean = clean.replace(/\b\d{5}\b/g, '');
+            // 4. Normalisasi singkatan jalan dan gelar
+            clean = clean.replace(/\bJl\.?\b/gi, 'Jalan');
+            clean = clean.replace(/\bKp\.?\b/gi, 'Kampung');
+            clean = clean.replace(/\bK\.?H\.?\b/gi, 'KH');
+            clean = clean.replace(/\bKel\.?\b/gi, 'Kelurahan');
+            clean = clean.replace(/\bKec\.?\b/gi, 'Kecamatan');
+            clean = clean.replace(/\bDaerah Khusus Ibukota Jakarta\b/gi, 'Jakarta');
+            clean = clean.replace(/\bDKI Jakarta\b/gi, 'Jakarta');
+            clean = clean.replace(/\bKota Jakarta Pusat\b/gi, 'Jakarta Pusat');
+            clean = clean.replace(/\bKota Jakarta Barat\b/gi, 'Jakarta Barat');
+            clean = clean.replace(/\bKota Jakarta Selatan\b/gi, 'Jakarta Selatan');
+            clean = clean.replace(/\bKota Jakarta Timur\b/gi, 'Jakarta Timur');
+            clean = clean.replace(/\bKota Jakarta Utara\b/gi, 'Jakarta Utara');
+            // 5. Bersihkan koma dan spasi ganda
+            clean = clean.replace(/[,]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+            let simplified = clean.replace(/\b(?:Kecamatan|Kelurahan|Kampung|Daerah|Khusus|Ibukota)\b/gi, '').replace(/\s+/g, ' ').trim();
+            const variants = [clean, simplified, raw];
+            return [...new Set(variants.filter(v => v && v.length >= 3))];
+        }
+
         async function searchTechLocation() {
-            const query = document.getElementById('techSearchMapInput').value.trim();
-            if (!query) {
+            const rawQuery = document.getElementById('techSearchMapInput').value.trim();
+            if (!rawQuery) {
                 Swal.fire('Input Kosong', 'Ketikkan nama jalan atau daerah domisili Anda.', 'warning');
                 return;
             }
 
-            try {
-                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=id&limit=1&accept-language=id`);
-                const results = await res.json();
-                if (results && results.length > 0) {
-                    const item = results[0];
-                    const lat = parseFloat(item.lat);
-                    const lon = parseFloat(item.lon);
-                    if (techMapInstance && techMarkerInstance) {
-                        techMapInstance.setView([lat, lon], 16);
-                        techMarkerInstance.setLatLng([lat, lon]);
-                    }
-                    updateTechCoords(lat, lon);
-                    const cleanName = cleanIndonesianAddress(item.display_name);
-                    const addrField = document.getElementById('regTechAddress');
-                    if (addrField) addrField.value = cleanName;
+            const variants = prepareAddressVariants(rawQuery);
+            let found = null;
 
-                    Swal.fire({
-                        toast: true,
-                        position: 'top-end',
-                        icon: 'success',
-                        title: 'Lokasi Ditemukan di Peta!',
-                        showConfirmButton: false,
-                        timer: 1800
-                    });
-                } else {
-                    Swal.fire('Lokasi Tidak Ditemukan', `Tidak ada hasil pencarian untuk "${query}". Coba ketik nama kelurahan atau jalan utama.`, 'info');
+            // 1. Coba pencarian bertahap ke Nominatim
+            for (const v of variants) {
+                try {
+                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(v)}&countrycodes=id&limit=1&accept-language=id`);
+                    const results = await res.json();
+                    if (results && results.length > 0) {
+                        found = {
+                            lat: parseFloat(results[0].lat),
+                            lon: parseFloat(results[0].lon),
+                            displayName: cleanIndonesianAddress(results[0].display_name)
+                        };
+                        break;
+                    }
+                } catch(e) {}
+            }
+
+            // 2. Jika Nominatim belum menemukan, fallback ke Photon
+            if (!found) {
+                for (const v of variants) {
+                    try {
+                        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(v)}&limit=1`);
+                        const data = await res.json();
+                        if (data && data.features && data.features.length > 0) {
+                            const feat = data.features[0];
+                            const props = feat.properties;
+                            const parts = [props.name, props.street, props.district, props.city, props.state].filter(Boolean);
+                            found = {
+                                lat: feat.geometry.coordinates[1],
+                                lon: feat.geometry.coordinates[0],
+                                displayName: cleanIndonesianAddress(parts.join(', ')) || rawQuery
+                            };
+                            break;
+                        }
+                    } catch(e) {}
                 }
-            } catch(e) {
-                console.error(e);
+            }
+
+            if (found) {
+                if (techMapInstance && techMarkerInstance) {
+                    techMapInstance.setView([found.lat, found.lon], 16);
+                    techMarkerInstance.setLatLng([found.lat, found.lon]);
+                }
+                updateTechCoords(found.lat, found.lon);
+                const addrField = document.getElementById('regTechAddress');
+                if (addrField) {
+                    // Gunakan detail lengkap dari input pengguna jika ada
+                    addrField.value = rawQuery;
+                }
+
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: 'Titik Lokasi Diterapkan!',
+                    showConfirmButton: false,
+                    timer: 1800
+                });
+            } else {
+                Swal.fire('Lokasi Tidak Ditemukan', `Tidak ada hasil pencarian untuk "${rawQuery}". Coba ketik nama jalan utama atau kelurahan.`, 'info');
             }
         }
 
@@ -808,6 +874,20 @@
             const password = document.getElementById('regPassword').value;
             const hp = document.getElementById('regPhone').value;
 
+            // Validasi kata sandi untuk pendaftar baru (mencegah akun bot)
+            const token = localStorage.getItem('token');
+            if (!token) {
+                if (!password || password.length < 6) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Kata Sandi Diperlukan',
+                        text: 'Silakan isi kata sandi akun minimal 6 karakter untuk mengamankan akun Anda dari pendaftaran bot.',
+                        confirmButtonColor: '#0B4A8F'
+                    });
+                    return;
+                }
+            }
+
             // Multipart Form Data construction
             const formData = new FormData();
             formData.append('role_slug', role_slug);
@@ -847,7 +927,6 @@
             }
 
             const headers = {};
-            const token = localStorage.getItem('token');
             if (token) {
                 headers['Authorization'] = 'Bearer ' + token;
             }
@@ -875,16 +954,13 @@
                     return;
                 }
 
-                // Jangan izinkan masuk dashboard otomatis sebelum akun disetujui (ACC) oleh Admin Verifikator!
-                const existingToken = localStorage.getItem('token');
-                
-                // Jika pendaftaran baru, bersihkan token agar tidak ada auto-login ke dashboard
-                if (!existingToken) {
-                    localStorage.removeItem('token');
-                    localStorage.removeItem('user');
-                    localStorage.removeItem('profile');
+                // Jika pendaftaran baru memerlukan kode OTP email
+                if (result.requires_otp) {
+                    promptPartnerOtp(result.email || email, role_slug);
+                    return;
                 }
 
+                // Jika pengguna sudah login saat mendaftar peran mitra tambahan
                 Swal.fire({
                     icon: 'info',
                     title: 'Pendaftaran Berhasil Dikirim! ⏳',
@@ -892,17 +968,17 @@
                         <div class="text-left space-y-3 text-xs text-textDark">
                             <p>Terima kasih telah mendaftar kemitraan <strong>${role_slug === 'teknisi' ? 'Mitra Teknisi' : 'Toko Sparepart'} REVARO</strong>.</p>
                             <div class="p-3.5 bg-amber-50 border-2 border-amber-300 rounded-xl text-amber-900 leading-relaxed font-semibold">
-                                ⏳ <strong>Status: Menunggu Persetujuan Admin Verifikator (Pending)</strong><br>
-                                Data pendaftaran Anda telah berhasil dikirim ke antrean verifikasi. Sesuai prosedur, akun Anda <u>harus di-ACC (disetujui)</u> terlebih dahulu oleh <strong>Admin Verifikator</strong> sebelum Anda dapat masuk ke dasbor kerja.
+                                ⏳ <strong>Status: Menunggu Peninjauan Admin Verifikator (Pending)</strong><br>
+                                Berkas pendaftaran Anda telah masuk antrean. Anda akan menerima notifikasi status setelah tim verifikator selesai meninjau dokumen.
                             </div>
-                            <p class="text-slate-500">Silakan tunggu proses verifikasi dokumen oleh tim kami. Anda akan dapat masuk setelah akun resmi disetujui.</p>
+                            <p class="text-slate-500">Anda dapat terus menggunakan akun Anda seperti biasa sambil menunggu hasil verifikasi.</p>
                         </div>
                     `,
-                    confirmButtonText: 'Kembali ke Beranda',
+                    confirmButtonText: 'Kembali ke Dasbor Pelanggan',
                     confirmButtonColor: '#0B4A8F',
                     allowOutsideClick: false
                 }).then(() => {
-                    window.location.href = '/?stay=1';
+                    window.location.href = '/pelanggan/dashboard?partner_submitted=1';
                 });
 
             } catch (err) {
@@ -911,6 +987,150 @@
                     title: 'Gagal',
                     text: 'Gagal menghubungi server pendaftaran.',
                     icon: 'error',
+                    confirmButtonColor: '#0B4A8F'
+                });
+            }
+        }
+
+        async function promptPartnerOtp(email, roleSlug) {
+            const roleLabel = roleSlug === 'teknisi' ? 'Mitra Teknisi' : 'Mitra Toko Sparepart';
+            const { value: otpCode } = await Swal.fire({
+                title: '🔐 Verifikasi Kode OTP',
+                html: `
+                    <div class="text-left space-y-3 text-xs text-textDark">
+                        <p>Kami telah mengirimkan 6-digit kode OTP ke email pendaftaran Anda:</p>
+                        <p class="font-bold text-primary bg-accent/60 p-2.5 rounded-xl font-mono text-center text-sm border border-primary/20">${email}</p>
+                        <p class="text-[11px] text-textLight">Masukkan kode OTP di bawah ini untuk mengonfirmasi email dan mengamankan akun dari pendaftaran bot.</p>
+                        <div class="pt-1">
+                            <button type="button" id="btnResendPartnerOtp" class="text-secondary font-bold text-xs hover:underline flex items-center gap-1.5 cursor-pointer">
+                                <i class="fas fa-redo-alt"></i> <span>Kirim Ulang Kode OTP</span>
+                            </button>
+                        </div>
+                    </div>
+                `,
+                input: 'text',
+                inputPlaceholder: 'Contoh: 123456',
+                inputAttributes: {
+                    maxlength: 6,
+                    autocapitalize: 'off',
+                    autocorrect: 'off',
+                    class: 'swal2-input text-center text-lg font-mono font-bold tracking-widest'
+                },
+                didOpen: () => {
+                    const resendBtn = document.getElementById('btnResendPartnerOtp');
+                    if (resendBtn) {
+                        resendBtn.onclick = async () => {
+                            resendBtn.disabled = true;
+                            resendBtn.innerText = 'Mengirim kode OTP...';
+                            try {
+                                const r = await fetch('/api/auth/resend-otp', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                                    body: JSON.stringify({ email })
+                                });
+                                const d = await r.json();
+                                if (r.ok) {
+                                    resendBtn.innerText = '✅ Kode baru berhasil dikirim!';
+                                } else {
+                                    resendBtn.innerText = d.message || 'Gagal mengirim ulang.';
+                                }
+                            } catch(e) {
+                                resendBtn.innerText = 'Gagal mengirim.';
+                            }
+                            setTimeout(() => {
+                                if (resendBtn) {
+                                    resendBtn.disabled = false;
+                                    resendBtn.innerHTML = '<i class="fas fa-redo-alt"></i> Kirim Ulang Kode OTP';
+                                }
+                            }, 8000);
+                        };
+                    }
+                },
+                showCancelButton: true,
+                confirmButtonText: 'Verifikasi & Masuk',
+                cancelButtonText: 'Batal',
+                confirmButtonColor: '#0B4A8F',
+                cancelButtonColor: '#64748B',
+                allowOutsideClick: false,
+                preConfirm: (val) => {
+                    if (!val || val.trim().length !== 6) {
+                        Swal.showValidationMessage('Masukkan 6-digit kode OTP dengan benar.');
+                        return false;
+                    }
+                    return val.trim();
+                }
+            });
+
+            if (!otpCode) return;
+
+            // Verifikasi OTP ke server
+            Swal.fire({
+                title: 'Memverifikasi OTP...',
+                text: 'Mohon tunggu sebentar.',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            try {
+                const vRes = await fetch('/api/auth/verify-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify({ email, otp_code: otpCode })
+                });
+
+                const vData = await vRes.json();
+                if (!vRes.ok) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Verifikasi Gagal',
+                        text: vData.message || 'Kode OTP salah atau kedaluwarsa.',
+                        confirmButtonText: 'Coba Lagi',
+                        confirmButtonColor: '#0B4A8F'
+                    }).then(() => {
+                        promptPartnerOtp(email, roleSlug);
+                    });
+                    return;
+                }
+
+                // Simpan token autentikasi & info user di localStorage
+                if (vData.access_token) {
+                    localStorage.setItem('token', vData.access_token);
+                    localStorage.setItem('user', JSON.stringify(vData.user));
+                    if (vData.profile) {
+                        localStorage.setItem('profile', JSON.stringify(vData.profile));
+                    }
+                }
+
+                // Sukses terdaftar: masuk ke dasbor Pelanggan sambil menunggu ACC verifikasi!
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Pendaftaran Berhasil & Terverifikasi! ⏳',
+                    html: `
+                        <div class="text-left space-y-3 text-xs text-textDark">
+                            <p>Selamat bergabung, <strong>${vData.user ? vData.user.nama : ''}</strong>! Akun Anda telah aktif.</p>
+                            <div class="p-3.5 bg-blue-50 border-2 border-primary rounded-xl text-primary leading-relaxed font-semibold">
+                                ⏳ <strong>Status Kemitraan: Menunggu Persetujuan Admin (Pending Review)</strong><br>
+                                Pengajuan berkas <strong>${roleLabel}</strong> Anda sedang diperiksa oleh Admin Verifikator. Anda akan menerima notifikasi di akun saat disetujui.
+                            </div>
+                            <div class="p-3 bg-emerald-50 border border-emerald-300 rounded-xl text-emerald-900 leading-relaxed font-semibold">
+                                👤 <strong>Halaman Pelanggan Tersedia:</strong><br>
+                                Sambil menunggu proses verifikasi selesai, Anda sekarang dapat langsung menggunakan akun ini di <strong>Dasbor Pelanggan</strong> untuk memesan servis perbaikan dan fitur REVARO lainnya.
+                            </div>
+                        </div>
+                    `,
+                    confirmButtonText: 'Buka Halaman Pelanggan 🚀',
+                    confirmButtonColor: '#0B4A8F',
+                    allowOutsideClick: false
+                }).then(() => {
+                    window.location.href = '/pelanggan/dashboard?partner_registered=1';
+                });
+
+            } catch(err) {
+                console.error(err);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error Jaringan',
+                    text: 'Gagal memverifikasi OTP ke server. Pastikan koneksi internet stabil.',
                     confirmButtonColor: '#0B4A8F'
                 });
             }

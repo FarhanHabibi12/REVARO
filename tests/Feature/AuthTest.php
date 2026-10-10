@@ -171,14 +171,14 @@ class AuthTest extends TestCase
     public function test_login_rate_limiting()
     {
         // Try multiple logins with incorrect credentials to trigger throttle
-        for ($i = 0; $i < 5; $i++) {
+        for ($i = 0; $i < 20; $i++) {
             $this->postJson('/api/auth/login', [
                 'email' => 'nonexistent@gmail.com',
                 'password' => 'wrongpass',
             ])->assertStatus(401);
         }
 
-        // The 6th attempt should be throttled
+        // The 21st attempt should be throttled
         $response = $this->postJson('/api/auth/login', [
             'email' => 'nonexistent@gmail.com',
             'password' => 'wrongpass',

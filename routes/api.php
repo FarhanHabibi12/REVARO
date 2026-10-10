@@ -31,12 +31,14 @@ use Illuminate\Support\Facades\Route;
 */
 
 // --- Public Auth Routes (with Anti Brute-Force Rate Limiting) ---
-Route::post('/auth/register', [AuthController::class, 'register'])->middleware('throttle:3,1');
-Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
-Route::post('/auth/verify-otp', [AuthController::class, 'verifyOtp'])->middleware('throttle:5,1');
-Route::post('/auth/resend-otp', [AuthController::class, 'resendOtp'])->middleware('throttle:3,1');
+Route::post('/auth/register', [AuthController::class, 'register'])->middleware('throttle:15,1');
+Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:20,1');
+Route::post('/auth/verify-otp', [AuthController::class, 'verifyOtp'])->middleware('throttle:15,1');
+Route::post('/auth/resend-otp', [AuthController::class, 'resendOtp'])->middleware('throttle:6,1');
 Route::get('/mitra/documents/{type}/{id}', [AuthController::class, 'downloadDocument']);
 Route::get('/settings/maps', [SystemSettingController::class, 'getMapsConfig']);
+Route::get('/jasa-servis', [JasaServisController::class, 'index']);
+Route::post('/payment/midtrans/webhook', [\App\Http\Controllers\Api\WalletController::class, 'handleMidtransNotification']);
 
 // --- Protected Routes ---
 Route::middleware(['auth:sanctum', 'read_only'])->group(function () {
@@ -199,14 +201,14 @@ Route::middleware(['auth:sanctum', 'read_only'])->group(function () {
     Route::post('/admin/storage/clean', [\App\Http\Controllers\Api\StorageCleanerController::class, 'cleanOrphans'])
         ->middleware('role:super-admin-pemilik');
 
-    // Sent flags history
+    // Sent flags history (Hanya Admin)
     Route::get('/admin/flags/sent', function(Request $request) {
         $flags = \App\Models\Notifikasi::with('user')
             ->where('judul', 'like', '%FLAG ALERT%')
             ->orderBy('id', 'desc')
             ->get();
         return response()->json($flags);
-    });
+    })->middleware('role:super-admin-pemilik,admin-resolusi');
 
     // Backward compatibility aliases
     Route::get('/jasa-servis', [JasaServisController::class, 'index']);
@@ -265,6 +267,10 @@ Route::middleware(['auth:sanctum', 'read_only'])->group(function () {
     Route::get('/wallet/balance', [\App\Http\Controllers\Api\WalletController::class, 'getBalance']);
     Route::post('/wallet/withdraw', [\App\Http\Controllers\Api\WalletController::class, 'withdraw']);
     Route::post('/wallet/topup', [\App\Http\Controllers\Api\WalletController::class, 'topup']);
+    
+    // Cek status pembayaran Midtrans langsung (dipanggil oleh frontend Snap onSuccess / onClose / refresh saldo)
+    Route::post('/wallet/check-status', [\App\Http\Controllers\Api\WalletController::class, 'checkStatus']);
+    Route::post('/wallet/simulate-success', [\App\Http\Controllers\Api\WalletController::class, 'simulateSuccess']);
 
     // --- Teknisi Domicile Location & Profile ---
     Route::get('/teknisi/location', [TeknisiController::class, 'getLocation']);
@@ -312,10 +318,10 @@ Route::middleware(['auth:sanctum', 'read_only'])->group(function () {
     Route::get('/disputes/{dispute}', [DisputeController::class, 'getDisputeDetails']);
     Route::post('/disputes/{dispute}/resolve', [DisputeController::class, 'resolveDispute']);
 
-    // --- Policy Testing Endpoints ---
-    
-    // Orders
-    Route::get('/test/orders/{order}', function (Order $order) {
+    // --- Policy Testing Endpoints (Only available in local & testing) ---
+    if (app()->environment('local', 'testing')) {
+        // Orders
+        Route::get('/test/orders/{order}', function (Order $order) {
         if (Gate::denies('view', $order)) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
@@ -454,10 +460,11 @@ Route::middleware(['auth:sanctum', 'read_only'])->group(function () {
         return response()->json($transaksi);
     });
 
-    Route::post('/test/transactions', function (Request $request) {
-        if (Gate::denies('create', Transaksi::class)) {
-            return response()->json(['message' => 'Forbidden.'], 403);
-        }
-        return response()->json(['message' => 'Transaction modified.']);
-    });
+        Route::post('/test/transactions', function (Request $request) {
+            if (Gate::denies('create', Transaksi::class)) {
+                return response()->json(['message' => 'Forbidden.'], 403);
+            }
+            return response()->json(['message' => 'Transaction modified.']);
+        });
+    }
 });

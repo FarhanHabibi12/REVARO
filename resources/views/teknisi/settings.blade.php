@@ -587,41 +587,100 @@
             );
         }
 
+        // Helper untuk normalisasi pencarian alamat detail Indonesia (RT/RW, No. Rumah, K.H., dsb)
+        function prepareAddressVariants(raw) {
+            if (!raw) return [];
+            let clean = raw;
+            clean = clean.replace(/\b(?:RT|RW)\.?\s*\d+(?:\s*[\/\-]\s*(?:RW|RT)\.?\s*\d+)?\b/gi, '');
+            clean = clean.replace(/\b(?:RT|RW)\.?\s*\d+\b/gi, '');
+            clean = clean.replace(/\bNo\.?\s*\d+(\s*[a-zA-Z0-9]+)?\b/gi, '');
+            clean = clean.replace(/\bBlok\s*[a-zA-Z0-9\-\.]+\b/gi, '');
+            clean = clean.replace(/\b\d{5}\b/g, '');
+            clean = clean.replace(/\bJl\.?\b/gi, 'Jalan');
+            clean = clean.replace(/\bKp\.?\b/gi, 'Kampung');
+            clean = clean.replace(/\bK\.?H\.?\b/gi, 'KH');
+            clean = clean.replace(/\bKel\.?\b/gi, 'Kelurahan');
+            clean = clean.replace(/\bKec\.?\b/gi, 'Kecamatan');
+            clean = clean.replace(/\bDaerah Khusus Ibukota Jakarta\b/gi, 'Jakarta');
+            clean = clean.replace(/\bDKI Jakarta\b/gi, 'Jakarta');
+            clean = clean.replace(/\bKota Jakarta Pusat\b/gi, 'Jakarta Pusat');
+            clean = clean.replace(/\bKota Jakarta Barat\b/gi, 'Jakarta Barat');
+            clean = clean.replace(/\bKota Jakarta Selatan\b/gi, 'Jakarta Selatan');
+            clean = clean.replace(/\bKota Jakarta Timur\b/gi, 'Jakarta Timur');
+            clean = clean.replace(/\bKota Jakarta Utara\b/gi, 'Jakarta Utara');
+            clean = clean.replace(/[,]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+            let simplified = clean.replace(/\b(?:Kecamatan|Kelurahan|Kampung|Daerah|Khusus|Ibukota)\b/gi, '').replace(/\s+/g, ' ').trim();
+            const variants = [clean, simplified, raw];
+            return [...new Set(variants.filter(v => v && v.length >= 3))];
+        }
+
         async function searchTechLocation() {
-            const query = document.getElementById('techSearchMapInput').value.trim();
-            if (!query) {
+            const rawQuery = document.getElementById('techSearchMapInput').value.trim();
+            if (!rawQuery) {
                 Swal.fire('Input Kosong', 'Ketikkan nama jalan atau wilayah untuk dicari.', 'warning');
                 return;
             }
 
-            try {
-                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=id&limit=1&accept-language=id`);
-                const results = await res.json();
-                if (results && results.length > 0) {
-                    const item = results[0];
-                    const lat = parseFloat(item.lat);
-                    const lon = parseFloat(item.lon);
-                    if (techMap && techMarker) {
-                        techMap.setView([lat, lon], 16);
-                        techMarker.setLatLng([lat, lon]);
-                    }
-                    updateCoords(lat, lon);
-                    const cleanName = cleanIndonesianAddress(item.display_name);
-                    document.getElementById('teknisiAlamat').value = cleanName;
+            const variants = prepareAddressVariants(rawQuery);
+            let found = null;
 
-                    Swal.fire({
-                        toast: true,
-                        position: 'top-end',
-                        icon: 'success',
-                        title: 'Lokasi Ditemukan di Peta!',
-                        showConfirmButton: false,
-                        timer: 1800
-                    });
-                } else {
-                    Swal.fire('Tidak Ditemukan', `Tidak ada hasil pencarian untuk "${query}".`, 'info');
+            // 1. Coba pencarian bertahap ke Nominatim
+            for (const v of variants) {
+                try {
+                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(v)}&countrycodes=id&limit=1&accept-language=id`);
+                    const results = await res.json();
+                    if (results && results.length > 0) {
+                        found = {
+                            lat: parseFloat(results[0].lat),
+                            lon: parseFloat(results[0].lon),
+                            displayName: cleanIndonesianAddress(results[0].display_name)
+                        };
+                        break;
+                    }
+                } catch(e) {}
+            }
+
+            // 2. Jika Nominatim belum menemukan, fallback ke Photon
+            if (!found) {
+                for (const v of variants) {
+                    try {
+                        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(v)}&limit=1`);
+                        const data = await res.json();
+                        if (data && data.features && data.features.length > 0) {
+                            const feat = data.features[0];
+                            const props = feat.properties;
+                            const parts = [props.name, props.street, props.district, props.city, props.state].filter(Boolean);
+                            found = {
+                                lat: feat.geometry.coordinates[1],
+                                lon: feat.geometry.coordinates[0],
+                                displayName: cleanIndonesianAddress(parts.join(', ')) || rawQuery
+                            };
+                            break;
+                        }
+                    } catch(e) {}
                 }
-            } catch(e) {
-                console.error(e);
+            }
+
+            if (found) {
+                if (techMap && techMarker) {
+                    techMap.setView([found.lat, found.lon], 16);
+                    techMarker.setLatLng([found.lat, found.lon]);
+                }
+                updateCoords(found.lat, found.lon);
+                // Gunakan alamat lengkap jika pengguna mengetik detail rumah
+                document.getElementById('teknisiAlamat').value = rawQuery;
+
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: 'Lokasi Ditemukan di Peta!',
+                    showConfirmButton: false,
+                    timer: 1800
+                });
+            } else {
+                Swal.fire('Tidak Ditemukan', `Tidak ada hasil pencarian untuk "${rawQuery}". Coba ketik nama jalan utama atau kelurahan.`, 'info');
             }
         }
 

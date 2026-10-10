@@ -415,27 +415,17 @@
       }
     }
     if (response.status === 429) {
-      window.location.href = '/error/429';
+      const url = typeof args[0] === 'string' ? args[0] : (args[0]?.url || '');
+      const isAuthAction = url.includes('/api/auth/login') ||
+                           url.includes('/api/auth/verify-otp') ||
+                           url.includes('/api/auth/register');
+      if (isAuthAction) {
+        window.location.href = '/error/429';
+      } else {
+        console.warn('[REVARO] Rate limit (429) pada background request:', url);
+      }
     }
     return response;
   };
-
-  // Periodic heartbeat ensuring kicked sessions are detected immediately
-  setInterval(async () => {
-    const t = localStorage.getItem('token');
-    if (!t) return;
-    try {
-      const res = await originalFetch('/api/auth/me', {
-        headers: { 'Authorization': 'Bearer ' + t, 'Accept': 'application/json' }
-      });
-      if (res.status === 401) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        localStorage.removeItem('profile');
-        sessionStorage.clear();
-        window.location.href = '/session-expired';
-      }
-    } catch(e) {}
-  }, 3500);
 })();
 </script>
