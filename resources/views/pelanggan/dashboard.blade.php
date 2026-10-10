@@ -1251,22 +1251,22 @@
                         if (window.snap) {
                             window.snap.pay(result.snap_token, {
                                 language: 'id',
-                                onSuccess: function(snapRes) {
-                                    verifyMidtransPayment(currentOrderId, false);
+                                onSuccess: async function(snapRes) {
+                                    await verifyMidtransPayment(currentOrderId, false);
                                 },
-                                onPending: function(snapRes) {
-                                    verifyMidtransPayment(currentOrderId, true);
-                                    fetchUserProfile();
-                                    loadWalletLedger();
+                                onPending: async function(snapRes) {
+                                    await verifyMidtransPayment(currentOrderId, true);
+                                    await fetchUserProfile();
+                                    await loadWalletLedger();
                                 },
                                 onError: function(snapRes) {
                                     stopDashboardPaymentAutoPolling();
                                     Swal.fire('Pembayaran Gagal', 'Silakan coba lagi.', 'error');
                                 },
-                                onClose: function() {
-                                    verifyMidtransPayment(currentOrderId, true);
-                                    fetchUserProfile();
-                                    loadWalletLedger();
+                                onClose: async function() {
+                                    await verifyMidtransPayment(currentOrderId, false);
+                                    await fetchUserProfile();
+                                    await loadWalletLedger();
                                 }
                             });
                         } else if (result.redirect_url) {
@@ -1285,7 +1285,7 @@
         function startDashboardPaymentAutoPolling(orderId) {
             stopDashboardPaymentAutoPolling();
             let attempts = 0;
-            const maxAttempts = 20;
+            const maxAttempts = 45; // 45 * 2s = 90 detik
             dashPaymentPollTimer = setInterval(async () => {
                 attempts++;
                 if (attempts > maxAttempts) {
@@ -1298,7 +1298,7 @@
                     return;
                 }
                 await verifyMidtransPayment(activeId, true);
-            }, 3000);
+            }, 2000);
         }
 
         function stopDashboardPaymentAutoPolling() {
@@ -1308,18 +1308,18 @@
             }
         }
 
-        window.addEventListener('focus', function() {
+        async function checkActiveDashboardTopup() {
             const activeId = localStorage.getItem('revaro_active_topup_order_id');
             if (activeId) {
-                verifyMidtransPayment(activeId, true);
+                await verifyMidtransPayment(activeId, true);
             }
-        });
+        }
+
+        window.addEventListener('focus', checkActiveDashboardTopup);
+        window.addEventListener('pageshow', checkActiveDashboardTopup);
         document.addEventListener('visibilitychange', function() {
             if (document.visibilityState === 'visible') {
-                const activeId = localStorage.getItem('revaro_active_topup_order_id');
-                if (activeId) {
-                    verifyMidtransPayment(activeId, true);
-                }
+                checkActiveDashboardTopup();
             }
         });
 
@@ -1350,6 +1350,18 @@
                 if (isPaidSuccess) {
                     stopDashboardPaymentAutoPolling();
                     localStorage.removeItem('revaro_active_topup_order_id');
+
+                    // Langsung update angka saldo di DOM seketika
+                    const newBal = data.new_balance ?? data.saldo;
+                    if (newBal !== undefined && newBal !== null) {
+                        const formatted = 'Rp ' + parseFloat(newBal).toLocaleString('id-ID');
+                        const sVal = document.getElementById('saldoValue');
+                        if (sVal) sVal.innerText = formatted;
+                        const sSnap = document.getElementById('pelangganSaldoSnapshot');
+                        if (sSnap) sSnap.innerText = formatted;
+                        const sFull = document.getElementById('pelangganSaldoFull');
+                        if (sFull) sFull.innerText = formatted;
+                    }
 
                     const snapModal = document.getElementById('snap-midtrans');
                     if (snapModal) snapModal.remove();

@@ -335,7 +335,7 @@
             } catch (e) {}
         }
 
-        async function loadWalletData(checkPending = false) {
+        async function loadWalletData(checkPending = true) {
             try {
                 if (checkPending) {
                     try {
@@ -350,6 +350,10 @@
                         });
                         const checkData = await checkRes.json();
                         if (checkRes.ok && checkData.is_newly_settled) {
+                            const newBal = checkData.new_balance ?? checkData.saldo;
+                            if (newBal !== undefined && newBal !== null) {
+                                document.getElementById('pelangganSaldoFull').innerText = 'Rp ' + parseFloat(newBal).toLocaleString('id-ID');
+                            }
                             Swal.fire({
                                 icon: 'success',
                                 title: 'Pembayaran Berhasil!',
@@ -465,21 +469,21 @@
                         if (window.snap) {
                             window.snap.pay(result.snap_token, {
                                 language: 'id',
-                                onSuccess: function(snapRes) {
-                                    verifyMidtransPayment(currentOrderId, false);
+                                onSuccess: async function(snapRes) {
+                                    await verifyMidtransPayment(currentOrderId, false);
                                 },
-                                onPending: function(snapRes) {
-                                    verifyMidtransPayment(currentOrderId, true);
-                                    loadWalletData();
+                                onPending: async function(snapRes) {
+                                    await verifyMidtransPayment(currentOrderId, true);
+                                    await loadWalletData(true);
                                 },
                                 onError: function(snapRes) {
                                     stopPaymentAutoPolling();
                                     Swal.fire('Pembayaran Gagal', 'Silakan coba lagi.', 'error');
                                 },
-                                onClose: function() {
-                                    // Pengguna mungkin telah membayar di tab / jendela lain (mis. Gopay simulator)
-                                    verifyMidtransPayment(currentOrderId, true);
-                                    loadWalletData();
+                                onClose: async function() {
+                                    // Pengguna mungkin telah menyelesaikan pembayaran di tab lain
+                                    await verifyMidtransPayment(currentOrderId, false);
+                                    await loadWalletData(true);
                                 }
                             });
                         } else if (result.redirect_url) {
@@ -498,7 +502,7 @@
         function startPaymentAutoPolling(orderId) {
             stopPaymentAutoPolling();
             let attempts = 0;
-            const maxAttempts = 20; // Cek berkala tiap 3 detik selama 1 menit
+            const maxAttempts = 45; // Cek berkala tiap 2 detik selama 90 detik
             paymentPollTimer = setInterval(async () => {
                 attempts++;
                 if (attempts > maxAttempts) {
@@ -511,7 +515,7 @@
                     return;
                 }
                 await verifyMidtransPayment(activeId, true);
-            }, 3000);
+            }, 2000);
         }
 
         function stopPaymentAutoPolling() {
@@ -521,19 +525,20 @@
             }
         }
 
-        // Listener saat pengguna kembali ke tab browser REVARO dari tab / aplikasi Midtrans
-        window.addEventListener('focus', function() {
+        async function checkActiveTopup() {
             const activeId = localStorage.getItem('revaro_active_topup_order_id');
             if (activeId) {
-                verifyMidtransPayment(activeId, true);
+                await verifyMidtransPayment(activeId, true);
             }
-        });
+            await loadWalletData(true);
+        }
+
+        // Listener saat pengguna kembali ke tab browser REVARO dari tab / aplikasi Midtrans
+        window.addEventListener('focus', checkActiveTopup);
+        window.addEventListener('pageshow', checkActiveTopup);
         document.addEventListener('visibilitychange', function() {
             if (document.visibilityState === 'visible') {
-                const activeId = localStorage.getItem('revaro_active_topup_order_id');
-                if (activeId) {
-                    verifyMidtransPayment(activeId, true);
-                }
+                checkActiveTopup();
             }
         });
 
@@ -565,6 +570,14 @@
                     stopPaymentAutoPolling();
                     localStorage.removeItem('revaro_active_topup_order_id');
 
+                    // Langsung update angka saldo di DOM seketika
+                    const newBal = data.new_balance ?? data.saldo;
+                    if (newBal !== undefined && newBal !== null) {
+                        const formatted = 'Rp ' + parseFloat(newBal).toLocaleString('id-ID');
+                        const elFull = document.getElementById('pelangganSaldoFull');
+                        if (elFull) elFull.innerText = formatted;
+                    }
+
                     // Tutup modal snap iframe jika masih menempel
                     const snapModal = document.getElementById('snap-midtrans');
                     if (snapModal) snapModal.remove();
@@ -577,7 +590,7 @@
                             confirmButtonColor: '#0B4A8F'
                         });
                     }
-                    loadWalletData();
+                    loadWalletData(false);
                 } else if (!isSilent && data.transaction_status === 'pending') {
                     Swal.fire({
                         icon: 'info',
@@ -585,7 +598,7 @@
                         text: 'Silakan selesaikan pembayaran Anda di Midtrans.',
                         confirmButtonColor: '#0B4A8F'
                     });
-                    loadWalletData();
+                    loadWalletData(false);
                 } else if (!isSilent && !res.ok) {
                     Swal.fire('Info', data.message || 'Pembayaran belum diselesaikan atau sedang diproses.', 'info');
                 }
