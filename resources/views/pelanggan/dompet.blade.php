@@ -458,6 +458,10 @@
                     if (res.ok && result.snap_token) {
                         const currentOrderId = result.order_id;
 
+                        // Simpan order ID aktif di localStorage agar dapat di-cek otomatis saat berpindah tab di mobile
+                        localStorage.setItem('revaro_active_topup_order_id', currentOrderId);
+                        startPaymentAutoPolling(currentOrderId);
+
                         if (window.snap) {
                             window.snap.pay(result.snap_token, {
                                 language: 'id',
@@ -469,6 +473,7 @@
                                     loadWalletData();
                                 },
                                 onError: function(snapRes) {
+                                    stopPaymentAutoPolling();
                                     Swal.fire('Pembayaran Gagal', 'Silakan coba lagi.', 'error');
                                 },
                                 onClose: function() {
@@ -488,6 +493,49 @@
                 }
             }
         }
+
+        let paymentPollTimer = null;
+        function startPaymentAutoPolling(orderId) {
+            stopPaymentAutoPolling();
+            let attempts = 0;
+            const maxAttempts = 20; // Cek berkala tiap 3 detik selama 1 menit
+            paymentPollTimer = setInterval(async () => {
+                attempts++;
+                if (attempts > maxAttempts) {
+                    stopPaymentAutoPolling();
+                    return;
+                }
+                const activeId = localStorage.getItem('revaro_active_topup_order_id');
+                if (!activeId) {
+                    stopPaymentAutoPolling();
+                    return;
+                }
+                await verifyMidtransPayment(activeId, true);
+            }, 3000);
+        }
+
+        function stopPaymentAutoPolling() {
+            if (paymentPollTimer) {
+                clearInterval(paymentPollTimer);
+                paymentPollTimer = null;
+            }
+        }
+
+        // Listener saat pengguna kembali ke tab browser REVARO dari tab / aplikasi Midtrans
+        window.addEventListener('focus', function() {
+            const activeId = localStorage.getItem('revaro_active_topup_order_id');
+            if (activeId) {
+                verifyMidtransPayment(activeId, true);
+            }
+        });
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'visible') {
+                const activeId = localStorage.getItem('revaro_active_topup_order_id');
+                if (activeId) {
+                    verifyMidtransPayment(activeId, true);
+                }
+            }
+        });
 
         async function verifyMidtransPayment(orderId, isSilent = false) {
             try {
@@ -511,8 +559,16 @@
                 });
 
                 const data = await res.json();
+                const isPaidSuccess = res.ok && (data.success || data.status === 'success' || data.transaction_status === 'settlement' || data.transaction_status === 'capture');
 
-                if (res.ok && data.status === 'success') {
+                if (isPaidSuccess) {
+                    stopPaymentAutoPolling();
+                    localStorage.removeItem('revaro_active_topup_order_id');
+
+                    // Tutup modal snap iframe jika masih menempel
+                    const snapModal = document.getElementById('snap-midtrans');
+                    if (snapModal) snapModal.remove();
+
                     if (data.is_newly_settled || !isSilent) {
                         Swal.fire({
                             icon: 'success',

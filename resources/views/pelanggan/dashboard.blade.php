@@ -1245,6 +1245,9 @@
                     if (res.ok && result.snap_token) {
                         const currentOrderId = result.order_id;
 
+                        localStorage.setItem('revaro_active_topup_order_id', currentOrderId);
+                        startDashboardPaymentAutoPolling(currentOrderId);
+
                         if (window.snap) {
                             window.snap.pay(result.snap_token, {
                                 language: 'id',
@@ -1257,6 +1260,7 @@
                                     loadWalletLedger();
                                 },
                                 onError: function(snapRes) {
+                                    stopDashboardPaymentAutoPolling();
                                     Swal.fire('Pembayaran Gagal', 'Silakan coba lagi.', 'error');
                                 },
                                 onClose: function() {
@@ -1276,6 +1280,48 @@
                 }
             }
         }
+
+        let dashPaymentPollTimer = null;
+        function startDashboardPaymentAutoPolling(orderId) {
+            stopDashboardPaymentAutoPolling();
+            let attempts = 0;
+            const maxAttempts = 20;
+            dashPaymentPollTimer = setInterval(async () => {
+                attempts++;
+                if (attempts > maxAttempts) {
+                    stopDashboardPaymentAutoPolling();
+                    return;
+                }
+                const activeId = localStorage.getItem('revaro_active_topup_order_id');
+                if (!activeId) {
+                    stopDashboardPaymentAutoPolling();
+                    return;
+                }
+                await verifyMidtransPayment(activeId, true);
+            }, 3000);
+        }
+
+        function stopDashboardPaymentAutoPolling() {
+            if (dashPaymentPollTimer) {
+                clearInterval(dashPaymentPollTimer);
+                dashPaymentPollTimer = null;
+            }
+        }
+
+        window.addEventListener('focus', function() {
+            const activeId = localStorage.getItem('revaro_active_topup_order_id');
+            if (activeId) {
+                verifyMidtransPayment(activeId, true);
+            }
+        });
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'visible') {
+                const activeId = localStorage.getItem('revaro_active_topup_order_id');
+                if (activeId) {
+                    verifyMidtransPayment(activeId, true);
+                }
+            }
+        });
 
         async function verifyMidtransPayment(orderId, isSilent = false) {
             try {
@@ -1299,8 +1345,15 @@
                 });
 
                 const data = await res.json();
+                const isPaidSuccess = res.ok && (data.success || data.status === 'success' || data.transaction_status === 'settlement' || data.transaction_status === 'capture');
 
-                if (res.ok && data.status === 'success') {
+                if (isPaidSuccess) {
+                    stopDashboardPaymentAutoPolling();
+                    localStorage.removeItem('revaro_active_topup_order_id');
+
+                    const snapModal = document.getElementById('snap-midtrans');
+                    if (snapModal) snapModal.remove();
+
                     if (data.is_newly_settled || !isSilent) {
                         Swal.fire({
                             icon: 'success',

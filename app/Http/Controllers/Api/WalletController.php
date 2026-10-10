@@ -308,10 +308,13 @@ class WalletController extends Controller
 
         if ($alreadySuccess) {
             return response()->json([
-                'success'     => true,
-                'status'      => 'settlement',
-                'message'     => 'Pembayaran telah berhasil diselesaikan sebelumnya.',
-                'new_balance' => $user->getUnifiedSaldo()
+                'success'            => true,
+                'status'             => 'success',
+                'transaction_status' => 'settlement',
+                'is_newly_settled'   => false,
+                'message'            => 'Pembayaran telah berhasil diselesaikan sebelumnya.',
+                'new_balance'        => $user->getUnifiedSaldo(),
+                'saldo'              => $user->getUnifiedSaldo()
             ], 200);
         }
 
@@ -367,10 +370,13 @@ class WalletController extends Controller
                 });
 
                 return response()->json([
-                    'success'     => true,
-                    'status'      => $transactionStatus,
-                    'message'     => 'Pembayaran Midtrans berhasil dikonfirmasi! Saldo sebesar Rp ' . number_format($grossAmount, 0, ',', '.') . ' telah ditambahkan ke dompet Anda.',
-                    'new_balance' => $newBalance
+                    'success'            => true,
+                    'status'             => 'success',
+                    'transaction_status' => $transactionStatus,
+                    'is_newly_settled'   => true,
+                    'message'            => 'Pembayaran Midtrans berhasil dikonfirmasi! Saldo sebesar Rp ' . number_format($grossAmount, 0, ',', '.') . ' telah ditambahkan ke dompet Anda.',
+                    'new_balance'        => $newBalance,
+                    'saldo'              => $newBalance
                 ], 200);
             } elseif (in_array($transactionStatus, ['cancel', 'deny', 'expire'])) {
                 WalletTransaction::where('user_id', $user->id)
@@ -379,25 +385,30 @@ class WalletController extends Controller
                     ->delete();
 
                 return response()->json([
-                    'success' => false,
-                    'status'  => $transactionStatus,
-                    'message' => 'Status pembayaran Midtrans: ' . strtoupper($transactionStatus),
-                    'balance' => $user->getUnifiedSaldo()
+                    'success'            => false,
+                    'status'             => $transactionStatus,
+                    'transaction_status' => $transactionStatus,
+                    'message'            => 'Status pembayaran Midtrans: ' . strtoupper($transactionStatus),
+                    'balance'            => $user->getUnifiedSaldo(),
+                    'saldo'              => $user->getUnifiedSaldo()
                 ], 200);
             } else {
                 return response()->json([
-                    'success' => false,
-                    'status'  => $transactionStatus ?: 'pending',
-                    'message' => 'Pembayaran belum diselesaikan di Midtrans.',
-                    'balance' => $user->getUnifiedSaldo()
+                    'success'            => false,
+                    'status'             => $transactionStatus ?: 'pending',
+                    'transaction_status' => $transactionStatus ?: 'pending',
+                    'message'            => 'Pembayaran belum diselesaikan di Midtrans.',
+                    'balance'            => $user->getUnifiedSaldo(),
+                    'saldo'              => $user->getUnifiedSaldo()
                 ], 200);
             }
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning("Check Midtrans Status Error ({$orderId}): " . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Sedang menunggu konfirmasi dari sistem Midtrans.',
-                'balance' => $user->getUnifiedSaldo()
+                'message' => 'Sedang menunggu konfirmasi dari sistem Midtrans: ' . $e->getMessage(),
+                'balance' => $user->getUnifiedSaldo(),
+                'saldo'   => $user->getUnifiedSaldo()
             ], 200);
         }
     }
