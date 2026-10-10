@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\WalletTransaction;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
@@ -223,37 +224,12 @@ class WalletController extends Controller
         }
 
         if ($isPaid) {
-            return DB::transaction(function () use ($user, $grossAmount, $orderId, $request) {
-                // Hapus catatan PENDING lama untuk order ini jika ada
-                WalletTransaction::where('user_id', $user->id)
-                    ->where('deskripsi', 'like', "%{$orderId}%")
-                    ->delete();
-
-                // Tambahkan saldo pengguna secara aman dengan pessimistic lock
-                $newBalance = $user->addUnifiedSaldo((float) $grossAmount);
-
-                WalletTransaction::create([
-                    'user_id'   => $user->id,
-                    'tipe'      => 'IN',
-                    'jumlah'    => (float) $grossAmount,
-                    'deskripsi' => "Top-up via Midtrans Berhasil [ORDER_ID:{$orderId}]",
-                ]);
-
-                \App\Models\Notifikasi::create([
-                    'user_id' => $user->id,
-                    'judul'   => 'Top-Up Saldo Berhasil',
-                    'pesan'   => "Saldo Anda telah bertambah sebesar Rp " . number_format((float) $grossAmount, 0, ',', '.') . " melalui pembayaran Midtrans.",
-                    'dibaca'  => false,
-                ]);
-
-                ActivityLog::create([
-                    'user_id'    => $user->id,
-                    'aktivitas'  => "Top-up saldo Midtrans Rp " . number_format((float) $grossAmount, 0, ',', '.') . " berhasil",
-                    'ip_address' => $request->ip(),
-                ]);
-
-                return response()->json(['message' => 'Top-up settled successfully.', 'new_balance' => $newBalance], 200);
-            });
+            $settleResult = $this->settleTopupTransaction($user, $orderId, (float) $grossAmount, $request);
+            return response()->json([
+                'message'          => $settleResult['message'],
+                'new_balance'      => $settleResult['new_balance'],
+                'is_newly_settled' => $settleResult['is_newly_settled'],
+            ], 200);
         } elseif (in_array($transactionStatus, ['cancel', 'deny', 'expire'])) {
             WalletTransaction::where('user_id', $user->id)
                 ->where('deskripsi', 'like', "%{$orderId}%")
@@ -336,47 +312,16 @@ class WalletController extends Controller
             }
 
             if ($isPaid && $grossAmount > 0) {
-                $newBalance = DB::transaction(function () use ($user, $grossAmount, $orderId, $request) {
-                    // Hapus record pending
-                    WalletTransaction::where('user_id', $user->id)
-                        ->where('deskripsi', 'like', "%{$orderId}%")
-                        ->delete();
-
-                    // Tambahkan saldo
-                    $newBal = $user->addUnifiedSaldo($grossAmount);
-
-                    // Buat catatan transaksi sukses
-                    WalletTransaction::create([
-                        'user_id'   => $user->id,
-                        'tipe'      => 'IN',
-                        'jumlah'    => $grossAmount,
-                        'deskripsi' => "Top-up via Midtrans Berhasil [ORDER_ID:{$orderId}]",
-                    ]);
-
-                    \App\Models\Notifikasi::create([
-                        'user_id' => $user->id,
-                        'judul'   => 'Top-Up Saldo Berhasil',
-                        'pesan'   => "Saldo Anda telah bertambah sebesar Rp " . number_format($grossAmount, 0, ',', '.') . " melalui pembayaran Midtrans.",
-                        'dibaca'  => false,
-                    ]);
-
-                    ActivityLog::create([
-                        'user_id'    => $user->id,
-                        'aktivitas'  => "Top-up saldo Midtrans Rp " . number_format($grossAmount, 0, ',', '.') . " berhasil dikonfirmasi",
-                        'ip_address' => $request->ip(),
-                    ]);
-
-                    return $newBal;
-                });
+                $settleResult = $this->settleTopupTransaction($user, $orderId, $grossAmount, $request);
 
                 return response()->json([
                     'success'            => true,
                     'status'             => 'success',
                     'transaction_status' => $transactionStatus,
-                    'is_newly_settled'   => true,
-                    'message'            => 'Pembayaran Midtrans berhasil dikonfirmasi! Saldo sebesar Rp ' . number_format($grossAmount, 0, ',', '.') . ' telah ditambahkan ke dompet Anda.',
-                    'new_balance'        => $newBalance,
-                    'saldo'              => $newBalance
+                    'is_newly_settled'   => $settleResult['is_newly_settled'],
+                    'message'            => $settleResult['message'],
+                    'new_balance'        => $settleResult['new_balance'],
+                    'saldo'              => $settleResult['new_balance']
                 ], 200);
             } elseif (in_array($transactionStatus, ['cancel', 'deny', 'expire'])) {
                 WalletTransaction::where('user_id', $user->id)
@@ -411,6 +356,166 @@ class WalletController extends Controller
                 'saldo'   => $user->getUnifiedSaldo()
             ], 200);
         }
+    }
+
+    /**
+     * Settle top-up transaction secara atomik untuk mencegah race condition (double crediting).
+     * Jika terjadi duplikasi akibat eksekusi simultan sebelumnya, sistem otomatis mengoreksi kelebihan saldo.
+     *
+     * @return array ['settled' => bool, 'is_newly_settled' => bool, 'new_balance' => float, 'message' => string]
+     */
+    private function settleTopupTransaction(\App\Models\User $user, string $orderId, float $grossAmount, Request $request): array
+    {
+        $lockKey = "revaro_topup_lock_" . md5($orderId);
+        $lock = Cache::lock($lockKey, 15);
+
+        try {
+            $lock->block(5);
+        } catch (\Throwable $e) {}
+
+        try {
+            return DB::transaction(function () use ($user, $orderId, $grossAmount, $request) {
+                // 1. Periksa apakah sudah ada catatan transaksi IN untuk order ID ini (dengan row-level lock)
+                $existingRecords = WalletTransaction::where('user_id', $user->id)
+                    ->where('tipe', 'IN')
+                    ->where('deskripsi', 'like', "%{$orderId}%")
+                    ->lockForUpdate()
+                    ->get();
+
+                // Jika terdeteksi lebih dari 1 transaksi sukses untuk order ID yang sama (duplikat ganda)
+                if ($existingRecords->count() > 1) {
+                    $excessCount = $existingRecords->count() - 1;
+                    $excessAmount = $excessCount * $grossAmount;
+
+                    // Hapus baris duplikat yang berlebih
+                    for ($i = 1; $i < $existingRecords->count(); $i++) {
+                        $existingRecords[$i]->delete();
+                    }
+
+                    // Koreksi saldo pengguna agar kembali ke nilai yang semestinya
+                    $currentSaldo = $user->getUnifiedSaldo();
+                    $correctedSaldo = max(0, $currentSaldo - $excessAmount);
+
+                    if ($user->pelanggan) {
+                        $user->pelanggan->saldo = $correctedSaldo;
+                        $user->pelanggan->save();
+                    }
+                    if ($user->teknisi) {
+                        $user->teknisi->saldo = $correctedSaldo;
+                        $user->teknisi->save();
+                    }
+                    if ($user->toko) {
+                        $user->toko->saldo = $correctedSaldo;
+                        $user->toko->save();
+                    }
+
+                    return [
+                        'settled'          => true,
+                        'is_newly_settled' => false,
+                        'new_balance'      => $correctedSaldo,
+                        'message'          => 'Saldo telah disesuaikan dan dikoreksi dari pencatatan ganda.'
+                    ];
+                }
+
+                if ($existingRecords->count() === 1) {
+                    return [
+                        'settled'          => true,
+                        'is_newly_settled' => false,
+                        'new_balance'      => $user->getUnifiedSaldo(),
+                        'message'          => 'Pembayaran telah berhasil diselesaikan sebelumnya.'
+                    ];
+                }
+
+                // 2. Transaksi baru: Hapus catatan PENDING lama
+                WalletTransaction::where('user_id', $user->id)
+                    ->where('deskripsi', 'like', "%{$orderId}%")
+                    ->delete();
+
+                // 3. Tambahkan saldo sekali saja
+                $newBalance = $user->addUnifiedSaldo($grossAmount);
+
+                // 4. Catat transaksi IN
+                WalletTransaction::create([
+                    'user_id'   => $user->id,
+                    'tipe'      => 'IN',
+                    'jumlah'    => $grossAmount,
+                    'deskripsi' => "Top-up via Midtrans Berhasil [ORDER_ID:{$orderId}]",
+                ]);
+
+                \App\Models\Notifikasi::create([
+                    'user_id' => $user->id,
+                    'judul'   => 'Top-Up Saldo Berhasil',
+                    'pesan'   => "Saldo Anda telah bertambah sebesar Rp " . number_format($grossAmount, 0, ',', '.') . " melalui pembayaran Midtrans.",
+                    'dibaca'  => false,
+                ]);
+
+                ActivityLog::create([
+                    'user_id'    => $user->id,
+                    'aktivitas'  => "Top-up saldo Midtrans Rp " . number_format($grossAmount, 0, ',', '.') . " berhasil dikonfirmasi",
+                    'ip_address' => $request->ip(),
+                ]);
+
+                return [
+                    'settled'          => true,
+                    'is_newly_settled' => true,
+                    'new_balance'      => $newBalance,
+                    'message'          => 'Pembayaran Midtrans berhasil dikonfirmasi! Saldo sebesar Rp ' . number_format($grossAmount, 0, ',', '.') . ' telah ditambahkan.'
+                ];
+            });
+        } finally {
+            try {
+                $lock->release();
+            } catch (\Throwable $e) {}
+        }
+    }
+
+    /**
+     * Rekonsiliasi transaksi ganda jika pernah ada duplikasi akibat race condition terdahulu.
+     */
+    private function reconcileUserTransactions(\App\Models\User $user): void
+    {
+        try {
+            $inTransactions = WalletTransaction::where('user_id', $user->id)
+                ->where('tipe', 'IN')
+                ->where('deskripsi', 'like', '%[ORDER_ID:%')
+                ->get();
+
+            $orderGroups = [];
+            foreach ($inTransactions as $tx) {
+                if (preg_match('/\[ORDER_ID:([^\]]+)\]/', $tx->deskripsi, $m)) {
+                    $oid = trim($m[1]);
+                    $orderGroups[$oid][] = $tx;
+                }
+            }
+
+            foreach ($orderGroups as $oid => $txList) {
+                if (count($txList) > 1) {
+                    $excessCount = count($txList) - 1;
+                    $deductAmount = 0;
+                    for ($i = 1; $i < count($txList); $i++) {
+                        $deductAmount += (float) $txList[$i]->jumlah;
+                        $txList[$i]->delete();
+                    }
+
+                    if ($deductAmount > 0) {
+                        $current = $user->getUnifiedSaldo();
+                        $corrected = max(0, $current - $deductAmount);
+                        if ($user->pelanggan) {
+                            $user->pelanggan->saldo = $corrected;
+                            $user->pelanggan->save();
+                        }
+                        if ($user->teknisi) {
+                            $user->teknisi->saldo = $corrected;
+                            $user->teknisi->save();
+                        }
+                        if ($user->toko) {
+                            $user->toko->saldo = $corrected;
+                            $user->toko->save();
+                        }
+                    }
+                }
+            }
+        } catch (\Throwable $e) {}
     }
 
     /**
