@@ -36,12 +36,13 @@ class AdminDeviceLockMiddleware
             return $next($request);
         }
 
-        // 3. Jika perangkat TIDAK dikenal: Munculkan 404 Not Found (Anggap halaman tidak pernah ada)
-        // Hal ini membuat penyerang / scanner mengira URL admin salah / tidak ada
+        // 3. Jika perangkat TIDAK dikenal:
         if (auth()->check()) {
             \Illuminate\Support\Facades\Auth::guard('web')->logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
+            return redirect('/login-admin?unauthorized_device=1')
+                ->withCookie(cookie()->forget('auth_token'));
         }
         abort(404, 'Halaman yang Anda tuju tidak ditemukan.');
     }
