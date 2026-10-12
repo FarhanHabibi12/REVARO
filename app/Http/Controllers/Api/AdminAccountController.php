@@ -3,10 +3,15 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\Role;
 use App\Models\User;
+use App\Mail\RegisterOtpMail;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 
 class AdminAccountController extends Controller
@@ -232,15 +237,81 @@ class AdminAccountController extends Controller
     }
 
     /**
-     * Update current logged in admin personal password.
+     * Request OTP code via email for changing administrator password.
+     */
+    public function requestPasswordOtp(Request $request)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
+        $email = trim(strtolower($user->email));
+        $cacheKey = 'pwd_otp_cooldown_' . md5($email);
+
+        if (Cache::has($cacheKey)) {
+            $secondsLeft = Cache::get($cacheKey) - time();
+            if ($secondsLeft > 0) {
+                return response()->json([
+                    'message' => "Silakan tunggu {$secondsLeft} detik sebelum meminta kode OTP kembali.",
+                    'cooldown_seconds' => $secondsLeft,
+                ], 429);
+            }
+        }
+
+        $otp = (string) random_int(100000, 999999);
+
+        // Prune expired OTPs
+        DB::table('email_otps')->where('expires_at', '<', now())->delete();
+
+        // Insert new OTP with 10 min expiry
+        DB::table('email_otps')->insert([
+            'email' => $email,
+            'otp_code' => $otp,
+            'attempts' => 0,
+            'expires_at' => now()->addMinutes(10),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        Cache::put($cacheKey, time() + 60, 60);
+
+        try {
+            Mail::to($user->email)->send(new RegisterOtpMail($otp));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning("Failed to send Password Change OTP to {$user->email}: " . $e->getMessage());
+        }
+
+        ActivityLog::create([
+            'user_id' => $user->id,
+            'aktivitas' => 'Meminta kode OTP untuk verifikasi perubahan kata sandi administrator',
+            'ip_address' => $request->ip(),
+        ]);
+
+        return response()->json([
+            'message' => "Kode OTP 6-digit telah dikirimkan ke email resmi Anda ({$user->email}). Masukkan kode untuk memverifikasi perubahan kata sandi.",
+            'cooldown_seconds' => 60,
+        ]);
+    }
+
+    /**
+     * Update current logged in admin personal password (Requires OTP & Revokes all sessions).
      */
     public function updatePassword(Request $request)
     {
         $user = $request->user();
 
-        $validator = Validator::make($request->all(), [
+        $rules = [
             'current_password' => 'required|string',
             'new_password' => 'required|string|min:6|confirmed',
+            'otp_code' => 'required|string|size:6',
+        ];
+
+        $validator = Validator::make($request->all(), $rules, [
+            'otp_code.required' => 'Kode OTP verifikasi email wajib diisi.',
+            'otp_code.size' => 'Kode OTP harus berupa 6 digit angka.',
+            'new_password.min' => 'Kata sandi baru minimal 6 karakter.',
+            'new_password.confirmed' => 'Konfirmasi kata sandi baru tidak cocok.',
         ]);
 
         if ($validator->fails()) {
@@ -251,18 +322,66 @@ class AdminAccountController extends Controller
             return response()->json(['message' => 'Kata sandi saat ini tidak cocok.'], 422);
         }
 
+        // Verify OTP code
+        $email = trim(strtolower($user->email));
+        $otpCode = trim((string)$request->otp_code);
+
+        // Prune expired OTPs
+        DB::table('email_otps')->where('expires_at', '<', now())->delete();
+
+        $activeRecord = DB::table('email_otps')
+            ->where('email', $email)
+            ->where('expires_at', '>=', now())
+            ->orderBy('id', 'desc')
+            ->first();
+
+        if (!$activeRecord) {
+            return response()->json([
+                'message' => 'Kode OTP tidak ditemukan atau sudah kadaluarsa. Silakan klik Kirim OTP terlebih dahulu.'
+            ], 404);
+        }
+
+        if ((int)$activeRecord->attempts >= 5) {
+            DB::table('email_otps')->where('id', $activeRecord->id)->delete();
+            return response()->json([
+                'message' => 'Batas percobaan OTP telah terlampaui. Silakan minta kode OTP baru.'
+            ], 429);
+        }
+
+        if ($activeRecord->otp_code !== $otpCode) {
+            DB::table('email_otps')
+                ->where('id', $activeRecord->id)
+                ->increment('attempts');
+            return response()->json([
+                'message' => 'Kode OTP yang Anda masukkan salah.'
+            ], 400);
+        }
+
+        // Delete used OTP
+        DB::table('email_otps')->where('id', $activeRecord->id)->delete();
+
+        // Update password
         $user->update([
             'password' => Hash::make($request->new_password),
         ]);
 
-        \App\Models\ActivityLog::create([
+        // LOGOUT ALL SESSIONS: Revoke all existing tokens for this user
+        $user->tokens()->delete();
+
+        // Terminate web guard session
+        \Illuminate\Support\Facades\Auth::guard('web')->logout();
+        request()->session()->invalidate();
+        request()->session()->regenerateToken();
+
+        ActivityLog::create([
             'user_id' => $user->id,
-            'aktivitas' => 'Mengubah kata sandi akun pribadi administrator',
+            'aktivitas' => 'Berhasil mengubah kata sandi administrator dengan verifikasi OTP. Seluruh sesi aktif diakhiri.',
             'ip_address' => $request->ip(),
         ]);
 
         return response()->json([
-            'message' => 'Kata sandi pribadi berhasil diperbarui.',
+            'message' => 'Kata sandi berhasil diperbarui dengan verifikasi OTP. Seluruh sesi aktif Anda telah diakhiri untuk keamanan. Silakan login kembali.',
+            'session_revoked' => true,
         ]);
     }
 

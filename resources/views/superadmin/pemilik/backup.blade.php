@@ -187,8 +187,10 @@
         }
 
         const confirm = await Swal.fire({
-            title: 'Apakah Anda Yakin?',
-            text: 'Tindakan ini akan menghapus semua data aktif di database saat ini dan menggantinya dengan isi file SQL cadangan!',
+            title: 'Konfirmasi Keamanan Restorasi',
+            text: 'Tindakan ini akan menimpa seluruh database saat ini! Masukkan kata sandi Super Admin Anda untuk mengonfirmasi:',
+            input: 'password',
+            inputPlaceholder: 'Kata sandi Super Admin...',
             icon: 'warning',
             showCancelButton: true,
             confirmButtonText: 'Ya, Timpa Sekarang',
@@ -196,10 +198,14 @@
             background: '#1E293B',
             color: '#E2E8F0',
             confirmButtonColor: '#EF4444',
-            cancelButtonColor: '#475569'
+            cancelButtonColor: '#475569',
+            inputValidator: (val) => {
+                if (!val) return 'Kata sandi Super Admin wajib diisi!';
+            }
         });
 
-        if (!confirm.isConfirmed) return;
+        if (!confirm.isConfirmed || !confirm.value) return;
+        const adminPassword = confirm.value;
 
         Swal.fire({
             title: 'Menimpa Database...',
@@ -212,6 +218,7 @@
 
         const formData = new FormData();
         formData.append('backup_file', file);
+        formData.append('admin_password', adminPassword);
 
         try {
             const r = await fetch('/api/admin/database/restore', {
@@ -285,8 +292,10 @@
 
     async function resetTransactions() {
         const confirm = await Swal.fire({
-            title: 'Reset Seluruh Transaksi?',
-            text: 'Tindakan ini akan MENGHAPUS SEMUA DATA transaksi, order, dispute, dan ulasan! Tindakan ini TIDAK DAPAT DIBATALKAN!',
+            title: 'Konfirmasi Reset Seluruh Transaksi',
+            text: 'Tindakan ini akan MENGHAPUS SEMUA DATA transaksi, order, dispute, dan ulasan! Masukkan kata sandi Super Admin Anda untuk mengonfirmasi:',
+            input: 'password',
+            inputPlaceholder: 'Kata sandi Super Admin...',
             icon: 'warning',
             showCancelButton: true,
             confirmButtonText: 'Ya, Reset Sekarang',
@@ -294,10 +303,14 @@
             background: '#1E293B',
             color: '#E2E8F0',
             confirmButtonColor: '#EF4444',
-            cancelButtonColor: '#475569'
+            cancelButtonColor: '#475569',
+            inputValidator: (val) => {
+                if (!val) return 'Kata sandi Super Admin wajib diisi!';
+            }
         });
 
-        if (!confirm.isConfirmed) return;
+        if (!confirm.isConfirmed || !confirm.value) return;
+        const adminPassword = confirm.value;
 
         Swal.fire({
             title: 'Mereset Data Transaksi...',
@@ -311,7 +324,12 @@
         try {
             const res = await fetch('/api/admin/database/reset-transactions', {
                 method: 'POST',
-                headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ admin_password: adminPassword })
             });
             const d = await res.json();
             Swal.close();

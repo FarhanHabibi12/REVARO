@@ -66,7 +66,7 @@
                 </label>
                 <input required type="email" id="adminEmail"
                        class="w-full text-xs bg-slate-900/90 border border-slate-700/80 rounded-xl px-4 py-3.5 outline-none text-white focus:border-brandOrange focus:ring-2 focus:ring-brandOrange/20 transition placeholder:text-slate-500 font-mono"
-                       placeholder="srz.senn@gmail.com">
+                       placeholder="admin@revaro.com">
             </div>
 
             <div>
@@ -345,6 +345,7 @@
                 localStorage.setItem('admin_user', JSON.stringify({ ...result.user, role: roleSlug }));
                 localStorage.setItem('token', result.access_token);
                 localStorage.setItem('user', JSON.stringify(result.user));
+                document.cookie = "auth_token=" + result.access_token + "; path=/; max-age=86400; SameSite=Lax";
 
                 // Tandai jika akun membutuhkan setup awal username / ganti password acak sistem
                 if (!result.user.admin_username || result.user.must_change_password) {
@@ -460,6 +461,7 @@
                 localStorage.setItem('admin_user', JSON.stringify({ ...result.user, role: roleSlug }));
                 localStorage.setItem('token', result.access_token);
                 localStorage.setItem('user', JSON.stringify(result.user));
+                document.cookie = "auth_token=" + result.access_token + "; path=/; max-age=86400; SameSite=Lax";
 
                 // Tandai jika akun membutuhkan setup awal (belum punya username atau wajib ubah kata sandi)
                 if (result.requires_first_time_setup || !result.user.admin_username || result.user.must_change_password) {

@@ -53,25 +53,69 @@
                 </div>
 
                 <!-- Password change sub-section -->
-                <div class="pt-4 border-t border-slate-800 space-y-3">
-                    <label class="text-[11px] font-bold text-orange-400 uppercase tracking-wider block">UBAH KATA SANDI (OPSIONAL)</label>
+                <div class="pt-4 border-t border-slate-800 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <label class="text-[11px] font-bold text-orange-400 uppercase tracking-wider block">UBAH KATA SANDI SUPER ADMIN (DENGAN VERIFIKASI OTP)</label>
+                        <span class="text-[10px] text-slate-500 font-mono">OTP Wajib</span>
+                    </div>
+
+                    <div>
+                        <label class="text-[11px] font-bold text-slate-300 uppercase tracking-wider block mb-1">KATA SANDI SAAT INI</label>
+                        <div class="relative">
+                            <input type="password" id="settingCurrentPassword" class="input-field pr-10" placeholder="Masukkan kata sandi lama">
+                            <button type="button" onclick="toggleGenericPassword('settingCurrentPassword', 'setEye0')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white">
+                                <span id="setEye0">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="relative">
-                            <input type="password" id="settingNewPassword" minlength="6" class="input-field pr-10" placeholder="Kata sandi baru">
-                            <button type="button" onclick="toggleGenericPassword('settingNewPassword', 'setEye1')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white">
-                                <span id="setEye1">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                        <div>
+                            <label class="text-[11px] font-bold text-slate-300 uppercase tracking-wider block mb-1">KATA SANDI BARU</label>
+                            <div class="relative">
+                                <input type="password" id="settingNewPassword" minlength="6" class="input-field pr-10" placeholder="Minimal 6 karakter">
+                                <button type="button" onclick="toggleGenericPassword('settingNewPassword', 'setEye1')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white">
+                                    <span id="setEye1">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-[11px] font-bold text-slate-300 uppercase tracking-wider block mb-1">ULANGI KATA SANDI BARU</label>
+                            <div class="relative">
+                                <input type="password" id="settingConfirmPassword" minlength="6" class="input-field pr-10" placeholder="Konfirmasi kata sandi">
+                                <button type="button" onclick="toggleGenericPassword('settingConfirmPassword', 'setEye2')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white">
+                                    <span id="setEye2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- OTP verification box -->
+                    <div class="p-3.5 bg-slate-900/90 rounded-2xl border border-orange-500/30 space-y-3">
+                        <div class="flex items-center justify-between gap-3">
+                            <div>
+                                <span class="text-xs font-black text-white flex items-center gap-1.5">
+                                    <svg class="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                                    Verifikasi OTP Email Resmi
                                 </span>
+                                <p class="text-[11px] text-slate-400">Kode 6 digit dikirim ke email terdaftar untuk mengonfirmasi penggantian sandi.</p>
+                            </div>
+                            <button type="button" id="btnRequestPwdOtp" onclick="requestPasswordChangeOtp()" class="px-3.5 py-2 rounded-xl text-xs font-black bg-orange-500/20 text-orange-400 border border-orange-500/40 hover:bg-orange-500 hover:text-white transition shrink-0">
+                                Kirim Kode OTP
                             </button>
                         </div>
-                        <div class="relative">
-                            <input type="password" id="settingConfirmPassword" minlength="6" class="input-field pr-10" placeholder="Ulangi kata sandi">
-                            <button type="button" onclick="toggleGenericPassword('settingConfirmPassword', 'setEye2')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white">
-                                <span id="setEye2">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                                </span>
-                            </button>
+                        <div>
+                            <input type="text" id="settingPasswordOtp" maxlength="6" class="input-field font-mono text-center tracking-widest text-sm" placeholder="KODE 6-DIGIT OTP">
                         </div>
+                        <p class="text-[10px] text-amber-300/80 leading-relaxed">
+                            🔒 <strong>Pemberitahuan Keamanan:</strong> Setelah kata sandi berhasil diubah, seluruh sesi akun Super Admin di semua perangkat akan otomatis di-logout.
+                        </p>
                     </div>
                 </div>
 
@@ -891,50 +935,192 @@
         document.getElementById('settingProfileAddress').value = 'Kantor Pusat REVARO Platform';
     }
 
+    async function requestPasswordChangeOtp() {
+        const btn = document.getElementById('btnRequestPwdOtp');
+        btn.disabled = true;
+        btn.textContent = 'Mengirim...';
+
+        try {
+            const res = await fetch('/api/admin/profile/password/request-otp', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                }
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                Swal.fire({
+                    title: 'OTP Terkirim!',
+                    text: data.message,
+                    icon: 'success',
+                    background: '#1E293B',
+                    color: '#E2E8F0',
+                    confirmButtonColor: '#F97316'
+                });
+
+                let seconds = data.cooldown_seconds || 60;
+                btn.textContent = `Tunggu (${seconds}s)`;
+                const timer = setInterval(() => {
+                    seconds--;
+                    if (seconds <= 0) {
+                        clearInterval(timer);
+                        btn.disabled = false;
+                        btn.textContent = 'Kirim Ulang OTP';
+                    } else {
+                        btn.textContent = `Tunggu (${seconds}s)`;
+                    }
+                }, 1000);
+            } else {
+                btn.disabled = false;
+                btn.textContent = 'Kirim Kode OTP';
+                Swal.fire({
+                    title: 'Gagal Mengirim OTP',
+                    text: data.message || 'Terjadi kesalahan.',
+                    icon: 'error',
+                    background: '#1E293B',
+                    color: '#E2E8F0',
+                    confirmButtonColor: '#F97316'
+                });
+            }
+        } catch (e) {
+            btn.disabled = false;
+            btn.textContent = 'Kirim Kode OTP';
+            Swal.fire({
+                title: 'Error',
+                text: 'Gagal terhubung ke server.',
+                icon: 'error',
+                background: '#1E293B',
+                color: '#E2E8F0',
+                confirmButtonColor: '#F97316'
+            });
+        }
+    }
+
     async function savePersonalProfile() {
         const nama = document.getElementById('settingProfileName').value.trim();
         const email = document.getElementById('settingProfileEmail').value.trim();
+        const currentPassword = document.getElementById('settingCurrentPassword').value;
         const newPassword = document.getElementById('settingNewPassword').value;
         const confirmPassword = document.getElementById('settingConfirmPassword').value;
+        const otpCode = document.getElementById('settingPasswordOtp').value.trim();
 
-        if (newPassword && newPassword !== confirmPassword) {
-            Swal.fire({ title: 'Password Mismatch', text: 'Konfirmasi kata sandi baru tidak cocok.', icon: 'warning', background: '#1E293B', color: '#E2E8F0', confirmButtonColor: '#F97316' });
-            return;
+        // If user wants to change password
+        if (newPassword || currentPassword || otpCode) {
+            if (!currentPassword) {
+                Swal.fire({ title: 'Kata Sandi Lama Wajib', text: 'Silakan masukkan kata sandi Anda saat ini.', icon: 'warning', background: '#1E293B', color: '#E2E8F0', confirmButtonColor: '#F97316' });
+                return;
+            }
+            if (!newPassword || newPassword.length < 6) {
+                Swal.fire({ title: 'Kata Sandi Baru Minimal 6 Karakter', text: 'Masukkan kata sandi baru minimal 6 karakter.', icon: 'warning', background: '#1E293B', color: '#E2E8F0', confirmButtonColor: '#F97316' });
+                return;
+            }
+            if (newPassword !== confirmPassword) {
+                Swal.fire({ title: 'Password Mismatch', text: 'Konfirmasi kata sandi baru tidak cocok.', icon: 'warning', background: '#1E293B', color: '#E2E8F0', confirmButtonColor: '#F97316' });
+                return;
+            }
+            if (!otpCode || otpCode.length !== 6) {
+                Swal.fire({ title: 'Kode OTP 6-Digit Wajib', text: 'Silakan klik tombol "Kirim Kode OTP" dan masukkan 6 angka kode OTP dari email resmi Anda.', icon: 'warning', background: '#1E293B', color: '#E2E8F0', confirmButtonColor: '#F97316' });
+                return;
+            }
+
+            try {
+                Swal.fire({
+                    title: 'Memperbarui Kata Sandi...',
+                    text: 'Memverifikasi kode OTP dan memperbarui sandi akun.',
+                    allowOutsideClick: false,
+                    background: '#1E293B',
+                    color: '#E2E8F0',
+                    didOpen: () => Swal.showLoading()
+                });
+
+                const pwdRes = await fetch('/api/admin/profile/password', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + token,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        current_password: currentPassword,
+                        new_password: newPassword,
+                        new_password_confirmation: confirmPassword,
+                        otp_code: otpCode
+                    })
+                });
+
+                const pwdData = await pwdRes.json();
+                Swal.close();
+
+                if (pwdRes.ok) {
+                    await Swal.fire({
+                        title: 'Kata Sandi Diperbarui!',
+                        text: pwdData.message || 'Kata sandi berhasil diubah. Seluruh sesi Anda telah di-logout demi keamanan. Silakan login kembali.',
+                        icon: 'success',
+                        background: '#1E293B',
+                        color: '#E2E8F0',
+                        confirmButtonColor: '#F97316'
+                    });
+
+                    // Clear all credentials & redirect
+                    localStorage.removeItem('admin_token');
+                    localStorage.removeItem('admin_user');
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    sessionStorage.clear();
+                    document.cookie = "auth_token=; path=/; max-age=0;";
+                    window.location.href = '/login-admin';
+                    return;
+                } else {
+                    Swal.fire({
+                        title: 'Gagal Ganti Sandi',
+                        text: pwdData.message || 'Terjadi kesalahan saat memproses sandi.',
+                        icon: 'error',
+                        background: '#1E293B',
+                        color: '#E2E8F0',
+                        confirmButtonColor: '#F97316'
+                    });
+                    return;
+                }
+            } catch (e) {
+                console.error(e);
+                Swal.fire({ title: 'Error', text: 'Gagal terhubung ke server.', icon: 'error', background: '#1E293B', color: '#E2E8F0', confirmButtonColor: '#F97316' });
+                return;
+            }
         }
 
-        const formData = new FormData();
-        formData.append('nama', nama);
-        formData.append('email', email);
-        if (newPassword) {
-            formData.append('new_password', newPassword);
-            formData.append('password_confirmation', confirmPassword);
-        }
-
+        // Updating profile identity
         try {
             Swal.fire({
-                title: 'Menyimpan Perubahan...',
+                title: 'Menyimpan Perubahan Profil...',
                 allowOutsideClick: false,
                 background: '#1E293B',
                 color: '#E2E8F0',
                 didOpen: () => Swal.showLoading()
             });
 
-            const res = await fetch('/api/user/profile', {
+            const formData = new FormData();
+            formData.append('nama', nama);
+            formData.append('email', email);
+
+            const res = await fetch('/api/admin/profile', {
                 method: 'POST',
                 headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' },
                 body: formData
             });
 
             const data = await res.json();
+            Swal.close();
+
             if (res.ok) {
                 user.nama = data.user.nama;
                 user.email = data.user.email;
                 localStorage.setItem('admin_user', JSON.stringify(user));
                 document.getElementById('displayProfileName').textContent = data.user.nama;
-                document.getElementById('settingNewPassword').value = '';
-                document.getElementById('settingConfirmPassword').value = '';
 
-                Swal.fire({ title: 'Profil Disimpan!', text: 'Informasi akun & kata sandi Super Admin berhasil diperbarui.', icon: 'success', background: '#1E293B', color: '#E2E8F0', confirmButtonColor: '#F97316' });
+                Swal.fire({ title: 'Profil Disimpan!', text: 'Informasi identitas akun Super Admin berhasil diperbarui.', icon: 'success', background: '#1E293B', color: '#E2E8F0', confirmButtonColor: '#F97316' });
             } else {
                 let errMsg = data.message || 'Terjadi kesalahan server.';
                 if (data.errors) {

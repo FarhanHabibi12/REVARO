@@ -54,14 +54,11 @@ class SmtpConfigController extends Controller
             return;
         }
 
-        // 5. Jika request adalah GET browser biasa (bukan API/AJAX)
-        // Izinkan lewat ke Blade view karena layouts.superadmin memvalidasi token dan role di browser
-        if (request()->isMethod('get') && !request()->expectsJson() && !request()->ajax()) {
-            return;
+        // 5. Tolak request jika tidak memiliki sesi atau token Super Admin yang valid
+        if (request()->expectsJson() || request()->is('api/*')) {
+            abort(403, 'Akses Ditolak: Sesi Super Admin tidak ditemukan atau telah berakhir.');
         }
-
-        // 6. Tolak request jika tidak memiliki sesi atau token yang valid
-        abort(403, 'Akses Ditolak: Sesi Super Admin tidak ditemukan atau telah berakhir.');
+        abort(403, 'Akses Ditolak: Anda tidak memiliki wewenang untuk mengakses halaman ini.');
     }
 
     /**

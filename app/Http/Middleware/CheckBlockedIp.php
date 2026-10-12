@@ -18,15 +18,19 @@ class CheckBlockedIp
         $ip = $request->ip();
 
         if ($ip) {
-            $blockedIps = Cache::remember('blocked_ips_list', 60, function () {
-                return BlockedIp::pluck('ip_address')->toArray();
-            });
+            try {
+                $blockedIps = Cache::remember('blocked_ips_list', 60, function () {
+                    return BlockedIp::pluck('ip_address')->toArray();
+                });
 
-            if (in_array($ip, $blockedIps)) {
-                return response()->json([
-                    'message' => 'Akses IP Anda ditolak oleh administrator sistem.',
-                    'ip_address' => $ip,
-                ], 403);
+                if (in_array($ip, $blockedIps)) {
+                    return response()->json([
+                        'message' => 'Akses IP Anda ditolak oleh administrator sistem.',
+                        'ip_address' => $ip,
+                    ], 403);
+                }
+            } catch (\Throwable $e) {
+                // Fail safely if database is temporarily unreachable
             }
         }
 

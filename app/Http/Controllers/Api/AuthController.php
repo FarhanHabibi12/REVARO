@@ -355,21 +355,6 @@ class AuthController extends Controller
             $profile = $user->pelanggan;
         }
 
-        // Khusus Super Admin Pemilik pada login pertama kali jika belum pernah setup username:
-        // Masuk langsung ke dashboard untuk inisialisasi awal sistem
-        if ($user->isSuperAdminPemilik() && empty($user->admin_username)) {
-            $token = $user->createToken('auth_token')->plainTextToken;
-            return response()->json([
-                'message' => 'Login pertama kali Super Admin berhasil. Silakan tentukan username resmi akun Anda.',
-                'user' => $user,
-                'role' => $user->role->nama,
-                'profile' => $profile,
-                'access_token' => $token,
-                'token_type' => 'Bearer',
-                'requires_first_time_setup' => true,
-            ]);
-        }
-
         // Send OTP verification to prove email ownership before giving session token (unless testing environment)
         if (!app()->environment('testing')) {
             $cleanEmail = trim(strtolower($user->email));
@@ -400,6 +385,7 @@ class AuthController extends Controller
         }
 
         $token = $user->createToken('auth_token')->plainTextToken;
+        \Illuminate\Support\Facades\Auth::guard('web')->login($user);
 
         return response()->json([
             'message' => 'Login berhasil.',
@@ -411,7 +397,7 @@ class AuthController extends Controller
             'redirect_url' => $partnerStatus ? '/pelanggan/dashboard' : null,
             'access_token' => $token,
             'token_type' => 'Bearer',
-        ]);
+        ])->withCookie(cookie('auth_token', $token, 120, '/', null, false, false));
     }
 
     /**
@@ -506,11 +492,18 @@ class AuthController extends Controller
      */
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
+        $user = $request->user();
+        if ($user) {
+            $user->currentAccessToken()?->delete();
+        }
+
+        \Illuminate\Support\Facades\Auth::guard('web')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
         return response()->json([
             'message' => 'Logout berhasil.',
-        ]);
+        ])->withoutCookie('auth_token');
     }
 
     /**
@@ -870,6 +863,7 @@ class AuthController extends Controller
                 ->delete();
 
             $token = $user->createToken('auth_token')->plainTextToken;
+            \Illuminate\Support\Facades\Auth::guard('web')->login($user);
 
             return response()->json([
                 'message' => 'Verifikasi email berhasil.',
@@ -881,7 +875,7 @@ class AuthController extends Controller
                 'redirect_url' => $partnerStatus ? '/pelanggan/dashboard' : null,
                 'access_token' => $token,
                 'token_type' => 'Bearer',
-            ], 200);
+            ], 200)->withCookie(cookie('auth_token', $token, 120, '/', null, false, false));
         }
 
         return response()->json(['message' => 'User tidak ditemukan.'], 404);
@@ -994,7 +988,14 @@ class AuthController extends Controller
         ];
 
         if ($request->filled('new_password')) {
+            if ($user->isSuperAdminPemilik() || $user->isAdminSuper() || $user->isAdminVerifikator() || $user->isAdminResolusi()) {
+                return response()->json([
+                    'message' => 'Demi keamanan tingkat tinggi, perubahan kata sandi akun administrator wajib menggunakan verifikasi OTP di menu Ganti Sandi.'
+                ], 403);
+            }
             $userUpdates['password'] = Hash::make($request->new_password);
+            // Invalidate other tokens for regular user
+            $user->tokens()->delete();
         }
 
         if ($request->hasFile('foto')) {

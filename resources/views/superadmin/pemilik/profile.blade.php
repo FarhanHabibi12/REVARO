@@ -161,10 +161,29 @@
                         </button>
                     </div>
                 </div>
+
+                <!-- OTP verification box -->
+                <div class="p-3.5 bg-slate-900/90 rounded-2xl border border-orange-500/30 space-y-3">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <span class="text-xs font-black text-white flex items-center gap-1.5">
+                                <svg class="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                                Verifikasi OTP Email Resmi
+                            </span>
+                            <p class="text-[11px] text-slate-400">Kode 6 digit dikirim ke email terdaftar untuk mengonfirmasi penggantian sandi.</p>
+                        </div>
+                        <button type="button" id="btnRequestProfPwdOtp" onclick="requestProfilePwdOtp()" class="px-3.5 py-2 rounded-xl text-xs font-black bg-orange-500/20 text-orange-400 border border-orange-500/40 hover:bg-orange-500 hover:text-white transition shrink-0">
+                            Kirim Kode OTP
+                        </button>
+                    </div>
+                    <div>
+                        <input type="text" id="inputProfilePasswordOtp" maxlength="6" required class="input-field font-mono text-center tracking-widest text-sm" placeholder="KODE 6-DIGIT OTP">
+                    </div>
+                </div>
             </div>
 
-            <div class="p-3.5 bg-slate-900/60 rounded-xl border border-slate-800 text-[11px] text-slate-400">
-                <strong>Ketentuan Password:</strong> Minimal 6 karakter, kombinasi huruf dan angka disarankan. Setelah diubah, sesi token Anda tetap aktif.
+            <div class="p-3.5 bg-slate-900/60 rounded-xl border border-slate-800 text-[11px] text-amber-300/80 leading-relaxed">
+                🔒 <strong>Pemberitahuan Keamanan:</strong> Setelah kata sandi berhasil diperbarui dengan verifikasi OTP, seluruh sesi aktif Anda di semua perangkat akan langsung diakhiri (logout total).
             </div>
 
             <div class="pt-2 border-t border-slate-800 text-right">
@@ -336,13 +355,83 @@
         }
     }
 
+    async function requestProfilePwdOtp() {
+        const btn = document.getElementById('btnRequestProfPwdOtp');
+        btn.disabled = true;
+        btn.textContent = 'Mengirim...';
+
+        try {
+            const res = await fetch('/api/admin/profile/password/request-otp', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                }
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                Swal.fire({
+                    title: 'OTP Terkirim!',
+                    text: data.message,
+                    icon: 'success',
+                    background: '#1E293B',
+                    color: '#E2E8F0',
+                    confirmButtonColor: '#F97316'
+                });
+
+                let seconds = data.cooldown_seconds || 60;
+                btn.textContent = `Tunggu (${seconds}s)`;
+                const timer = setInterval(() => {
+                    seconds--;
+                    if (seconds <= 0) {
+                        clearInterval(timer);
+                        btn.disabled = false;
+                        btn.textContent = 'Kirim Ulang OTP';
+                    } else {
+                        btn.textContent = `Tunggu (${seconds}s)`;
+                    }
+                }, 1000);
+            } else {
+                btn.disabled = false;
+                btn.textContent = 'Kirim Kode OTP';
+                Swal.fire({
+                    title: 'Gagal Mengirim OTP',
+                    text: data.message || 'Terjadi kesalahan.',
+                    icon: 'error',
+                    background: '#1E293B',
+                    color: '#E2E8F0',
+                    confirmButtonColor: '#F97316'
+                });
+            }
+        } catch (e) {
+            btn.disabled = false;
+            btn.textContent = 'Kirim Kode OTP';
+            Swal.fire({
+                title: 'Error',
+                text: 'Gagal terhubung ke server.',
+                icon: 'error',
+                background: '#1E293B',
+                color: '#E2E8F0',
+                confirmButtonColor: '#F97316'
+            });
+        }
+    }
+
     async function saveNewPassword() {
         const currentPassword = document.getElementById('inputCurrentPassword').value;
         const newPassword = document.getElementById('inputNewPassword').value;
         const confirmPassword = document.getElementById('inputConfirmPassword').value;
+        const otpCode = document.getElementById('inputProfilePasswordOtp').value.trim();
 
         if (newPassword !== confirmPassword) {
             Swal.fire({ title: 'Password Mismatch', text: 'Konfirmasi password baru tidak cocok.', icon: 'warning', background: '#1E293B', color: '#E2E8F0', confirmButtonColor: '#F97316' });
+            return;
+        }
+
+        if (!otpCode || otpCode.length !== 6) {
+            Swal.fire({ title: 'Kode OTP 6-Digit Wajib', text: 'Silakan klik tombol "Kirim Kode OTP" dan masukkan 6 angka kode OTP dari email resmi Anda.', icon: 'warning', background: '#1E293B', color: '#E2E8F0', confirmButtonColor: '#F97316' });
             return;
         }
 
@@ -365,7 +454,8 @@
                 body: JSON.stringify({
                     current_password: currentPassword,
                     new_password: newPassword,
-                    new_password_confirmation: confirmPassword
+                    new_password_confirmation: confirmPassword,
+                    otp_code: otpCode
                 })
             });
 
@@ -373,8 +463,22 @@
             Swal.close();
 
             if (res.ok) {
-                Swal.fire({ title: 'Kata Sandi Diperbarui!', text: data.message, icon: 'success', background: '#1E293B', color: '#E2E8F0', confirmButtonColor: '#F97316' });
-                document.getElementById('passwordForm').reset();
+                await Swal.fire({
+                    title: 'Kata Sandi Diperbarui!',
+                    text: data.message || 'Kata sandi berhasil diperbarui. Seluruh sesi aktif Anda telah diakhiri demi keamanan. Silakan login kembali.',
+                    icon: 'success',
+                    background: '#1E293B',
+                    color: '#E2E8F0',
+                    confirmButtonColor: '#F97316'
+                });
+
+                localStorage.removeItem('admin_token');
+                localStorage.removeItem('admin_user');
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                sessionStorage.clear();
+                document.cookie = "auth_token=; path=/; max-age=0;";
+                window.location.href = '/login-admin';
             } else {
                 Swal.fire({ title: 'Gagal', text: data.message || 'Terjadi kesalahan.', icon: 'error', background: '#1E293B', color: '#E2E8F0', confirmButtonColor: '#F97316' });
             }

@@ -250,6 +250,7 @@
             localStorage.removeItem('user');
             localStorage.removeItem('pending_first_time_setup');
             sessionStorage.clear();
+            document.cookie = "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Lax";
             window.location.href = '/login-admin';
         };
 
@@ -281,6 +282,7 @@
                         localStorage.removeItem('user');
                         localStorage.removeItem('pending_first_time_setup');
                         sessionStorage.clear();
+                        document.cookie = "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Lax";
                         window.location.href = '/session-expired';
                     }
                 }

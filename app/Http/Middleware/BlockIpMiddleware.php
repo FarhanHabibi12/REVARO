@@ -15,13 +15,17 @@ class BlockIpMiddleware
     {
         $ip = $request->ip();
 
-        if (IpBlacklist::where('ip_address', $ip)->exists()) {
-            if ($request->expectsJson() || $request->is('api/*')) {
-                return response()->json([
-                    'message' => 'IP Anda diblokir karena aktivitas mencurigakan.'
-                ], 403);
+        try {
+            if (IpBlacklist::where('ip_address', $ip)->exists()) {
+                if ($request->expectsJson() || $request->is('api/*')) {
+                    return response()->json([
+                        'message' => 'IP Anda diblokir karena aktivitas mencurigakan.'
+                    ], 403);
+                }
+                abort(403, 'Akses ditolak. IP Anda telah diblokir karena alasan keamanan.');
             }
-            abort(403, 'Akses ditolak. IP Anda telah diblokir karena alasan keamanan.');
+        } catch (\Throwable $e) {
+            // Fail safely if database is temporarily unreachable
         }
 
         return $next($request);

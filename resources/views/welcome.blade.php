@@ -1337,6 +1337,7 @@
                 localStorage.setItem('token', result.access_token);
                 localStorage.setItem('user', JSON.stringify(result.user));
                 if (result.profile) localStorage.setItem('profile', JSON.stringify(result.profile));
+                document.cookie = "auth_token=" + result.access_token + "; path=/; max-age=86400; SameSite=Lax";
 
                 const roleName = result.role || (result.user.role ? (result.user.role.nama || result.user.role) : '');
                 const redirectUrl = getRoleDashboardUrl(roleName, result.user);
@@ -1482,6 +1483,7 @@
 
                 localStorage.setItem('token', result.access_token);
                 localStorage.setItem('user', JSON.stringify(result.user));
+                document.cookie = "auth_token=" + result.access_token + "; path=/; max-age=86400; SameSite=Lax";
 
                 Swal.fire({
                     title: 'Pendaftaran Berhasil!',
@@ -1540,6 +1542,7 @@
                 localStorage.setItem('token', result.access_token);
                 localStorage.setItem('user', JSON.stringify(result.user));
                 if (result.profile) localStorage.setItem('profile', JSON.stringify(result.profile));
+                document.cookie = "auth_token=" + result.access_token + "; path=/; max-age=86400; SameSite=Lax";
 
                 const roleName = result.role || (result.user.role ? (result.user.role.nama || result.user.role) : '');
                 const redirectUrl = getRoleDashboardUrl(roleName, result.user);

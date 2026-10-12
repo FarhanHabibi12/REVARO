@@ -60,6 +60,7 @@ Route::middleware(['auth:sanctum', 'read_only'])->group(function () {
 
     // Admin personal profile management
     Route::post('/admin/profile', [AdminAccountController::class, 'updateProfile']);
+    Route::post('/admin/profile/password/request-otp', [AdminAccountController::class, 'requestPasswordOtp']);
     Route::post('/admin/profile/password', [AdminAccountController::class, 'updatePassword']);
     Route::post('/admin/setup-first-time', [AdminAccountController::class, 'setupFirstTime']);
 
@@ -321,8 +322,8 @@ Route::middleware(['auth:sanctum', 'read_only'])->group(function () {
     Route::get('/disputes/{dispute}', [DisputeController::class, 'getDisputeDetails']);
     Route::post('/disputes/{dispute}/resolve', [DisputeController::class, 'resolveDispute']);
 
-    // --- Policy Testing Endpoints (Only available in local & testing) ---
-    if (app()->environment('local', 'testing')) {
+    // --- Policy Testing Endpoints (Only available in testing) ---
+    if (app()->environment('testing')) {
         // Orders
         Route::get('/test/orders/{order}', function (Order $order) {
         if (Gate::denies('view', $order)) {

@@ -16,6 +16,7 @@ class Kernel extends HttpKernel
     protected $middleware = [
         \App\Http\Middleware\CheckBlockedIp::class,
         \App\Http\Middleware\BlockIpMiddleware::class,
+        \App\Http\Middleware\AntiMaliciousScanMiddleware::class,
         \App\Http\Middleware\TrackActiveVisitorsMiddleware::class,
         \App\Http\Middleware\SetLocaleMiddleware::class,
         // \App\Http\Middleware\TrustHosts::class,
@@ -69,6 +70,7 @@ class Kernel extends HttpKernel
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'role' => \App\Http\Middleware\RoleMiddleware::class,
+        'web.role' => \App\Http\Middleware\WebRoleMiddleware::class,
         'read_only' => \App\Http\Middleware\ReadOnlyMiddleware::class,
     ];
 }
