@@ -1120,58 +1120,59 @@
             @if(session('error'))
                 Swal.fire({
                     icon: 'warning',
-                    title: 'Autentikasi Google',
+                    title: 'Pemberitahuan',
                     text: '{{ session('error') }}',
                     confirmButtonColor: '#0B4A8F'
                 });
             @endif
 
-            const token = localStorage.getItem('token') || localStorage.getItem('admin_token');
-            const userRaw = localStorage.getItem('user') || localStorage.getItem('admin_user');
+            const token = localStorage.getItem('token');
+            const userRaw = localStorage.getItem('user');
 
             if (token && userRaw) {
-                const user = JSON.parse(userRaw);
-                const roleName = user.role ? (user.role.nama || user.role) : '';
-                const dashUrl = getRoleDashboardUrl(roleName, user);
-                
-                document.getElementById('authNavButtons').classList.add('hidden');
-                document.getElementById('userProfileSection').classList.remove('hidden');
-                document.getElementById('navUserName').innerText = user.nama;
-                
-                // Hide Gabung Mitra link if already a partner or admin
-                const lowerRole = (typeof roleName === 'string' ? roleName : (roleName.nama || '')).toLowerCase();
-                if (lowerRole.includes('teknisi') || lowerRole.includes('toko') || lowerRole.includes('admin') || lowerRole.includes('pemilik')) {
-                    const navMitra = document.getElementById('navGabungMitra');
-                    if (navMitra) navMitra.classList.add('hidden');
-                    const mobileNavMitra = document.getElementById('mobileNavGabungMitra');
-                    if (mobileNavMitra) mobileNavMitra.classList.add('hidden');
-                }
+                try {
+                    const user = JSON.parse(userRaw);
+                    const roleName = user.role ? (user.role.nama || user.role) : '';
+                    const lowerRole = (typeof roleName === 'string' ? roleName : (roleName.nama || '')).toLowerCase();
 
-                // Dashboard button redirect link based on role
-                const dashBtn = document.getElementById('dashboardBtn');
-                if (dashBtn) {
-                    if (dashUrl) {
-                        dashBtn.addEventListener('click', () => {
-                            window.location.href = dashUrl;
-                        });
-                    } else {
-                        dashBtn.innerHTML = '⏳ Menunggu ACC Admin';
-                        dashBtn.className = 'bg-amber-100 text-amber-900 border-2 border-amber-500 text-xs px-3 py-1.5 rounded-lg font-bold shadow-sm';
-                        dashBtn.addEventListener('click', () => {
-                            Swal.fire({
-                                icon: 'info',
-                                title: 'Pendaftaran Menunggu ACC ⏳',
-                                text: 'Akun Anda sedang dalam antrean verifikasi Admin Verifikator. Anda belum dapat masuk ke dasbor sebelum akun di-ACC oleh Admin.',
-                                confirmButtonColor: '#0B4A8F'
-                            });
-                        });
+                    // Khusus akun internal staf/admin/superadmin, jangan render di navbar beranda pelanggan
+                    if (!lowerRole.includes('admin') && !lowerRole.includes('pemilik') && !lowerRole.includes('verifikator') && !lowerRole.includes('resolusi')) {
+                        const dashUrl = getRoleDashboardUrl(roleName, user);
+                        
+                        document.getElementById('authNavButtons').classList.add('hidden');
+                        document.getElementById('userProfileSection').classList.remove('hidden');
+                        document.getElementById('navUserName').innerText = user.nama;
+                        
+                        // Sembunyikan Gabung Mitra jika sudah menjadi mitra teknisi/toko
+                        if (lowerRole.includes('teknisi') || lowerRole.includes('toko')) {
+                            const navMitra = document.getElementById('navGabungMitra');
+                            if (navMitra) navMitra.classList.add('hidden');
+                            const mobileNavMitra = document.getElementById('mobileNavGabungMitra');
+                            if (mobileNavMitra) mobileNavMitra.classList.add('hidden');
+                        }
+
+                        // Tombol Ke Dashboard
+                        const dashBtn = document.getElementById('dashboardBtn');
+                        if (dashBtn) {
+                            if (dashUrl) {
+                                dashBtn.addEventListener('click', () => {
+                                    window.location.href = dashUrl;
+                                });
+                            } else {
+                                dashBtn.innerHTML = '⏳ Menunggu ACC Admin';
+                                dashBtn.className = 'bg-amber-100 text-amber-900 border-2 border-amber-500 text-xs px-3 py-1.5 rounded-lg font-bold shadow-sm';
+                                dashBtn.addEventListener('click', () => {
+                                    Swal.fire({
+                                        icon: 'info',
+                                        title: 'Pendaftaran Menunggu ACC ⏳',
+                                        text: 'Akun Anda sedang dalam antrean verifikasi Admin Verifikator. Anda belum dapat masuk ke dasbor sebelum akun di-ACC oleh Admin.',
+                                        confirmButtonColor: '#0B4A8F'
+                                    });
+                                });
+                            }
+                        }
                     }
-                }
-
-                // Auto redirect immediately upon visiting home if logged in and not explicitly requesting home
-                if (dashUrl && !urlParams.has('stay') && !urlParams.has('auth')) {
-                    window.location.href = dashUrl;
-                }
+                } catch(e) {}
             }
         });
 
@@ -1346,6 +1347,9 @@
                 if (roleSlug.startsWith('admin') || roleSlug.startsWith('super-admin')) {
                     localStorage.setItem('admin_token', result.access_token);
                     localStorage.setItem('admin_user', JSON.stringify({ ...result.user, role: roleSlug }));
+                } else {
+                    localStorage.removeItem('admin_token');
+                    localStorage.removeItem('admin_user');
                 }
 
                 if (!redirectUrl) {
@@ -1369,7 +1373,8 @@
                     timer: 1200
                 }).then(() => {
                     closeAuthModal();
-                    window.location.href = redirectUrl;
+                    const destUrl = redirectUrl + (redirectUrl.includes('?') ? '&' : '?') + '_token_auth=' + encodeURIComponent(result.access_token);
+                    window.location.href = destUrl;
                 });
             } catch (err) {
                 console.error(err);
@@ -1493,7 +1498,7 @@
                     timer: 1200
                 }).then(() => {
                     closeAuthModal();
-                    window.location.href = '/pelanggan/dashboard';
+                    window.location.href = '/pelanggan/dashboard?_token_auth=' + encodeURIComponent(result.access_token);
                 });
             } catch (err) {
                 console.error(err);
@@ -1551,6 +1556,9 @@
                 if (roleSlug.startsWith('admin') || roleSlug.startsWith('super-admin')) {
                     localStorage.setItem('admin_token', result.access_token);
                     localStorage.setItem('admin_user', JSON.stringify({ ...result.user, role: roleSlug }));
+                } else {
+                    localStorage.removeItem('admin_token');
+                    localStorage.removeItem('admin_user');
                 }
 
                 if (!redirectUrl) {
@@ -1574,7 +1582,8 @@
                     timer: 1200
                 }).then(() => {
                     closeAuthModal();
-                    window.location.href = redirectUrl;
+                    const destUrl = redirectUrl + (redirectUrl.includes('?') ? '&' : '?') + '_token_auth=' + encodeURIComponent(result.access_token);
+                    window.location.href = destUrl;
                 });
             } catch(err) {
                 console.error(err);
@@ -1672,7 +1681,8 @@
             } catch(e) {}
             localStorage.clear();
             sessionStorage.clear();
-            window.location.reload();
+            document.cookie = "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+            window.location.href = '/';
         }
     </script>
 </body>

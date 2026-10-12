@@ -376,8 +376,10 @@
 
                 localStorage.setItem('admin_token', result.access_token);
                 localStorage.setItem('admin_user', JSON.stringify({ ...result.user, role: roleSlug }));
-                localStorage.setItem('token', result.access_token);
-                localStorage.setItem('user', JSON.stringify(result.user));
+                // Bersihkan token pelanggan agar sesi admin tidak mengotori landing page beranda
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                localStorage.removeItem('profile');
                 document.cookie = "auth_token=" + result.access_token + "; path=/; max-age=86400; SameSite=Lax";
 
                 // Tandai jika akun membutuhkan setup awal username / ganti password acak sistem
@@ -489,11 +491,13 @@
                     return;
                 }
 
-                // Simpan kredensial admin dan token universal
+                // Simpan kredensial admin secara terpisah dari pelanggan
                 localStorage.setItem('admin_token', result.access_token);
                 localStorage.setItem('admin_user', JSON.stringify({ ...result.user, role: roleSlug }));
-                localStorage.setItem('token', result.access_token);
-                localStorage.setItem('user', JSON.stringify(result.user));
+                // Bersihkan token pelanggan agar sesi admin tidak mengotori landing page beranda
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                localStorage.removeItem('profile');
                 document.cookie = "auth_token=" + result.access_token + "; path=/; max-age=86400; SameSite=Lax";
 
                 // Tandai jika akun membutuhkan setup awal (belum punya username atau wajib ubah kata sandi)
