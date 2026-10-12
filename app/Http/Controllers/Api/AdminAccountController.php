@@ -169,6 +169,17 @@ class AdminAccountController extends Controller
         $user->is_active = !$user->is_active;
         $user->save();
 
+        // KILL SWITCH: Jika dinonaktifkan (dipecat), musnahkan seluruh token API seketika
+        if (!$user->is_active) {
+            $user->tokens()->delete();
+        }
+
+        \App\Models\ActivityLog::create([
+            'user_id' => auth()->id() ?? $user->id,
+            'aktivitas' => ($user->is_active ? 'Mengaktifkan kembali' : 'Menonaktifkan dan mencabut seluruh token sesi') . ' akun admin: ' . $user->nama,
+            'ip_address' => request()->ip(),
+        ]);
+
         return response()->json([
             'message' => 'Status keaktifan administrator berhasil diperbarui.',
             'user' => $user

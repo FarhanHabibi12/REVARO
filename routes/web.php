@@ -25,8 +25,20 @@ Route::get('/auth/google/complete-profile', [GoogleAuthController::class, 'showC
 Route::post('/auth/google/complete-profile', [GoogleAuthController::class, 'saveCompleteProfile'])->name('auth.google.complete.save');
 
 Route::get('/login',            fn() => redirect('/?auth=login'))->name('login');
-Route::get('/login-admin',      fn() => view('auth.admin_login'))->name('admin.login')->middleware('admin.device');
-Route::get('/admin/login',      fn() => redirect('/login-admin'))->middleware('admin.device');
+Route::get('/login-admin', function (\Illuminate\Http\Request $request) {
+    // Jika laptop pemilik menginput ?device_key=..., terbitkan cookie izin akses Super Admin
+    $configuredKey = env('ADMIN_DEVICE_KEY', 'revaro_device_senn_1926');
+    $providedKey = $request->query('device_key');
+    if ($providedKey && hash_equals((string) $configuredKey, (string) $providedKey)) {
+        $expectedHash = hash_hmac('sha256', 'revaro_verified_admin_device_' . $configuredKey, config('app.key') ?: 'revaro_salt_secret');
+        $cleanUrl = rtrim($request->fullUrlWithQuery(['device_key' => null]), '?');
+        return redirect($cleanUrl)->withCookie(
+            cookie('revaro_device_key', $expectedHash, 525600, '/', null, false, true, false, 'Lax')
+        );
+    }
+    return view('auth.admin_login');
+})->name('admin.login');
+Route::get('/admin/login',      fn() => redirect('/login-admin'));
 Route::get('/partner/register', fn() => view('auth.partner_register'));
 Route::get('/session-expired',   fn() => response()->view('errors.419', [], 419))->name('session.expired');
 Route::get('/error/419',        fn() => response()->view('errors.419', [], 419));
@@ -103,8 +115,8 @@ Route::middleware(['admin.device', 'web.role:super-admin-monitoring,super-admin-
     Route::get('/alerts',                fn() => view('superadmin.monitoring.alerts'));
 });
 
-// ── Admin Verifikator (Server-Side Protected + Device Lock) ─────────────────
-Route::middleware(['admin.device', 'web.role:admin-verifikator,super-admin-pemilik'])->prefix('admin/verifikator')->group(function () {
+// ── Admin Verifikator (Server-Side Role Protected) ─────────────────────────
+Route::middleware(['web.role:admin-verifikator,super-admin-pemilik'])->prefix('admin/verifikator')->group(function () {
     Route::get('/dashboard',       fn() => view('admin.verifikator.dashboard'));
     Route::get('/resubmitted',     fn() => view('admin.verifikator.resubmitted'));
     Route::get('/reverifications', fn() => view('admin.verifikator.reverifications'));
@@ -113,8 +125,8 @@ Route::middleware(['admin.device', 'web.role:admin-verifikator,super-admin-pemil
     Route::get('/settings',        fn() => view('admin.verifikator.settings'));
 });
 
-// ── Admin Resolusi (Server-Side Protected + Device Lock) ────────────────────
-Route::middleware(['admin.device', 'web.role:admin-resolusi,super-admin-pemilik'])->prefix('admin/resolusi')->group(function () {
+// ── Admin Resolusi (Server-Side Role Protected) ────────────────────────────
+Route::middleware(['web.role:admin-resolusi,super-admin-pemilik'])->prefix('admin/resolusi')->group(function () {
     Route::get('/dashboard',       fn() => view('admin.resolusi.dashboard'));
     Route::get('/evaluasi-rating', fn() => view('admin.resolusi.evaluasi_rating'));
     Route::get('/history',         fn() => view('admin.resolusi.history'));
