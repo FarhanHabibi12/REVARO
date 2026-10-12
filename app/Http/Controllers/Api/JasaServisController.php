@@ -23,13 +23,14 @@ class JasaServisController extends Controller
      */
     public function categories()
     {
-        $services = JasaServis::where('is_active', true)->orderBy('nama_jasa', 'asc')->get();
+        $services = JasaServis::where('is_active', true)->orderBy('id', 'asc')->get();
+        if ($services->isEmpty()) {
+            $services = JasaServis::orderBy('id', 'asc')->get();
+        }
 
-        $categories = $services->pluck('kategori')
-            ->filter()
-            ->map(fn($item) => trim($item))
-            ->unique()
-            ->values();
+        $categories = $services->map(function ($s) {
+            return trim($s->kategori ?: $s->nama_jasa);
+        })->filter()->unique()->values();
 
         return response()->json([
             'categories' => $categories,

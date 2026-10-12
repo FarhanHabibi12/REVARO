@@ -2904,23 +2904,32 @@
                 categories = [...new Set(globalMasterServices.map(s => (s.kategori || s.nama_jasa || '').trim()).filter(Boolean))];
             } else {
                 try {
-                    const res = await fetch('/api/jasa-servis/categories');
+                    let res = await fetch('/api/jasa-servis/categories');
                     if (res.ok) {
                         const data = await res.json();
-                        categories = data.categories || [];
-                        if (!categories.length && Array.isArray(data.services)) {
+                        if (Array.isArray(data.categories) && data.categories.length > 0) {
+                            categories = data.categories.map(c => String(c).trim()).filter(Boolean);
+                        } else if (Array.isArray(data.services) && data.services.length > 0) {
                             categories = [...new Set(data.services.map(s => (s.kategori || s.nama_jasa || '').trim()).filter(Boolean))];
+                        }
+                    }
+
+                    if (!categories.length) {
+                        const res2 = await fetch('/api/jasa-servis');
+                        if (res2.ok) {
+                            const data2 = await res2.json();
+                            if (Array.isArray(data2) && data2.length > 0) {
+                                categories = [...new Set(data2.map(s => (s.kategori || s.nama_jasa || '').trim()).filter(Boolean))];
+                            }
                         }
                     }
                 } catch(e) {}
             }
 
-            if (!categories.length) {
-                categories = ['Air Conditioner (AC)', 'Lemari Es / Kulkas', 'Mesin Cuci', 'Pompa Air', 'TV & Perangkat Audio'];
-            }
-
             const selTrim = (selectedCat || '').trim();
-            if (selTrim && !categories.some(c => c.toLowerCase() === selTrim.toLowerCase())) {
+            if (!categories.length && selTrim) {
+                categories = [selTrim];
+            } else if (selTrim && !categories.some(c => c.toLowerCase() === selTrim.toLowerCase())) {
                 categories.unshift(selTrim);
             }
 

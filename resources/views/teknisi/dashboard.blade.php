@@ -863,28 +863,50 @@
             if (!select) return;
 
             try {
-                const res = await fetch('/api/jasa-servis/categories');
                 let categories = [];
+                
+                // Coba ambil dari /api/jasa-servis/categories dahulu
+                let res = await fetch('/api/jasa-servis/categories');
                 if (res.ok) {
                     const data = await res.json();
-                    categories = data.categories || [];
-                    if (!categories.length && Array.isArray(data.services)) {
+                    if (Array.isArray(data.categories) && data.categories.length > 0) {
+                        categories = data.categories.map(c => String(c).trim()).filter(Boolean);
+                    } else if (Array.isArray(data.services) && data.services.length > 0) {
                         categories = [...new Set(data.services.map(s => (s.kategori || s.nama_jasa || '').trim()).filter(Boolean))];
                     }
                 }
 
+                // Jika belum dapat, coba endpoint umum /api/jasa-servis
                 if (!categories.length) {
-                    categories = ['Air Conditioner (AC)', 'Lemari Es / Kulkas', 'Mesin Cuci', 'Pompa Air', 'TV & Perangkat Audio'];
+                    try {
+                        const res2 = await fetch('/api/jasa-servis');
+                        if (res2.ok) {
+                            const data2 = await res2.json();
+                            if (Array.isArray(data2) && data2.length > 0) {
+                                categories = [...new Set(data2.map(s => (s.kategori || s.nama_jasa || '').trim()).filter(Boolean))];
+                            }
+                        }
+                    } catch (e2) {}
                 }
 
                 const selCatTrim = (selectedCategory || '').trim();
-                const catMap = categories.map(c => c.trim());
 
-                if (selCatTrim && !catMap.some(c => c.toLowerCase() === selCatTrim.toLowerCase())) {
-                    catMap.unshift(selCatTrim);
+                // Jika di database belum ada data sama sekali
+                if (!categories.length) {
+                    if (selCatTrim) {
+                        categories = [selCatTrim];
+                    } else {
+                        select.innerHTML = '<option value="">(Belum ada kategori di database)</option>';
+                        return;
+                    }
                 }
 
-                select.innerHTML = catMap.map(cat => {
+                // Tambahkan kategori teknisi jika belum ada dalam daftar database agar data profil tidak hilang
+                if (selCatTrim && !categories.some(c => c.toLowerCase() === selCatTrim.toLowerCase())) {
+                    categories.unshift(selCatTrim);
+                }
+
+                select.innerHTML = categories.map(cat => {
                     const isMatch = selCatTrim && (
                         cat.toLowerCase() === selCatTrim.toLowerCase() ||
                         (selCatTrim.toLowerCase().includes('ac') && cat.toLowerCase().includes('ac')) ||
@@ -906,13 +928,10 @@
                 }
             } catch (err) {
                 console.error('Gagal mengambil kategori untuk form revisi:', err);
-                select.innerHTML = `
-                    <option value="Air Conditioner (AC)">Air Conditioner (AC)</option>
-                    <option value="Lemari Es / Kulkas">Lemari Es / Kulkas</option>
-                    <option value="Mesin Cuci">Mesin Cuci</option>
-                    <option value="Pompa Air">Pompa Air</option>
-                    <option value="TV & Perangkat Audio">TV & Perangkat Audio</option>
-                `;
+                const fallback = selectedCategory ? [selectedCategory] : [];
+                select.innerHTML = fallback.length 
+                    ? fallback.map(c => `<option value="${c}" selected>${c}</option>`).join('')
+                    : '<option value="">(Gagal memuat kategori dari server)</option>';
             }
         }
 

@@ -249,13 +249,12 @@ class OrderLifecycleController extends Controller
 
         $kategoriOrder = $request->input('kategori_servis') ?: ($request->input('kategori') ?: 'Air Conditioner (AC)');
 
-        $order = Order::create([
+        $orderData = [
             'pelanggan_id' => $pelanggan->id,
             'teknisi_id' => null,
             'kode_order' => $kodeOrder,
             'status' => 'SEARCHING',
             'keluhan' => substr($request->keluhan, 0, 500),
-            'kategori' => $kategoriOrder,
             'pemesan_nama' => $recipientName,
             'pemesan_hp' => $recipientPhone,
             'pemesan_alamat' => $recipientAddress,
@@ -271,7 +270,24 @@ class OrderLifecycleController extends Controller
             'longitude' => $request->longitude ?? 106.8456,
             'is_premium' => $isPremium,
             'biaya_prioritas' => $premiumFee,
-        ]);
+        ];
+
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasColumn('orders', 'kategori')) {
+                $orderData['kategori'] = $kategoriOrder;
+            }
+        } catch (\Throwable $e) {}
+
+        try {
+            $order = Order::create($orderData);
+        } catch (\Illuminate\Database\QueryException $e) {
+            if (str_contains($e->getMessage(), 'kategori') || str_contains($e->getMessage(), 'Unknown column')) {
+                unset($orderData['kategori']);
+                $order = Order::create($orderData);
+            } else {
+                throw $e;
+            }
+        }
 
         \App\Models\SystemSetting::set('order_kategori_' . $order->id, $kategoriOrder, 'order_meta');
 

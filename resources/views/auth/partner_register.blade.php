@@ -343,21 +343,34 @@
             if (!sel) return;
 
             try {
-                const res = await fetch('/api/jasa-servis/categories');
                 let categories = [];
+                let res = await fetch('/api/jasa-servis/categories');
                 if (res.ok) {
                     const data = await res.json();
-                    categories = data.categories || [];
-                    if (!categories.length && Array.isArray(data.services)) {
+                    if (Array.isArray(data.categories) && data.categories.length > 0) {
+                        categories = data.categories.map(c => String(c).trim()).filter(Boolean);
+                    } else if (Array.isArray(data.services) && data.services.length > 0) {
                         categories = [...new Set(data.services.map(s => (s.kategori || s.nama_jasa || '').trim()).filter(Boolean))];
                     }
+                }
+
+                if (!categories.length) {
+                    try {
+                        const res2 = await fetch('/api/jasa-servis');
+                        if (res2.ok) {
+                            const data2 = await res2.json();
+                            if (Array.isArray(data2) && data2.length > 0) {
+                                categories = [...new Set(data2.map(s => (s.kategori || s.nama_jasa || '').trim()).filter(Boolean))];
+                            }
+                        }
+                    } catch (e2) {}
                 }
 
                 if (categories.length > 0) {
                     sel.innerHTML = categories.map(cat => `<option value="${cat}">${cat}</option>`).join('');
                 }
             } catch (err) {
-                console.warn('Gagal memuat kategori dari server, menggunakan opsi fallback default:', err);
+                console.warn('Gagal memuat kategori dari server:', err);
             }
         }
 
