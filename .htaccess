@@ -1,0 +1,16 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # 1. Block access to sensitive files directly (.env, .git, config, composer, etc.)
+    <FilesMatch "^(\.env|\.git|\.editorconfig|composer\.(json|lock)|package\.(json|lock)|phpunit\.xml|README\.md)">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
+
+    # 2. Block access to hidden dotfiles
+    RewriteRule (^|/)\.(?!well-known) - [F,L]
+
+    # 3. If Apache DocumentRoot is pointing to root instead of /public, rewrite to /public/
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>

@@ -71,6 +71,7 @@ class Kernel extends HttpKernel
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'role' => \App\Http\Middleware\RoleMiddleware::class,
         'web.role' => \App\Http\Middleware\WebRoleMiddleware::class,
+        'admin.device' => \App\Http\Middleware\AdminDeviceLockMiddleware::class,
         'read_only' => \App\Http\Middleware\ReadOnlyMiddleware::class,
     ];
 }

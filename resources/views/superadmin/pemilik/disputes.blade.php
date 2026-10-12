@@ -135,6 +135,12 @@ async function loadDisputes() {
 
 const statusBadge = { OPEN: 'badge-red', INVESTIGATING: 'badge-blue', ESCALATED: 'badge-yellow', RESOLVED: 'badge-green' };
 
+function esc(str) {
+    return String(str || '').replace(/[&<>"']/g, m => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[m]);
+}
+
 function renderDisputes(data) {
     const tbody = document.getElementById('disputeTableBody');
     if (!data.length) { tbody.innerHTML = '<tr><td colspan="7" class="text-center text-slate-500 py-8">Tidak ada data dispute</td></tr>'; return; }
@@ -142,10 +148,10 @@ function renderDisputes(data) {
         <tr>
             <td class="font-mono text-slate-300">#${d.id}</td>
             <td class="font-mono text-slate-400">#${d.order_id}</td>
-            <td class="text-xs text-slate-300">${d.admin?.nama ? `<span class="font-bold text-white">${d.admin.nama}</span> <span class="text-[9px] text-orange-400 block font-mono">Admin Resolusi</span>` : '<span class="text-slate-500 italic">Belum Ditugaskan</span>'}</td>
+            <td class="text-xs text-slate-300">${d.admin?.nama ? `<span class="font-bold text-white">${esc(d.admin.nama)}</span> <span class="text-[9px] text-orange-400 block font-mono">Admin Resolusi</span>` : '<span class="text-slate-500 italic">Belum Ditugaskan</span>'}</td>
             <td><span class="badge ${statusBadge[d.status] || 'badge-gray'}">${d.status}</span></td>
             <td class="text-xs ${d.sla_deadline && new Date(d.sla_deadline) < new Date() ? 'text-red-400 font-bold' : 'text-slate-400'}">${d.sla_deadline ? new Date(d.sla_deadline).toLocaleString('id-ID') : '—'}</td>
-            <td class="text-slate-400 text-xs max-w-xs truncate">${d.alasan || '—'}</td>
+            <td class="text-slate-400 text-xs max-w-xs truncate" title="${esc(d.alasan || '—')}">${esc(d.alasan || '—')}</td>
             <td>
                 <button onclick="openReviewModal(${d.id})" class="btn-primary flex items-center gap-1.5" style="font-size:0.7rem;padding:5px 12px;">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>

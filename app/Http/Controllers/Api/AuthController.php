@@ -112,6 +112,7 @@ class AuthController extends Controller
 
         // Create profile based on role
         if ($request->role_slug === 'pelanggan') {
+            $existingPelanggan = Pelanggan::where('user_id', $user->id)->first();
             $profile = Pelanggan::updateOrCreate(
                 ['user_id' => $user->id],
                 [
@@ -119,7 +120,7 @@ class AuthController extends Controller
                     'email' => $request->email,
                     'hp' => $request->hp,
                     'alamat' => $request->alamat,
-                    'saldo' => 0.00,
+                    'saldo' => $existingPelanggan ? $existingPelanggan->saldo : 0.00,
                 ]
             );
         } elseif ($request->role_slug === 'teknisi') {
@@ -397,7 +398,7 @@ class AuthController extends Controller
             'redirect_url' => $partnerStatus ? '/pelanggan/dashboard' : null,
             'access_token' => $token,
             'token_type' => 'Bearer',
-        ])->withCookie(cookie('auth_token', $token, 120, '/', null, false, false));
+        ])->withCookie(cookie('auth_token', $token, 120, '/', null, false, true));
     }
 
     /**
@@ -875,7 +876,7 @@ class AuthController extends Controller
                 'redirect_url' => $partnerStatus ? '/pelanggan/dashboard' : null,
                 'access_token' => $token,
                 'token_type' => 'Bearer',
-            ], 200)->withCookie(cookie('auth_token', $token, 120, '/', null, false, false));
+            ], 200)->withCookie(cookie('auth_token', $token, 120, '/', null, false, true));
         }
 
         return response()->json(['message' => 'User tidak ditemukan.'], 404);

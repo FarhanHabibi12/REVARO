@@ -24,10 +24,9 @@ Route::get('/auth/google/callback', [GoogleAuthController::class, 'handleGoogleC
 Route::get('/auth/google/complete-profile', [GoogleAuthController::class, 'showCompleteProfile'])->name('auth.google.complete');
 Route::post('/auth/google/complete-profile', [GoogleAuthController::class, 'saveCompleteProfile'])->name('auth.google.complete.save');
 
-// Auth — Login & Register Public Pages
 Route::get('/login',            fn() => redirect('/?auth=login'))->name('login');
-Route::get('/login-admin',      fn() => view('auth.admin_login'))->name('admin.login');
-Route::get('/admin/login',      fn() => redirect('/login-admin'));
+Route::get('/login-admin',      fn() => view('auth.admin_login'))->name('admin.login')->middleware('admin.device');
+Route::get('/admin/login',      fn() => redirect('/login-admin'))->middleware('admin.device');
 Route::get('/partner/register', fn() => view('auth.partner_register'));
 Route::get('/session-expired',   fn() => response()->view('errors.419', [], 419))->name('session.expired');
 Route::get('/error/419',        fn() => response()->view('errors.419', [], 419));
@@ -61,8 +60,8 @@ Route::middleware(['web.role:toko-sparepart'])->prefix('toko')->group(function (
     Route::get('/settings',  fn() => view('toko.settings'))->name('toko.settings');
 });
 
-// ── Super Admin Pemilik Sistem (Strict Server-Side Protected) ────────────
-Route::middleware(['web.role:super-admin-pemilik'])->group(function () {
+// ── Super Admin Pemilik Sistem (Strict Server-Side Protected + Device Lock) ──
+Route::middleware(['admin.device', 'web.role:super-admin-pemilik'])->group(function () {
     Route::prefix('superadmin/pemilik')->group(function () {
         Route::get('/dashboard',      fn() => view('superadmin.pemilik.dashboard'));
         Route::get('/accounts',       fn() => view('superadmin.pemilik.accounts'));
@@ -96,16 +95,16 @@ Route::middleware(['web.role:super-admin-pemilik'])->group(function () {
     Route::get('/superadmin/maintenance', fn() => redirect('/superadmin/pemilik/maintenance'));
 });
 
-// ── Super Admin Monitoring Kinerja (Server-Side Protected) ──────────────
-Route::middleware(['web.role:super-admin-monitoring,super-admin-pemilik'])->prefix('superadmin/monitoring')->group(function () {
+// ── Super Admin Monitoring Kinerja (Server-Side Protected + Device Lock) ────
+Route::middleware(['admin.device', 'web.role:super-admin-monitoring,super-admin-pemilik'])->prefix('superadmin/monitoring')->group(function () {
     Route::get('/scorecard-verifikator', fn() => view('superadmin.monitoring.scorecard_verifikator'));
     Route::get('/scorecard-resolusi',    fn() => view('superadmin.monitoring.scorecard_resolusi'));
     Route::get('/trends',                fn() => view('superadmin.monitoring.trends'));
     Route::get('/alerts',                fn() => view('superadmin.monitoring.alerts'));
 });
 
-// ── Admin Verifikator (Server-Side Protected) ───────────────────────────
-Route::middleware(['web.role:admin-verifikator,super-admin-pemilik'])->prefix('admin/verifikator')->group(function () {
+// ── Admin Verifikator (Server-Side Protected + Device Lock) ─────────────────
+Route::middleware(['admin.device', 'web.role:admin-verifikator,super-admin-pemilik'])->prefix('admin/verifikator')->group(function () {
     Route::get('/dashboard',       fn() => view('admin.verifikator.dashboard'));
     Route::get('/resubmitted',     fn() => view('admin.verifikator.resubmitted'));
     Route::get('/reverifications', fn() => view('admin.verifikator.reverifications'));
@@ -114,8 +113,8 @@ Route::middleware(['web.role:admin-verifikator,super-admin-pemilik'])->prefix('a
     Route::get('/settings',        fn() => view('admin.verifikator.settings'));
 });
 
-// ── Admin Resolusi (Server-Side Protected) ──────────────────────────────
-Route::middleware(['web.role:admin-resolusi,super-admin-pemilik'])->prefix('admin/resolusi')->group(function () {
+// ── Admin Resolusi (Server-Side Protected + Device Lock) ────────────────────
+Route::middleware(['admin.device', 'web.role:admin-resolusi,super-admin-pemilik'])->prefix('admin/resolusi')->group(function () {
     Route::get('/dashboard',       fn() => view('admin.resolusi.dashboard'));
     Route::get('/evaluasi-rating', fn() => view('admin.resolusi.evaluasi_rating'));
     Route::get('/history',         fn() => view('admin.resolusi.history'));

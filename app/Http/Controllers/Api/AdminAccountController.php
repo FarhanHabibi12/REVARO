@@ -395,6 +395,17 @@ class AdminAccountController extends Controller
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
+        $adminRoles = Role::whereIn('nama', [
+            'Super Admin (Pemilik Sistem)',
+            'Super Admin (Monitoring Kinerja)',
+            'Admin Resolusi',
+            'Admin Verifikator'
+        ])->pluck('id')->toArray();
+
+        if (!in_array($user->role_id, $adminRoles)) {
+            return response()->json(['message' => 'Hanya staf administrator yang berhak melakukan konfigurasi awal akun.'], 403);
+        }
+
         // Support backward compatibility jika dikirim dengan field 'password'
         if ($request->filled('password') && !$request->filled('new_password')) {
             $request->merge(['new_password' => $request->password]);

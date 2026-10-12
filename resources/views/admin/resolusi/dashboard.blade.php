@@ -191,6 +191,12 @@ async function loadDisputes() {
 
         const myId = (typeof currentUser !== 'undefined' && currentUser) ? currentUser.id : null;
 
+function esc(str) {
+    return String(str || '').replace(/[&<>"']/g, m => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[m]);
+}
+
         container.innerHTML = allDisputes.map(d => {
             const deadline = new Date(d.sla_deadline);
             const now = new Date();
@@ -212,14 +218,15 @@ async function loadDisputes() {
                 ? '<span class="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[8px] font-bold">Eskalasi Rating</span>' 
                 : '<span class="px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20 text-[8px] font-bold">Garansi / Sengketa</span>';
 
-            const cleanReason = (d.alasan || '—').replace(/"/g, '&quot;');
-            const pelaporName = (d.order?.pelanggan?.nama || 'Pelanggan').replace(/"/g, '&quot;');
+            const cleanReason = esc(d.alasan || '—');
+            const pelaporName = esc(d.order?.pelanggan?.nama || 'Pelanggan');
+            const kodeOrder = esc(d.order?.kode_order || '—');
 
             return `
                 <div onclick="selectDisputeById(${d.id})" class="p-4 rounded-xl border border-slate-800 bg-slate-900/30 hover:border-brandOrange transition cursor-pointer flex justify-between items-start gap-3">
                     <div class="space-y-1.5 min-w-0">
                         <div class="flex items-center gap-1.5 flex-wrap">
-                            <p class="font-extrabold text-xs text-white">Order #${d.order?.kode_order || '—'}</p>
+                            <p class="font-extrabold text-xs text-white">Order #${kodeOrder}</p>
                             ${assignBadge}
                             ${typeBadge}
                         </div>
@@ -230,7 +237,6 @@ async function loadDisputes() {
                         <span class="px-2 py-0.5 rounded text-[8px] font-black tracking-wide ${isCritical ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'}">
                             ${hoursLeft > 0 ? hoursLeft + ' Jam' : 'EXPIRED'}
                         </span>
-                    </div>
                 </div>
             `;
         }).join('');
@@ -301,14 +307,15 @@ async function loadOrderChats(orderId) {
 
         container.innerHTML = messages.map(m => {
             const isSystem = !m.dari_user_id;
-            const name = m.dari_user?.nama || 'Sistem';
+            const name = esc(m.dari_user?.nama || 'Sistem');
+            const cleanPesan = esc(m.pesan || '');
             return `
                 <div class="p-2 rounded-lg border border-slate-800 bg-slate-900/20 space-y-1">
                     <div class="flex justify-between items-center text-[9px] text-slate-500">
                         <strong class="text-slate-300">${name}</strong>
                         <span>${new Date(m.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
-                    <p class="text-slate-400 text-[11px] leading-relaxed">${m.pesan}</p>
+                    <p class="text-slate-400 text-[11px] leading-relaxed whitespace-pre-wrap">${cleanPesan}</p>
                 </div>
             `;
         }).join('');

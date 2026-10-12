@@ -161,7 +161,7 @@ class WebRoleMiddleware
 
         $response = $next($request);
         if (!empty($tokenString) && !$request->hasCookie('auth_token')) {
-            return $response->withCookie(cookie('auth_token', $tokenString, 120, '/', null, false, false));
+            return $response->withCookie(cookie('auth_token', $tokenString, 120, '/', null, false, true));
         }
         return $response;
     }

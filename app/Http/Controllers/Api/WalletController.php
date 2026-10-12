@@ -276,9 +276,21 @@ class WalletController extends Controller
             ], 200);
         }
 
-        // Cek apakah transaksi sudah pernah sukses sebelumnya (idempotency)
-        $alreadySuccess = WalletTransaction::where('user_id', $user->id)
-            ->where('tipe', 'IN')
+        // Keamanan Anti-IDOR: Pastikan order_id ini benar-benar milik user yang sedang login!
+        $isOwnedByUser = WalletTransaction::where('user_id', $user->id)
+            ->where('deskripsi', 'like', "%{$orderId}%")
+            ->exists() || str_starts_with($orderId, 'TOPUP-' . $user->id . '-');
+
+        if (!$isOwnedByUser) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Transaksi tidak valid atau bukan milik akun Anda.',
+                'balance' => $user->getUnifiedSaldo()
+            ], 403);
+        }
+
+        // Cek apakah transaksi sudah pernah sukses sebelumnya (idempotency global)
+        $alreadySuccess = WalletTransaction::where('tipe', 'IN')
             ->where('deskripsi', 'like', "%{$orderId}%")
             ->exists();
 
