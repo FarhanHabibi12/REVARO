@@ -16,17 +16,16 @@
                 <input type="text" id="svcNama" class="input-field" placeholder="cth. Service AC">
             </div>
             <div>
-                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Kategori Perangkat</label>
-                <select id="svcKategori" class="input-field">
-                    <option value="">— Pilih —</option>
-                    <option value="AC">AC</option>
-                    <option value="Kulkas">Kulkas</option>
-                    <option value="Mesin Cuci">Mesin Cuci</option>
-                    <option value="TV">TV</option>
-                    <option value="Komputer">Komputer</option>
-                    <option value="Pompa Air">Pompa Air</option>
-                    <option value="Lainnya">Lainnya</option>
-                </select>
+                <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Kategori Perangkat / Layanan</label>
+                <input list="kategoriOptions" type="text" id="svcKategori" class="input-field" placeholder="Pilih atau ketik kategori baru...">
+                <datalist id="kategoriOptions">
+                    <option value="AC">
+                    <option value="Kulkas">
+                    <option value="Mesin Cuci">
+                    <option value="TV">
+                    <option value="Komputer">
+                    <option value="Pompa Air">
+                </datalist>
             </div>
             <div>
                 <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Harga Baseline (Rp)</label>
@@ -84,9 +83,19 @@ async function loadServices() {
         const r = await fetch('/api/admin/services', { headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' } });
         allServices = await r.json();
         renderSvc(allServices);
+        updateKategoriDatalist(allServices);
     } catch(e) {
         document.getElementById('svcTableBody').innerHTML = '<tr><td colspan="6" class="text-center text-red-400 py-8">Gagal memuat data</td></tr>';
     }
+}
+
+function updateKategoriDatalist(services) {
+    const datalist = document.getElementById('kategoriOptions');
+    if (!datalist) return;
+    const defaults = ['AC', 'Kulkas', 'Mesin Cuci', 'TV', 'Komputer', 'Pompa Air'];
+    const dbCats = (services || []).map(s => s.kategori).filter(Boolean);
+    const unique = [...new Set([...defaults, ...dbCats])];
+    datalist.innerHTML = unique.map(c => `<option value="${c}">`).join('');
 }
 
 function renderSvc(data) {

@@ -38,6 +38,7 @@ Route::post('/auth/resend-otp', [AuthController::class, 'resendOtp'])->middlewar
 Route::get('/mitra/documents/{type}/{id}', [AuthController::class, 'downloadDocument']);
 Route::get('/settings/maps', [SystemSettingController::class, 'getMapsConfig']);
 Route::get('/jasa-servis', [JasaServisController::class, 'index']);
+Route::get('/jasa-servis/categories', [JasaServisController::class, 'categories']);
 Route::post('/payment/midtrans/webhook', [\App\Http\Controllers\Api\WalletController::class, 'handleMidtransNotification']);
 
 // --- Protected Routes ---

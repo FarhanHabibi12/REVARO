@@ -2860,11 +2860,13 @@
 
                 if (user.teknisi) {
                     document.getElementById('revInputPhone').value = user.teknisi.hp || user.hp || '';
-                    if (user.teknisi.kategori) document.getElementById('revInputTechCategory').value = user.teknisi.kategori;
+                    populatePelangganRevTechCategories(user.teknisi.kategori || '');
                     if (user.teknisi.pendaftaran_verifikasi && user.teknisi.pendaftaran_verifikasi.length) {
                         const lastVerif = user.teknisi.pendaftaran_verifikasi[user.teknisi.pendaftaran_verifikasi.length - 1];
                         if (lastVerif.catatan) catatan = lastVerif.catatan;
                     }
+                } else {
+                    populatePelangganRevTechCategories('');
                 }
             } else {
                 document.getElementById('revModalTitle').textContent = 'Revisi Berkas Toko Sparepart';
@@ -2891,6 +2893,57 @@
 
         function closeRevisionModal() {
             document.getElementById('partnerRevisionModal').classList.add('hidden');
+        }
+
+        async function populatePelangganRevTechCategories(selectedCat = '') {
+            const sel = document.getElementById('revInputTechCategory');
+            if (!sel) return;
+
+            let categories = [];
+            if (globalMasterServices && globalMasterServices.length > 0) {
+                categories = [...new Set(globalMasterServices.map(s => (s.kategori || s.nama_jasa || '').trim()).filter(Boolean))];
+            } else {
+                try {
+                    const res = await fetch('/api/jasa-servis/categories');
+                    if (res.ok) {
+                        const data = await res.json();
+                        categories = data.categories || [];
+                        if (!categories.length && Array.isArray(data.services)) {
+                            categories = [...new Set(data.services.map(s => (s.kategori || s.nama_jasa || '').trim()).filter(Boolean))];
+                        }
+                    }
+                } catch(e) {}
+            }
+
+            if (!categories.length) {
+                categories = ['Air Conditioner (AC)', 'Lemari Es / Kulkas', 'Mesin Cuci', 'Pompa Air', 'TV & Perangkat Audio'];
+            }
+
+            const selTrim = (selectedCat || '').trim();
+            if (selTrim && !categories.some(c => c.toLowerCase() === selTrim.toLowerCase())) {
+                categories.unshift(selTrim);
+            }
+
+            sel.innerHTML = categories.map(cat => {
+                const isSel = selTrim && (
+                    cat.toLowerCase() === selTrim.toLowerCase() ||
+                    (selTrim.toLowerCase().includes('ac') && cat.toLowerCase().includes('ac')) ||
+                    (selTrim.toLowerCase().includes('kulkas') && cat.toLowerCase().includes('kulkas')) ||
+                    (selTrim.toLowerCase().includes('cuci') && cat.toLowerCase().includes('cuci')) ||
+                    (selTrim.toLowerCase().includes('pompa') && cat.toLowerCase().includes('pompa')) ||
+                    (selTrim.toLowerCase().includes('tv') && cat.toLowerCase().includes('tv'))
+                );
+                return `<option value="${cat}" ${isSel ? 'selected' : ''}>${cat}</option>`;
+            }).join('');
+
+            if (selTrim) {
+                for (let i = 0; i < sel.options.length; i++) {
+                    if (sel.options[i].value.toLowerCase() === selTrim.toLowerCase()) {
+                        sel.selectedIndex = i;
+                        break;
+                    }
+                }
+            }
         }
 
         async function submitPartnerRevision(e) {

@@ -812,12 +812,8 @@
                                         </div>
                                         <div>
                                             <label class="block text-slate-600 font-semibold mb-1">Kategori Spesialisasi</label>
-                                            <select required id="resubCategory" class="w-full bg-white border border-slate-200 rounded-lg p-2.5 outline-none">
-                                                <option value="AC Pilihan">Air Conditioner (AC)</option>
-                                                <option value="Mesin Cuci">Mesin Cuci</option>
-                                                <option value="Kulkas">Lemari Es / Kulkas</option>
-                                                <option value="Pompa Air">Pompa Air</option>
-                                                <option value="TV & Audio">TV & Perangkat Audio</option>
+                                            <select required id="resubCategory" class="w-full bg-white border border-slate-200 rounded-lg p-2.5 outline-none font-semibold text-slate-800">
+                                                <option value="">Memuat kategori dari database...</option>
                                             </select>
                                         </div>
                                     </div>
@@ -835,8 +831,9 @@
                                 </form>
                             </div>
                         `;
-                        // Fetch latest verification record notes
+                        // Fetch latest verification record notes & load dynamic categories from DB
                         fetchRevisionNotes(profile.id);
+                        loadCategoriesForResubmit(specDisplay);
                     } else {
                         banner.classList.add('hidden');
                         mainGrid.classList.remove('hidden');
@@ -859,6 +856,64 @@
                     }
                 }
             } catch (e) {}
+        }
+
+        async function loadCategoriesForResubmit(selectedCategory = '') {
+            const select = document.getElementById('resubCategory');
+            if (!select) return;
+
+            try {
+                const res = await fetch('/api/jasa-servis/categories');
+                let categories = [];
+                if (res.ok) {
+                    const data = await res.json();
+                    categories = data.categories || [];
+                    if (!categories.length && Array.isArray(data.services)) {
+                        categories = [...new Set(data.services.map(s => (s.kategori || s.nama_jasa || '').trim()).filter(Boolean))];
+                    }
+                }
+
+                if (!categories.length) {
+                    categories = ['Air Conditioner (AC)', 'Lemari Es / Kulkas', 'Mesin Cuci', 'Pompa Air', 'TV & Perangkat Audio'];
+                }
+
+                const selCatTrim = (selectedCategory || '').trim();
+                const catMap = categories.map(c => c.trim());
+
+                if (selCatTrim && !catMap.some(c => c.toLowerCase() === selCatTrim.toLowerCase())) {
+                    catMap.unshift(selCatTrim);
+                }
+
+                select.innerHTML = catMap.map(cat => {
+                    const isMatch = selCatTrim && (
+                        cat.toLowerCase() === selCatTrim.toLowerCase() ||
+                        (selCatTrim.toLowerCase().includes('ac') && cat.toLowerCase().includes('ac')) ||
+                        (selCatTrim.toLowerCase().includes('kulkas') && cat.toLowerCase().includes('kulkas')) ||
+                        (selCatTrim.toLowerCase().includes('cuci') && cat.toLowerCase().includes('cuci')) ||
+                        (selCatTrim.toLowerCase().includes('pompa') && cat.toLowerCase().includes('pompa')) ||
+                        (selCatTrim.toLowerCase().includes('tv') && cat.toLowerCase().includes('tv'))
+                    );
+                    return `<option value="${cat}" ${isMatch ? 'selected' : ''}>${cat}</option>`;
+                }).join('');
+
+                if (selCatTrim) {
+                    for (let i = 0; i < select.options.length; i++) {
+                        if (select.options[i].value.toLowerCase() === selCatTrim.toLowerCase()) {
+                            select.selectedIndex = i;
+                            break;
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('Gagal mengambil kategori untuk form revisi:', err);
+                select.innerHTML = `
+                    <option value="Air Conditioner (AC)">Air Conditioner (AC)</option>
+                    <option value="Lemari Es / Kulkas">Lemari Es / Kulkas</option>
+                    <option value="Mesin Cuci">Mesin Cuci</option>
+                    <option value="Pompa Air">Pompa Air</option>
+                    <option value="TV & Perangkat Audio">TV & Perangkat Audio</option>
+                `;
+            }
         }
 
         async function handleResubmit(e) {

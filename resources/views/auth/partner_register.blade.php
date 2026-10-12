@@ -333,7 +333,33 @@
                     }
                 }
             }
+
+            // Dynamically load specialization categories from database (Super Admin configuration)
+            loadSpecializationCategoriesFromDb();
         });
+
+        async function loadSpecializationCategoriesFromDb() {
+            const sel = document.getElementById('regCategory');
+            if (!sel) return;
+
+            try {
+                const res = await fetch('/api/jasa-servis/categories');
+                let categories = [];
+                if (res.ok) {
+                    const data = await res.json();
+                    categories = data.categories || [];
+                    if (!categories.length && Array.isArray(data.services)) {
+                        categories = [...new Set(data.services.map(s => (s.kategori || s.nama_jasa || '').trim()).filter(Boolean))];
+                    }
+                }
+
+                if (categories.length > 0) {
+                    sel.innerHTML = categories.map(cat => `<option value="${cat}">${cat}</option>`).join('');
+                }
+            } catch (err) {
+                console.warn('Gagal memuat kategori dari server, menggunakan opsi fallback default:', err);
+            }
+        }
 
         function switchTab(role) {
             document.getElementById('roleSlugInput').value = role;

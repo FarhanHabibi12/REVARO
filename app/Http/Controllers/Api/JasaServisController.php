@@ -19,6 +19,25 @@ class JasaServisController extends Controller
     }
 
     /**
+     * Get distinct active service categories and active services.
+     */
+    public function categories()
+    {
+        $services = JasaServis::where('is_active', true)->orderBy('nama_jasa', 'asc')->get();
+
+        $categories = $services->pluck('kategori')
+            ->filter()
+            ->map(fn($item) => trim($item))
+            ->unique()
+            ->values();
+
+        return response()->json([
+            'categories' => $categories,
+            'services' => $services,
+        ]);
+    }
+
+    /**
      * Store a newly created resource in storage.
      */
     public function store(Request $request)
