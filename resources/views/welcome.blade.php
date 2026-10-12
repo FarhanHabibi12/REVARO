@@ -1126,53 +1126,52 @@
                 });
             @endif
 
-            const token = localStorage.getItem('token');
-            const userRaw = localStorage.getItem('user');
+            const token = localStorage.getItem('token') || localStorage.getItem('admin_token');
+            const userRaw = localStorage.getItem('user') || localStorage.getItem('admin_user');
 
             if (token && userRaw) {
-                try {
-                    const user = JSON.parse(userRaw);
-                    const roleName = user.role ? (user.role.nama || user.role) : '';
-                    const lowerRole = (typeof roleName === 'string' ? roleName : (roleName.nama || '')).toLowerCase();
+                const user = JSON.parse(userRaw);
+                const roleName = user.role ? (user.role.nama || user.role) : '';
+                const dashUrl = getRoleDashboardUrl(roleName, user);
+                
+                document.getElementById('authNavButtons').classList.add('hidden');
+                document.getElementById('userProfileSection').classList.remove('hidden');
+                document.getElementById('navUserName').innerText = user.nama;
+                
+                // Hide Gabung Mitra link if already a partner or admin
+                const lowerRole = (typeof roleName === 'string' ? roleName : (roleName.nama || '')).toLowerCase();
+                if (lowerRole.includes('teknisi') || lowerRole.includes('toko') || lowerRole.includes('admin') || lowerRole.includes('pemilik')) {
+                    const navMitra = document.getElementById('navGabungMitra');
+                    if (navMitra) navMitra.classList.add('hidden');
+                    const mobileNavMitra = document.getElementById('mobileNavGabungMitra');
+                    if (mobileNavMitra) mobileNavMitra.classList.add('hidden');
+                }
 
-                    // Khusus akun admin/pemilik, jangan tampilkan navbar pelanggan di landing page
-                    if (!lowerRole.includes('admin') && !lowerRole.includes('pemilik') && !lowerRole.includes('verifikator') && !lowerRole.includes('resolusi')) {
-                        const dashUrl = getRoleDashboardUrl(roleName, user);
-                        
-                        document.getElementById('authNavButtons').classList.add('hidden');
-                        document.getElementById('userProfileSection').classList.remove('hidden');
-                        document.getElementById('navUserName').innerText = user.nama;
-                        
-                        // Hide Gabung Mitra link if already a partner
-                        if (lowerRole.includes('teknisi') || lowerRole.includes('toko')) {
-                            const navMitra = document.getElementById('navGabungMitra');
-                            if (navMitra) navMitra.classList.add('hidden');
-                            const mobileNavMitra = document.getElementById('mobileNavGabungMitra');
-                            if (mobileNavMitra) mobileNavMitra.classList.add('hidden');
-                        }
-
-                        // Dashboard button redirect link based on role
-                        const dashBtn = document.getElementById('dashboardBtn');
-                        if (dashBtn) {
-                            if (dashUrl) {
-                                dashBtn.addEventListener('click', () => {
-                                    window.location.href = dashUrl;
-                                });
-                            } else {
-                                dashBtn.innerHTML = '⏳ Menunggu ACC Admin';
-                                dashBtn.className = 'bg-amber-100 text-amber-900 border-2 border-amber-500 text-xs px-3 py-1.5 rounded-lg font-bold shadow-sm';
-                                dashBtn.addEventListener('click', () => {
-                                    Swal.fire({
-                                        icon: 'info',
-                                        title: 'Pendaftaran Menunggu ACC ⏳',
-                                        text: 'Akun Anda sedang dalam antrean verifikasi Admin Verifikator. Anda belum dapat masuk ke dasbor sebelum akun di-ACC oleh Admin.',
-                                        confirmButtonColor: '#0B4A8F'
-                                    });
-                                });
-                            }
-                        }
+                // Dashboard button redirect link based on role
+                const dashBtn = document.getElementById('dashboardBtn');
+                if (dashBtn) {
+                    if (dashUrl) {
+                        dashBtn.addEventListener('click', () => {
+                            window.location.href = dashUrl;
+                        });
+                    } else {
+                        dashBtn.innerHTML = '⏳ Menunggu ACC Admin';
+                        dashBtn.className = 'bg-amber-100 text-amber-900 border-2 border-amber-500 text-xs px-3 py-1.5 rounded-lg font-bold shadow-sm';
+                        dashBtn.addEventListener('click', () => {
+                            Swal.fire({
+                                icon: 'info',
+                                title: 'Pendaftaran Menunggu ACC ⏳',
+                                text: 'Akun Anda sedang dalam antrean verifikasi Admin Verifikator. Anda belum dapat masuk ke dasbor sebelum akun di-ACC oleh Admin.',
+                                confirmButtonColor: '#0B4A8F'
+                            });
+                        });
                     }
-                } catch(e) {}
+                }
+
+                // Auto redirect immediately upon visiting home if logged in and not explicitly requesting home
+                if (dashUrl && !urlParams.has('stay') && !urlParams.has('auth')) {
+                    window.location.href = dashUrl;
+                }
             }
         });
 
@@ -1673,7 +1672,6 @@
             } catch(e) {}
             localStorage.clear();
             sessionStorage.clear();
-            document.cookie = "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Lax";
             window.location.reload();
         }
     </script>

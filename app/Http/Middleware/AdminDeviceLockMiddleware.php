@@ -10,7 +10,7 @@ class AdminDeviceLockMiddleware
 {
     /**
      * Kunci Rahasia Perangkat (Device Secret Token).
-     * Mencegah siapa pun di jaringan WiFi/hotspot yang sama membuka portal admin
+     * Mencegah siapa pun di jaringan WiFi/hotspot yang sama membuka portal Super Admin
      * kecuali browser laptop pemilik yang telah di-otorisasi dengan device_key.
      */
     public function handle(Request $request, Closure $next): Response
@@ -21,12 +21,10 @@ class AdminDeviceLockMiddleware
         // 1. Cek apakah ada aktivasi perangkat baru via URL (?device_key=...)
         $providedKey = $request->query('device_key');
         if ($providedKey && hash_equals((string) $configuredKey, (string) $providedKey)) {
-            // Bersihkan query param dari URL agar kunci tidak tersimpan di riwayat browser
             $cleanUrl = rtrim($request->fullUrlWithQuery(['device_key' => null]), '?');
 
-            // Set cookie rahasia 1 tahun (525600 menit), HttpOnly, SameSite=Lax
             return redirect($cleanUrl)->withCookie(
-                cookie('revaro_device_key', $expectedHash, 525600, '/', null, false, true, false, 'Lax')
+                cookie('revaro_device_key', $expectedHash, 525600, '/', null, false, false, false, 'Lax')
             );
         }
 
@@ -36,14 +34,7 @@ class AdminDeviceLockMiddleware
             return $next($request);
         }
 
-        // 3. Jika perangkat TIDAK dikenal:
-        if (auth()->check()) {
-            \Illuminate\Support\Facades\Auth::guard('web')->logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-            return redirect('/login-admin?unauthorized_device=1')
-                ->withCookie(cookie()->forget('auth_token'));
-        }
+        // 3. Jika perangkat TIDAK dikenal: Munculkan 404 Not Found
         abort(404, 'Halaman yang Anda tuju tidak ditemukan.');
     }
 }

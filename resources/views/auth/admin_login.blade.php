@@ -83,19 +83,7 @@
                         </span>
                     </button>
                 </div>
-            </div>
-
-            <div>
-                <label class="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1.5 flex justify-between items-center">
-                    <span>Kunci Perangkat Pemilik</span>
-                    <span class="text-[10px] text-slate-400 font-normal lowercase">(wajib jika super admin & browser baru)</span>
-                </label>
-                <input type="password" id="adminDeviceKey"
-                       class="w-full text-xs bg-slate-900/90 border border-slate-700/80 rounded-xl px-4 py-3.5 outline-none text-orange-400 focus:border-brandOrange focus:ring-2 focus:ring-brandOrange/20 transition placeholder:text-slate-500 font-mono"
-                       placeholder="Masukkan jika pertama kali login Super Admin">
-            </div>
-
-            <div class="bg-slate-900/60 p-3.5 rounded-2xl border border-slate-800 text-[11px] text-slate-400 flex items-start space-x-2.5">
+              <div class="bg-slate-900/60 p-3.5 rounded-2xl border border-slate-800 text-[11px] text-slate-400 flex items-start space-x-2.5">
                 <svg class="w-4 h-4 text-orange-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
                 <p class="leading-relaxed">
                     Halaman ini khusus pengelola sistem. Sesi dilindungi enkripsi JWT dan jejak audit otomatis.
@@ -184,23 +172,13 @@
         // Cek jika sudah login sebagai admin, pastikan valid dan jangan loop
         window.addEventListener('DOMContentLoaded', async () => {
             const urlParams = new URLSearchParams(window.location.search);
-            // Jika diarahkan karena sesi web tidak ada / kedaluwarsa / perangkat ditolak, bersihkan storage segera!
-            if (urlParams.get('unauthorized_device') || urlParams.get('session_required') || urlParams.get('expired') || urlParams.get('logged_out')) {
+            // Jika diarahkan karena sesi web tidak ada / kedaluwarsa, bersihkan storage basi segera!
+            if (urlParams.get('session_required') || urlParams.get('expired') || urlParams.get('logged_out')) {
                 localStorage.removeItem('admin_token');
                 localStorage.removeItem('admin_user');
                 localStorage.removeItem('token');
                 localStorage.removeItem('user');
                 document.cookie = "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Lax";
-                if (urlParams.get('unauthorized_device')) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Akses Ditolak',
-                        text: 'Perangkat ini belum diotorisasi untuk mengakses portal Super Admin. Masukkan Kunci Perangkat Pemilik saat login.',
-                        background: '#0F172A',
-                        color: '#E2E8F0',
-                        confirmButtonColor: '#FF6B00'
-                    });
-                }
                 return;
             }
 
@@ -358,15 +336,11 @@
             const btnText = document.getElementById('adminOtpBtnText');
             btnText.innerText = 'Memverifikasi...';
 
-            const device_key = document.getElementById('adminDeviceKey') ? document.getElementById('adminDeviceKey').value.trim() : '';
-            const otpPayload = { email: currentAdminEmail, otp_code };
-            if (device_key) otpPayload.device_key = device_key;
-
             try {
                 const res = await fetch('/api/auth/verify-otp', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                    body: JSON.stringify(otpPayload)
+                    body: JSON.stringify({ email: currentAdminEmail, otp_code })
                 });
 
                 const result = await res.json();
@@ -441,7 +415,6 @@
 
             const email = document.getElementById('adminEmail').value.trim();
             const password = document.getElementById('adminPassword').value;
-            const device_key = document.getElementById('adminDeviceKey') ? document.getElementById('adminDeviceKey').value.trim() : '';
 
             const btnText = document.getElementById('btnText');
             const btnSpinner = document.getElementById('btnSpinner');
@@ -452,7 +425,6 @@
             submitBtn.disabled = true;
 
             const payload = { email, password };
-            if (device_key) payload.device_key = device_key;
 
             try {
                 const response = await fetch('/api/auth/login', {

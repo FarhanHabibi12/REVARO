@@ -295,24 +295,6 @@ class AuthController extends Controller
             return response()->json(['message' => 'Akun Anda dinonaktifkan.'], 403);
         }
 
-        // Khusus Super Admin (Pemilik Sistem): Wajib otorisasi perangkat laptop pemilik
-        if ($user->isSuperAdminPemilik()) {
-            $configuredKey = env('ADMIN_DEVICE_KEY', 'revaro_device_senn_1926');
-            $expectedHash = hash_hmac('sha256', 'revaro_verified_admin_device_' . $configuredKey, config('app.key') ?: 'revaro_salt_secret');
-            $cookieToken = $request->cookie('revaro_device_key');
-            $inputKey = $request->input('device_key') ?: $request->header('X-Device-Key');
-
-            $isDeviceAuthorized = ($cookieToken && (hash_equals($expectedHash, $cookieToken) || hash_equals((string) $configuredKey, $cookieToken)))
-                || ($inputKey && hash_equals((string) $configuredKey, (string) $inputKey));
-
-            if (!$isDeviceAuthorized) {
-                return response()->json([
-                    'message' => 'Akses Super Admin Ditolak: Perangkat ini belum diotorisasi sebagai laptop resmi pemilik sistem. Masukkan Kunci Perangkat Pemilik.',
-                    'requires_device_key' => true,
-                ], 403);
-            }
-        }
-
         $profile = null;
 
         // Check profile freeze or reject state before proceeding
@@ -406,7 +388,7 @@ class AuthController extends Controller
         $token = $user->createToken('auth_token')->plainTextToken;
         \Illuminate\Support\Facades\Auth::guard('web')->login($user);
 
-        $loginResponse = response()->json([
+        return response()->json([
             'message' => 'Login berhasil.',
             'user' => $user,
             'role' => $partnerStatus ? 'Pelanggan' : ($user->role ? $user->role->nama : 'Pelanggan'),
@@ -416,16 +398,7 @@ class AuthController extends Controller
             'redirect_url' => $partnerStatus ? '/pelanggan/dashboard' : null,
             'access_token' => $token,
             'token_type' => 'Bearer',
-        ])->withCookie(cookie('auth_token', $token, 120, '/', null, false, true));
-
-        // Jika Super Admin berhasil login dengan kunci yang sah, pasang cookie perangkat 1 tahun
-        if ($user->isSuperAdminPemilik()) {
-            $configuredKey = env('ADMIN_DEVICE_KEY', 'revaro_device_senn_1926');
-            $expectedHash = hash_hmac('sha256', 'revaro_verified_admin_device_' . $configuredKey, config('app.key') ?: 'revaro_salt_secret');
-            $loginResponse->withCookie(cookie('revaro_device_key', $expectedHash, 525600, '/', null, false, true, false, 'Lax'));
-        }
-
-        return $loginResponse;
+        ])->withCookie(cookie('auth_token', $token, 120, '/', null, false, false));
     }
 
     /**
@@ -890,28 +863,10 @@ class AuthController extends Controller
                 ->orWhere('email', $request->email)
                 ->delete();
 
-            // Khusus Super Admin (Pemilik Sistem): Wajib otorisasi perangkat laptop pemilik
-            if ($user->isSuperAdminPemilik()) {
-                $configuredKey = env('ADMIN_DEVICE_KEY', 'revaro_device_senn_1926');
-                $expectedHash = hash_hmac('sha256', 'revaro_verified_admin_device_' . $configuredKey, config('app.key') ?: 'revaro_salt_secret');
-                $cookieToken = $request->cookie('revaro_device_key');
-                $inputKey = $request->input('device_key') ?: $request->header('X-Device-Key');
-
-                $isDeviceAuthorized = ($cookieToken && (hash_equals($expectedHash, $cookieToken) || hash_equals((string) $configuredKey, $cookieToken)))
-                    || ($inputKey && hash_equals((string) $configuredKey, (string) $inputKey));
-
-                if (!$isDeviceAuthorized) {
-                    return response()->json([
-                        'message' => 'Akses Super Admin Ditolak: Perangkat ini belum diotorisasi sebagai laptop resmi pemilik sistem. Masukkan Kunci Perangkat Pemilik.',
-                        'requires_device_key' => true,
-                    ], 403);
-                }
-            }
-
             $token = $user->createToken('auth_token')->plainTextToken;
             \Illuminate\Support\Facades\Auth::guard('web')->login($user);
 
-            $otpResponse = response()->json([
+            return response()->json([
                 'message' => 'Verifikasi email berhasil.',
                 'user' => $user,
                 'role' => $partnerStatus ? 'Pelanggan' : ($user->role ? $user->role->nama : 'Pelanggan'),
@@ -921,16 +876,7 @@ class AuthController extends Controller
                 'redirect_url' => $partnerStatus ? '/pelanggan/dashboard' : null,
                 'access_token' => $token,
                 'token_type' => 'Bearer',
-            ], 200)->withCookie(cookie('auth_token', $token, 120, '/', null, false, true));
-
-            // Jika Super Admin berhasil login dengan kunci yang sah, pasang cookie perangkat 1 tahun
-            if ($user->isSuperAdminPemilik()) {
-                $configuredKey = env('ADMIN_DEVICE_KEY', 'revaro_device_senn_1926');
-                $expectedHash = hash_hmac('sha256', 'revaro_verified_admin_device_' . $configuredKey, config('app.key') ?: 'revaro_salt_secret');
-                $otpResponse->withCookie(cookie('revaro_device_key', $expectedHash, 525600, '/', null, false, true, false, 'Lax'));
-            }
-
-            return $otpResponse;
+            ], 200)->withCookie(cookie('auth_token', $token, 120, '/', null, false, false));
         }
 
         return response()->json(['message' => 'User tidak ditemukan.'], 404);
