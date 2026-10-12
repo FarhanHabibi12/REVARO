@@ -20,6 +20,7 @@ class Order extends Model
         'kode_order',
         'status',
         'keluhan',
+        'kategori',
         'alamat_servis',
         'tanggal_servis',
         'latitude',
@@ -37,11 +38,26 @@ class Order extends Model
         'pemesan_alamat',
     ];
 
+    protected $appends = [
+        'kategori',
+    ];
+
     protected $casts = [
         'tanggal_servis' => 'datetime',
         'latitude' => 'decimal:8',
         'longitude' => 'decimal:8',
     ];
+
+    /**
+     * Get order service category with fallback to SystemSetting if column is not yet populated.
+     */
+    public function getKategoriAttribute($val): ?string
+    {
+        if (!empty($val)) {
+            return $val;
+        }
+        return \App\Models\SystemSetting::get('order_kategori_' . $this->id);
+    }
 
     /**
      * Get the customer (pelanggan) who made the order.

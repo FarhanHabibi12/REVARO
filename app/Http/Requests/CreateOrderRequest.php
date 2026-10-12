@@ -28,6 +28,8 @@ class CreateOrderRequest extends FormRequest
     {
         return [
             'keluhan' => 'required|string|max:500',
+            'kategori' => 'nullable|string|max:100',
+            'kategori_servis' => 'nullable|string|max:100',
             'alamat_servis' => 'required|string',
             'is_for_other' => 'nullable|boolean',
             'recipient_name' => 'required_if:is_for_other,true,1|nullable|string|max:255',

@@ -752,50 +752,110 @@
                         tabTech.innerHTML = '👨‍🔧 Teknisi <span class="ml-1 text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-2 py-0.5 rounded-full border border-emerald-300">✅ Sudah Terdaftar</span>';
                         tabTech.onclick = (e) => {
                             e.preventDefault();
-                            Swal.fire({
-                                icon: 'info',
-                                title: 'Peran Teknisi Sudah Terdaftar',
-                                text: 'Akun Anda sudah memiliki izin Mitra Teknisi. Anda hanya dapat mendaftar sebagai Toko Sparepart.',
-                                confirmButtonColor: '#0B4A8F'
-                            });
+                        const techObj = user.teknisi || d.teknisi || {};
+                        const isPending = techObj.status === 'PENDING_REVIEW' || (techObj.status && techObj.status !== 'ACTIVE' && techObj.status !== 'APPROVED');
+                        const techSpec = techObj.kategori || 'Air Conditioner (AC)';
+
+                        tabTech.onclick = (e) => {
+                            e.preventDefault();
+                            if (isPending) {
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'Pendaftaran Teknisi Sedang Ditinjau',
+                                    html: `
+                                        <div class="text-left space-y-2 text-xs text-textDark">
+                                            <p>Halo <strong>${user.nama}</strong>, pendaftaran <strong>Mitra Teknisi</strong> Anda (Spesialisasi: <strong>${techSpec}</strong>) saat ini sedang dalam antrean pemeriksaan berkas oleh <strong>Admin Verifikator REVARO</strong>.</p>
+                                            <div class="p-3 bg-amber-50 border border-amber-300 rounded-xl text-amber-900 font-semibold">
+                                                ⏳ Status: <strong>Menunggu Persetujuan (ACC)</strong><br>
+                                                Konsol dasbor teknisi akan dibuka setelah disetujui admin.
+                                            </div>
+                                        </div>
+                                    `,
+                                    confirmButtonColor: '#0B4A8F',
+                                    confirmButtonText: 'Mengerti'
+                                });
+                            } else {
+                                Swal.fire({
+                                    icon: 'info',
+                                    title: 'Peran Teknisi Sudah Terdaftar',
+                                    text: `Akun Anda sudah memiliki izin Mitra Teknisi (${techSpec}). Anda hanya dapat mendaftar sebagai Toko Sparepart.`,
+                                    confirmButtonColor: '#0B4A8F'
+                                });
+                            }
                         };
 
                         // Auto switch to Toko
                         switchTab('toko-sparepart');
 
                         if (banner) {
-                            banner.className = "p-4 bg-blue-50 border-2 border-primary rounded-xl text-primary space-y-1 text-xs block";
-                            banner.innerHTML = `
-                                <div class="font-extrabold flex items-center gap-2">
-                                    <i class="fas fa-lock text-secondary"></i>
-                                    <span>Pendaftaran Teknisi Dikunci (Sudah Terdaftar)</span>
-                                </div>
-                                <p class="text-textDark">Halo <strong>${user.nama}</strong>! Akun Anda telah terdaftar sebagai <strong>Mitra Teknisi</strong>. Anda dapat melengkapi formulir di bawah ini untuk mendaftar peran ganda sebagai <strong>Toko Sparepart</strong>.</p>
-                            `;
+                            if (isPending) {
+                                banner.className = "p-4 bg-amber-50 border-2 border-amber-400 rounded-xl text-amber-950 space-y-1 text-xs block";
+                                banner.innerHTML = `
+                                    <div class="font-extrabold flex items-center gap-2 text-amber-800">
+                                        <i class="fas fa-clock text-amber-600"></i>
+                                        <span>Pendaftaran Teknisi Sedang Ditinjau Admin (Spesialisasi: ${techSpec})</span>
+                                    </div>
+                                    <p class="text-textDark">Halo <strong>${user.nama}</strong>! Berkas pendaftaran Mitra Teknisi Anda sedang diperiksa oleh <strong>Admin Verifikator</strong>. Anda dapat mengisi formulir di bawah ini untuk mendaftar peran ganda sebagai <strong>Toko Sparepart</strong>.</p>
+                                `;
+                            } else {
+                                banner.className = "p-4 bg-blue-50 border-2 border-primary rounded-xl text-primary space-y-1 text-xs block";
+                                banner.innerHTML = `
+                                    <div class="font-extrabold flex items-center gap-2">
+                                        <i class="fas fa-lock text-secondary"></i>
+                                        <span>Pendaftaran Teknisi Selesai (Spesialisasi: ${techSpec})</span>
+                                    </div>
+                                    <p class="text-textDark">Halo <strong>${user.nama}</strong>! Akun Anda telah aktif sebagai <strong>Mitra Teknisi</strong>. Anda dapat melengkapi formulir di bawah ini untuk mendaftar peran ganda sebagai <strong>Toko Sparepart</strong>.</p>
+                                `;
+                            }
                         }
 
-                        Swal.fire({
-                            icon: 'info',
-                            title: 'Akun Teknisi Sudah Terdaftar',
-                            html: `
-                                <div class="text-left space-y-2 text-xs text-textDark">
-                                    <p>Halo <strong>${user.nama}</strong>, Anda saat ini sudah memiliki profil <strong>Teknisi REVARO</strong>.</p>
-                                    <div class="p-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-900 font-semibold">
-                                        🔒 Pendaftaran Teknisi telah dikunci agar tidak ganda.<br>
-                                        🏪 Anda sekarang dapat mendaftar sebagai <strong>Toko Sparepart</strong> untuk peran ganda.
+                        if (isPending) {
+                            Swal.fire({
+                                icon: 'info',
+                                title: 'Pendaftaran Teknisi Sedang Ditinjau',
+                                html: `
+                                    <div class="text-left space-y-2 text-xs text-textDark">
+                                        <p>Halo <strong>${user.nama}</strong>, Anda telah mendaftar sebagai <strong>Mitra Teknisi REVARO</strong>.</p>
+                                        <div class="p-3 bg-amber-50 border border-amber-300 rounded-xl text-amber-900 font-semibold space-y-1">
+                                            <div>⏳ <strong>Status: Menunggu Persetujuan Admin Verifikator</strong></div>
+                                            <div>🛠️ <strong>Kategori Spesialisasi:</strong> <span class="text-primary">${techSpec}</span></div>
+                                            <div class="text-[11px] font-normal text-amber-800 pt-1">Berkas Anda sedang dalam antrean verifikasi. Dasbor dan penerimaan order servis baru dapat diakses setelah disetujui (ACC) oleh Admin.</div>
+                                        </div>
+                                        <div class="p-2.5 bg-blue-50 border border-blue-200 rounded-xl text-blue-900 text-[11px]">
+                                            🏪 Anda juga dapat mendaftar peran ganda sebagai <strong>Toko Sparepart</strong> melalui form di bawah.
+                                        </div>
                                     </div>
-                                </div>
-                            `,
-                            confirmButtonText: '🏪 Lanjut Daftar Toko Sparepart',
-                            confirmButtonColor: '#0B4A8F',
-                            showCancelButton: true,
-                            cancelButtonText: '👨‍🔧 Masuk ke Dasbor Teknisi',
-                            cancelButtonColor: '#64748B'
-                        }).then((result) => {
-                            if (result.dismiss === Swal.DismissReason.cancel) {
-                                window.location.href = '/teknisi/dashboard';
-                            }
-                        });
+                                `,
+                                confirmButtonText: '🏪 Lanjut Daftar Toko Sparepart',
+                                confirmButtonColor: '#0B4A8F',
+                                showCancelButton: true,
+                                cancelButtonText: 'Tutup',
+                                cancelButtonColor: '#64748B'
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'info',
+                                title: 'Akun Teknisi Sudah Terdaftar',
+                                html: `
+                                    <div class="text-left space-y-2 text-xs text-textDark">
+                                        <p>Halo <strong>${user.nama}</strong>, Anda saat ini sudah memiliki profil <strong>Teknisi REVARO</strong> (Spesialisasi: <strong>${techSpec}</strong>).</p>
+                                        <div class="p-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-900 font-semibold">
+                                            🔒 Pendaftaran Teknisi telah dikunci agar tidak ganda.<br>
+                                            🏪 Anda sekarang dapat mendaftar sebagai <strong>Toko Sparepart</strong> untuk peran ganda.
+                                        </div>
+                                    </div>
+                                `,
+                                confirmButtonText: '🏪 Lanjut Daftar Toko Sparepart',
+                                confirmButtonColor: '#0B4A8F',
+                                showCancelButton: true,
+                                cancelButtonText: '👨‍🔧 Masuk ke Dasbor Teknisi',
+                                cancelButtonColor: '#64748B'
+                            }).then((result) => {
+                                if (result.dismiss === Swal.DismissReason.cancel) {
+                                    window.location.href = '/teknisi/dashboard';
+                                }
+                            });
+                        }
 
                     } else if (hasTeknisi && hasToko) {
                         // User has BOTH roles -> LOCK BOTH tabs!

@@ -450,7 +450,18 @@ class AuthController extends Controller
             }
         }
 
-        $roleContext = $request->query('role');
+        $referer = strtolower($request->header('Referer', ''));
+        $roleContext = strtolower($request->query('role', ''));
+        if (!$roleContext) {
+            if (str_contains($referer, '/teknisi')) {
+                $roleContext = 'teknisi';
+            } elseif (str_contains($referer, '/toko')) {
+                $roleContext = 'toko';
+            } elseif (str_contains($referer, '/pelanggan')) {
+                $roleContext = 'pelanggan';
+            }
+        }
+
         $roleName = $user->role ? $user->role->nama : '';
 
         if ($roleContext === 'teknisi' && $user->teknisi) {

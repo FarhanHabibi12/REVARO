@@ -46,6 +46,15 @@ class DispatchOrderJob implements ShouldQueue
             ->where('tersedia', true)
             ->get();
 
+        // Filter teknisi sesuai spesialisasi order
+        $orderKategori = $order->kategori ?: \App\Models\SystemSetting::get('order_kategori_' . $order->id);
+        if ($orderKategori) {
+            $lifecycleCtrl = new \App\Http\Controllers\Api\OrderLifecycleController();
+            $techs = $techs->filter(function ($tech) use ($lifecycleCtrl, $orderKategori) {
+                return $lifecycleCtrl->matchSpecialization($tech->kategori, $orderKategori);
+            });
+        }
+
         $foundTechs = [];
 
         foreach ($techs as $tech) {

@@ -639,7 +639,7 @@
 
         async function fetchProfile() {
             try {
-                const res = await fetch('/api/auth/me', {
+                const res = await fetch('/api/auth/me?role=teknisi', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (res.status === 401) {
@@ -658,19 +658,80 @@
                     const d = await res.json();
                     const user = d.user;
                     const profile = d.profile;
-                    globalTechProfile = profile;
+                    const techProfile = d.teknisi || user.teknisi || profile;
+                    globalTechProfile = techProfile;
 
                     // Sync session details
                     localStorage.setItem('user', JSON.stringify(user));
-                    localStorage.setItem('profile', JSON.stringify(profile));
+                    localStorage.setItem('profile', JSON.stringify(techProfile));
 
                     // Check if user has technician access
                     const roleName = user.role ? user.role.nama : '';
-                    const isTeknisi = user.teknisi || roleName === 'Teknisi';
+                    const isTeknisi = !!techProfile || user.teknisi || roleName === 'Teknisi';
                     if (!isTeknisi) {
                         Swal.fire('Belum Terdaftar', 'Anda belum terdaftar sebagai Teknisi. Silakan daftar mitra terlebih dahulu.', 'info')
                             .then(() => { window.location.href = '/partner/register'; });
                         return;
+                    }
+
+                    // Check verification status: PENDING_REVIEW, NEEDS_REVISION, or REJECTED
+                    const banner = document.getElementById('verifStatusBanner');
+                    const mainGrid = document.getElementById('dashboardMainGrid');
+                    const techStatus = (techProfile && techProfile.status) ? techProfile.status : 'PENDING_REVIEW';
+
+                    if (techStatus === 'PENDING_REVIEW' || (techProfile && techStatus !== 'ACTIVE' && techStatus !== 'APPROVED')) {
+                        if (techStatus === 'REJECTED') {
+                            document.body.innerHTML = `
+                                <div class="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                                    <div class="max-w-md w-full bg-white border-2 border-red-500 rounded-3xl p-8 shadow-[6px_6px_0px_0px_#EF4444] text-center space-y-4">
+                                        <div class="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center text-3xl mx-auto border-2 border-red-500 shadow-sm">
+                                            ❌
+                                        </div>
+                                        <h3 class="text-lg font-black text-red-600">Pendaftaran Ditolak</h3>
+                                        <div class="p-3.5 bg-red-50 border border-red-300 rounded-2xl text-xs text-red-900 leading-relaxed font-semibold text-left">
+                                            Mohon maaf, pengajuan pendaftaran kemitraan Teknisi Anda tidak disetujui oleh tim Admin Verifikator REVARO.
+                                        </div>
+                                        <div class="pt-2">
+                                            <a href="/?stay=1" class="w-full inline-block revaro-btn py-3 px-6 rounded-xl text-xs font-black shadow-btn">
+                                                Kembali ke Beranda
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                            return;
+                        } else if (techStatus === 'NEEDS_REVISION') {
+                            banner.classList.remove('hidden');
+                            mainGrid.classList.add('hidden');
+                            // Fall through to display revision banner below
+                        } else {
+                            // PENDING_REVIEW
+                            const registeredCategory = (techProfile && techProfile.kategori) ? techProfile.kategori : 'Air Conditioner (AC)';
+                            document.body.innerHTML = `
+                                <div class="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                                    <div class="max-w-md w-full bg-white border-2 border-primary rounded-3xl p-8 shadow-[6px_6px_0px_0px_#0B4A8F] text-center space-y-4">
+                                        <div class="w-16 h-16 bg-amber-100 text-amber-800 rounded-2xl flex items-center justify-center text-3xl mx-auto border-2 border-amber-500 shadow-sm">
+                                            ⏳
+                                        </div>
+                                        <h3 class="text-lg font-black text-primary">Akses Dasbor Belum Disetujui</h3>
+                                        <div class="p-3.5 bg-amber-50 border border-amber-300 rounded-2xl text-xs text-amber-900 leading-relaxed font-semibold text-left">
+                                            Akun kemitraan Teknisi Anda sedang dalam antrean pemeriksaan oleh <strong>Admin Verifikator REVARO</strong>.
+                                            <div class="mt-2 pt-2 border-t border-amber-200">
+                                                <strong>Kategori Spesialisasi:</strong> <span class="text-primary font-bold">${registeredCategory}</span>
+                                            </div>
+                                            <p class="mt-2">Sesuai ketentuan platform REVARO, berkas kemitraan Anda <u>harus disetujui (ACC) terlebih dahulu</u> oleh Admin Verifikator sebelum Anda dapat mengakses konsol dasbor teknisi dan menerima order pekerjaan.</p>
+                                        </div>
+                                        <p class="text-xs text-textLight">Harap menunggu konfirmasi verifikasi dari tim admin kami.</p>
+                                        <div class="pt-2">
+                                            <a href="/?stay=1" class="w-full inline-block revaro-btn py-3 px-6 rounded-xl text-xs font-black shadow-btn">
+                                                Kembali ke Beranda
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                            return;
+                        }
                     }
 
                     // Update shop slot in multi-role widget if user is also a shop
@@ -686,7 +747,7 @@
                         }
                     }
 
-                    const ratingVal = profile ? parseFloat(profile.rating || 0) : 0;
+                    const ratingVal = techProfile ? parseFloat(techProfile.rating || 0) : 0;
                     let reputationBadge = '';
                     if (ratingVal >= 4.5) {
                         reputationBadge = '<span class="inline-block mt-1 text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">🌟 Reputasi Sangat Baik</span>';
@@ -706,6 +767,9 @@
                         if (alertScore) alertScore.innerText = ratingVal.toFixed(1);
                     }
 
+                    const specDisplay = (techProfile && techProfile.kategori) ? techProfile.kategori : (profile ? profile.kategori : 'Air Conditioner (AC)');
+                    const tierDisplay = (techProfile && techProfile.tier) ? techProfile.tier : (profile ? profile.tier : 'Bronze');
+
                     document.getElementById('navUserName').innerText = user.nama;
                     document.getElementById('techProfileCard').innerHTML = `
                         <div class="w-12 h-12 bg-orange-100 text-brandOrange rounded-full flex items-center justify-center mx-auto text-lg font-black">
@@ -713,45 +777,20 @@
                         </div>
                         <div>
                             <h4 class="text-sm font-bold text-slate-800">${user.nama}</h4>
-                            <p class="text-[10px] text-brandOrange font-bold mt-0.5">Spesialisasi: ${profile ? profile.kategori : 'Teknisi'}</p>
-                            <p class="text-[10px] text-slate-500 mt-0.5 font-bold">Tier: <span class="text-primary">${profile ? profile.tier : 'Bronze'}</span> | Rating: ⭐️ <span class="${ratingVal > 0 && ratingVal < 3.0 ? 'text-red-600 font-black' : 'text-amber-500'}">${ratingVal.toFixed(1)}</span> / 5.0</p>
+                            <p class="text-[10px] text-brandOrange font-bold mt-0.5">Spesialisasi: ${specDisplay}</p>
+                            <p class="text-[10px] text-slate-500 mt-0.5 font-bold">Tier: <span class="text-primary">${tierDisplay}</span> | Rating: ⭐️ <span class="${ratingVal > 0 && ratingVal < 3.0 ? 'text-red-600 font-black' : 'text-amber-500'}">${ratingVal.toFixed(1)}</span> / 5.0</p>
                             <div>${reputationBadge}</div>
                         </div>
                     `;
 
-                    const unifiedSaldoNumber = d.unified_saldo !== undefined ? d.unified_saldo : (d.saldo !== undefined ? d.saldo : (user.teknisi ? user.teknisi.saldo : (profile ? profile.saldo : 0)));
+                    const unifiedSaldoNumber = d.unified_saldo !== undefined ? d.unified_saldo : (d.saldo !== undefined ? d.saldo : (user.teknisi ? user.teknisi.saldo : (techProfile ? techProfile.saldo : 0)));
                     const formattedSaldo = 'Rp ' + parseFloat(unifiedSaldoNumber || 0).toLocaleString('id-ID');
                     const saldoValEl = document.getElementById('techSaldoValue');
                     if (saldoValEl) saldoValEl.innerText = formattedSaldo;
                     const saldoSnapEl = document.getElementById('techSaldoSnapshot');
                     if (saldoSnapEl) saldoSnapEl.innerText = formattedSaldo;
 
-                    // Check status PENDING_REVIEW / NEEDS_REVISION
-                    const banner = document.getElementById('verifStatusBanner');
-                    const mainGrid = document.getElementById('dashboardMainGrid');
-
-                    if (profile && profile.status === 'PENDING_REVIEW') {
-                        document.body.innerHTML = `
-                            <div class="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-                                <div class="max-w-md w-full bg-white border-2 border-primary rounded-3xl p-8 shadow-[6px_6px_0px_0px_#0B4A8F] text-center space-y-4">
-                                    <div class="w-16 h-16 bg-amber-100 text-amber-800 rounded-2xl flex items-center justify-center text-3xl mx-auto border-2 border-amber-500 shadow-sm">
-                                        ⏳
-                                    </div>
-                                    <h3 class="text-lg font-black text-primary">Akses Dasbor Belum Disetujui</h3>
-                                    <div class="p-3.5 bg-amber-50 border border-amber-300 rounded-2xl text-xs text-amber-900 leading-relaxed font-semibold text-left">
-                                        Akun kemitraan Teknisi Anda sedang dalam antrean pemeriksaan oleh <strong>Admin Verifikator REVARO</strong>. Sesuai ketentuan sistem, akun Anda <u>harus di-ACC terlebih dahulu</u> sebelum dapat mengakses fitur dan konsol dasbor teknisi.
-                                    </div>
-                                    <p class="text-xs text-textLight">Harap menunggu konfirmasi verifikasi dari tim admin.</p>
-                                    <div class="pt-2">
-                                        <a href="/?stay=1" class="w-full inline-block revaro-btn py-3 px-6 rounded-xl text-xs font-black shadow-btn">
-                                            Kembali ke Beranda
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                        return;
-                    } else if (profile && profile.status === 'NEEDS_REVISION') {
+                    if (techProfile && techProfile.status === 'NEEDS_REVISION') {
                         // Retrieve latest verification notes
                         banner.classList.remove('hidden');
                         mainGrid.classList.add('hidden');
@@ -1253,6 +1292,9 @@
                                     <div class="flex items-center space-x-2 flex-wrap gap-y-1">
                                         <span class="bg-red-100 text-red-800 text-[10px] font-black uppercase px-2 py-0.5 rounded-full border border-red-200">SOS REQUEST</span>
                                         <span class="text-xs text-primary font-mono font-bold">${o.kode_order}</span>
+                                        <span class="bg-blue-100 text-blue-900 text-[10px] font-black uppercase px-2 py-0.5 rounded-full border border-blue-300">
+                                            🛠️ ${o.kategori || 'Air Conditioner (AC)'}
+                                        </span>
                                         <span class="bg-primary/10 text-primary text-[10px] font-black uppercase px-2 py-0.5 rounded-full border border-primary/20">
                                             📍 Radius: ${o.distance_km ? o.distance_km + ' KM' : 'Dalam Jangkauan'}
                                         </span>

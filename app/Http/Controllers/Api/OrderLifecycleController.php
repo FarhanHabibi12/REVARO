@@ -81,7 +81,7 @@ class OrderLifecycleController extends Controller
     }
 
     /**
-     * List available/searching orders for technicians in radius.
+     * List available/searching orders for technicians in radius matching their specialization.
      */
     public function available(Request $request)
     {
@@ -90,13 +90,29 @@ class OrderLifecycleController extends Controller
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
+        $teknisi = $user->teknisi;
+
+        // Validasi status verifikasi teknisi: Hanya teknisi yang telah diverifikasi/ACTIVE oleh Admin yang berhak melihat & menerima order
+        if ($teknisi->status !== 'ACTIVE' && $teknisi->status !== 'APPROVED') {
+            return response()->json([
+                'message' => 'Akun kemitraan Teknisi Anda sedang dalam antrean verifikasi atau belum disetujui oleh Admin Verifikator.',
+                'orders' => []
+            ], 403);
+        }
+
         // Fetch searching orders in status 'SEARCHING'
         $orders = Order::with(['pelanggan', 'transaksi'])
             ->where('status', 'SEARCHING')
             ->latest()
             ->get();
 
-        $teknisi = $user->teknisi;
+        // Filter orders sesuai spesialisasi keahlian teknisi
+        $techSpecialization = $teknisi->kategori;
+        $orders = $orders->filter(function ($ord) use ($techSpecialization) {
+            $ordKategori = $ord->kategori;
+            return $this->matchSpecialization($techSpecialization, $ordKategori);
+        })->values();
+
         $tLat = $teknisi->latitude;
         $tLon = $teknisi->longitude;
 
@@ -121,6 +137,59 @@ class OrderLifecycleController extends Controller
         return response()->json([
             'orders' => $orders
         ]);
+    }
+
+    /**
+     * Determine if order category matches technician's registered specializations.
+     */
+    public function matchSpecialization(?string $techKategori, ?string $orderKategori): bool
+    {
+        if (empty($orderKategori) || empty($techKategori)) {
+            return true;
+        }
+
+        $techKat = strtolower(trim($techKategori));
+        $ordKat = strtolower(trim($orderKategori));
+
+        if ($techKat === $ordKat) {
+            return true;
+        }
+
+        // Mapping alias kategori umum
+        $aliasMap = [
+            'ac' => ['ac', 'air conditioner', 'air conditioner (ac)', 'pendingin'],
+            'kulkas' => ['kulkas', 'lemari es', 'lemari es / kulkas', 'freezer', 'refrigerator'],
+            'mesin cuci' => ['mesin cuci', 'washing machine'],
+            'tv' => ['tv', 'audio visual', 'tv & audio visual', 'televisi'],
+            'komputer' => ['komputer', 'laptop', 'pc', 'komputer & laptop'],
+            'pompa air' => ['pompa air', 'pompa', 'pompa air rumah tangga', 'water pump'],
+        ];
+
+        $techKeys = [];
+        $orderKeys = [];
+
+        foreach ($aliasMap as $groupKey => $aliases) {
+            foreach ($aliases as $alias) {
+                if (str_contains($techKat, $alias)) {
+                    $techKeys[$groupKey] = true;
+                }
+                if (str_contains($ordKat, $alias)) {
+                    $orderKeys[$groupKey] = true;
+                }
+            }
+        }
+
+        foreach (array_keys($orderKeys) as $oKey) {
+            if (isset($techKeys[$oKey])) {
+                return true;
+            }
+        }
+
+        if (str_contains($techKat, $ordKat) || str_contains($ordKat, $techKat)) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -178,12 +247,15 @@ class OrderLifecycleController extends Controller
         $maxRadius = $isPremium ? 20 : 7;
         $premiumFee = $isPremium ? (float) \App\Models\SystemSetting::get('maps_premium_fee', 25000) : 0.0;
 
+        $kategoriOrder = $request->input('kategori_servis') ?: ($request->input('kategori') ?: 'Air Conditioner (AC)');
+
         $order = Order::create([
             'pelanggan_id' => $pelanggan->id,
             'teknisi_id' => null,
             'kode_order' => $kodeOrder,
             'status' => 'SEARCHING',
             'keluhan' => substr($request->keluhan, 0, 500),
+            'kategori' => $kategoriOrder,
             'pemesan_nama' => $recipientName,
             'pemesan_hp' => $recipientPhone,
             'pemesan_alamat' => $recipientAddress,
@@ -200,6 +272,8 @@ class OrderLifecycleController extends Controller
             'is_premium' => $isPremium,
             'biaya_prioritas' => $premiumFee,
         ]);
+
+        \App\Models\SystemSetting::set('order_kategori_' . $order->id, $kategoriOrder, 'order_meta');
 
         // Trigger asynchronous dispatch job (initial: 7km, max: 7km or 20km)
         DispatchOrderJob::dispatch($order->id, 7, $maxRadius);
@@ -229,8 +303,16 @@ class OrderLifecycleController extends Controller
 
         $teknisi = $user->teknisi;
 
-        if ($teknisi->status !== 'ACTIVE') {
-            return response()->json(['message' => 'Profil Teknisi Anda belum aktif.'], 403);
+        if ($teknisi->status !== 'ACTIVE' && $teknisi->status !== 'APPROVED') {
+            return response()->json(['message' => 'Profil Teknisi Anda belum aktif atau belum diverifikasi oleh Admin.'], 403);
+        }
+
+        if (!$this->matchSpecialization($teknisi->kategori, $order->kategori)) {
+            return response()->json(['message' => 'Pesanan ini tidak sesuai dengan bidang spesialisasi keahlian terdaftar Anda.'], 422);
+        }
+
+        if (!$teknisi->tersedia) {
+            return response()->json(['message' => 'Status Anda sedang tidak tersedia (sedang melayani order lain).'], 400);
         }
 
         if (!$teknisi->tersedia) {
