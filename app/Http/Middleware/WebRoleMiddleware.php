@@ -63,10 +63,10 @@ class WebRoleMiddleware
             }
 
             if ($isAdminRoute) {
-                return redirect()->guest('/login-admin')->with('error', 'Silakan masuk dengan akun administrator Anda terlebih dahulu.');
+                return redirect('/login-admin?session_required=1')->with('error', 'Silakan masuk dengan akun administrator Anda terlebih dahulu.');
             }
 
-            return redirect()->guest('/?auth=login')->with('error', 'Silakan masuk ke akun Anda terlebih dahulu.');
+            return redirect('/?auth=login&session_required=1')->with('error', 'Silakan masuk ke akun Anda terlebih dahulu.');
         }
 
         // 5. Ensure user account is active
@@ -159,6 +159,10 @@ class WebRoleMiddleware
             ], 403);
         }
 
-        return $next($request);
+        $response = $next($request);
+        if (!empty($tokenString) && !$request->hasCookie('auth_token')) {
+            return $response->withCookie(cookie('auth_token', $tokenString, 120, '/', null, false, false));
+        }
+        return $response;
     }
 }

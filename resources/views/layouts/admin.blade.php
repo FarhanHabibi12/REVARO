@@ -246,7 +246,7 @@
             const token = localStorage.getItem('admin_token') || localStorage.getItem('token');
             const userRaw = localStorage.getItem('admin_user') || localStorage.getItem('user');
             if (!token || !userRaw) {
-                window.location.href = '/login-admin';
+                window.location.href = '/login-admin?session_required=1';
                 return;
             }
 

@@ -169,18 +169,51 @@
             }
         }
 
-        // Cek jika sudah login sebagai admin, langsung redirect
-        window.addEventListener('DOMContentLoaded', () => {
+        // Cek jika sudah login sebagai admin, pastikan valid dan jangan loop
+        window.addEventListener('DOMContentLoaded', async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            // Jika diarahkan karena sesi web tidak ada / kedaluwarsa, bersihkan storage basi segera!
+            if (urlParams.get('session_required') || urlParams.get('expired') || urlParams.get('logged_out')) {
+                localStorage.removeItem('admin_token');
+                localStorage.removeItem('admin_user');
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                document.cookie = "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Lax";
+                return;
+            }
+
             const adminToken = localStorage.getItem('admin_token');
             const adminUserRaw = localStorage.getItem('admin_user');
             if (adminToken && adminUserRaw) {
+                // Sinkronkan cookie terlebih dahulu
+                document.cookie = "auth_token=" + adminToken + "; path=/; max-age=86400; SameSite=Lax";
                 try {
-                    const user = JSON.parse(adminUserRaw);
-                    const dest = getAdminDashboardUrl(user.role);
-                    if (dest) {
-                        window.location.href = dest;
+                    // Verifikasi token aktif ke server sebelum mencoba redirect
+                    const res = await fetch('/api/auth/me', {
+                        headers: {
+                            'Authorization': 'Bearer ' + adminToken,
+                            'Accept': 'application/json'
+                        }
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        const user = data.user || JSON.parse(adminUserRaw);
+                        const dest = getAdminDashboardUrl(user.role);
+                        if (dest) {
+                            window.location.replace(dest + '?_token_auth=' + encodeURIComponent(adminToken));
+                            return;
+                        }
+                    } else {
+                        // Token tidak valid atau sesi ditutup di backend, bersihkan storage agar form login bersih
+                        localStorage.removeItem('admin_token');
+                        localStorage.removeItem('admin_user');
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('user');
+                        document.cookie = "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Lax";
                     }
-                } catch (e) {}
+                } catch (e) {
+                    // Jaringan offline atau timeout, jangan redirect
+                }
             }
         });
 
@@ -362,7 +395,7 @@
                     background: '#0F172A',
                     color: '#E2E8F0'
                 }).then(() => {
-                    window.location.href = targetUrl;
+                    window.location.href = targetUrl + '?_token_auth=' + encodeURIComponent(result.access_token);
                 });
             } catch (err) {
                 console.error(err);
@@ -477,7 +510,7 @@
                     background: '#0F172A',
                     color: '#E2E8F0'
                 }).then(() => {
-                    window.location.href = targetUrl;
+                    window.location.href = targetUrl + '?_token_auth=' + encodeURIComponent(result.access_token);
                 });
 
             } catch (err) {
