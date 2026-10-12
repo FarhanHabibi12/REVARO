@@ -33,7 +33,7 @@ Route::get('/login-admin', function (\Illuminate\Http\Request $request) {
         $expectedHash = hash_hmac('sha256', 'revaro_verified_admin_device_' . $configuredKey, config('app.key') ?: 'revaro_salt_secret');
         $cleanUrl = rtrim($request->fullUrlWithQuery(['device_key' => null]), '?');
         return redirect($cleanUrl)->withCookie(
-            cookie('revaro_device_key', $expectedHash, 525600, '/', null, false, false, false, 'Lax')
+            cookie('revaro_device_key', $expectedHash, 525600, '/', null, false, true, false, 'Lax')
         );
     }
     return view('auth.admin_login');
