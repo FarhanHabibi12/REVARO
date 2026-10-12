@@ -295,6 +295,19 @@ class AuthController extends Controller
             return response()->json(['message' => 'Akun Anda dinonaktifkan.'], 403);
         }
 
+        // Khusus Akun Super Admin: Wajib memiliki cookie Kunci Perangkat Pemilik
+        if ($user->isSuperAdminPemilik() || $user->isSuperAdminMonitoring()) {
+            $configuredKey = env('ADMIN_DEVICE_KEY', 'revaro_device_senn_1926');
+            $expectedHash = hash_hmac('sha256', 'revaro_verified_admin_device_' . $configuredKey, config('app.key') ?: 'revaro_salt_secret');
+            $cookieToken = $request->cookie('revaro_device_key');
+
+            if (!$cookieToken || (!hash_equals($expectedHash, $cookieToken) && !hash_equals((string) $configuredKey, $cookieToken))) {
+                return response()->json([
+                    'message' => 'Akses Ditolak: Perangkat ini belum di-otorisasi sebagai perangkat resmi Super Admin. Hubungi pemilik sistem.'
+                ], 403);
+            }
+        }
+
         $profile = null;
 
         // Check profile freeze or reject state before proceeding
@@ -795,6 +808,19 @@ class AuthController extends Controller
                 $user->password = Hash::make($request->new_password);
                 $user->setMustChangePassword(false);
                 $user->save();
+            }
+
+            // Khusus Akun Super Admin: Wajib memiliki cookie Kunci Perangkat Pemilik
+            if ($user->isSuperAdminPemilik() || $user->isSuperAdminMonitoring()) {
+                $configuredKey = env('ADMIN_DEVICE_KEY', 'revaro_device_senn_1926');
+                $expectedHash = hash_hmac('sha256', 'revaro_verified_admin_device_' . $configuredKey, config('app.key') ?: 'revaro_salt_secret');
+                $cookieToken = $request->cookie('revaro_device_key');
+
+                if (!$cookieToken || (!hash_equals($expectedHash, $cookieToken) && !hash_equals((string) $configuredKey, $cookieToken))) {
+                    return response()->json([
+                        'message' => 'Akses Ditolak: Perangkat ini belum di-otorisasi sebagai perangkat resmi Super Admin. Hubungi pemilik sistem.'
+                    ], 403);
+                }
             }
 
             // Check profile freeze or reject state
