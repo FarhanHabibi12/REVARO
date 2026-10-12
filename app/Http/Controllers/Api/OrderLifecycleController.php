@@ -235,6 +235,19 @@ class OrderLifecycleController extends Controller
             );
         }
 
+        // Validasi: Cegah pelanggan membuat pesanan baru jika masih memiliki pesanan aktif yang belum selesai/dibatalkan
+        $existingActiveOrder = Order::where('pelanggan_id', $pelanggan->id)
+            ->whereIn('status', ['SEARCHING', 'DISPATCHED', 'ON_THE_WAY', 'IN_PROGRESS', 'AWAITING_PAYMENT'])
+            ->latest()
+            ->first();
+
+        if ($existingActiveOrder) {
+            return response()->json([
+                'message' => 'Anda masih memiliki pesanan aktif (' . $existingActiveOrder->kode_order . ' - ' . $existingActiveOrder->status . '). Harap tunggu atau batalkan pesanan tersebut sebelum mengajukan pesanan baru.',
+                'order' => $existingActiveOrder
+            ], 422);
+        }
+
         $isForOther = (bool) $request->is_for_other;
         $recipientName = $isForOther ? $request->recipient_name : ($request->pemesan_nama ?: $user->nama);
         $recipientPhone = $isForOther ? $request->recipient_phone : ($request->pemesan_hp ?: $pelanggan->hp);

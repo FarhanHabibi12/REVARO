@@ -236,8 +236,11 @@
                         <!-- Pencarian cepat lokasi -->
                         <div class="flex gap-2">
                             <input type="text" id="techSearchMapInput" placeholder="Ketik nama jalan/daerah tempat tinggal Anda..." class="revaro-input text-xs py-2 flex-grow">
-                            <button type="button" onclick="searchTechLocation()" class="revaro-btn-outline text-xs px-3.5 font-bold rounded-xl whitespace-nowrap">
-                                <i class="fas fa-search"></i> Cari Peta
+                            <button type="button" onclick="searchTechLocation()" class="revaro-btn-outline text-xs px-3 font-bold rounded-xl whitespace-nowrap">
+                                <i class="fas fa-search"></i> Cari
+                            </button>
+                            <button type="button" onclick="getTechCurrentLocation()" class="revaro-btn text-xs px-3 font-bold rounded-xl whitespace-nowrap shadow-sm" title="Deteksi titik GPS perangkat Anda">
+                                <i class="fas fa-crosshairs"></i> Deteksi GPS
                             </button>
                         </div>
 
@@ -502,6 +505,24 @@
                 updateTechCoords(e.latlng.lat, e.latlng.lng);
                 reverseGeocodeTech(e.latlng.lat, e.latlng.lng);
             });
+
+            // Otomatis sinkronkan titik GPS ke perangkat pengguna jika diizinkan browser
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        const curLat = pos.coords.latitude;
+                        const curLng = pos.coords.longitude;
+                        if (techMapInstance && techMarkerInstance) {
+                            techMapInstance.setView([curLat, curLng], 15);
+                            techMarkerInstance.setLatLng([curLat, curLng]);
+                            updateTechCoords(curLat, curLng);
+                            reverseGeocodeTech(curLat, curLng);
+                        }
+                    },
+                    (err) => {},
+                    { enableHighAccuracy: true, timeout: 6000 }
+                );
+            }
         }
 
         function updateTechCoords(lat, lng) {

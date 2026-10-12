@@ -373,9 +373,14 @@
                                 </h3>
                                 <p class="text-xs text-textLight mt-0.5">Daftar order cepat di sekitar wilayah jangkauan Anda yang siap dikerjakan.</p>
                             </div>
-                            <button onclick="loadAvailableJobs()" class="revaro-btn-outline text-xs px-3.5 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5">
-                                <i class="fas fa-sync-alt"></i> <span>Refresh</span>
-                            </button>
+                            <div class="flex items-center gap-2">
+                                <button onclick="updateTechnicianGpsLive(false)" type="button" class="revaro-btn text-xs px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 shadow-sm" title="Deteksi & Perbarui Titik GPS Saya Saat Ini">
+                                    <i class="fas fa-crosshairs text-white"></i> <span>Update GPS</span>
+                                </button>
+                                <button onclick="loadAvailableJobs()" class="revaro-btn-outline text-xs px-3.5 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5">
+                                    <i class="fas fa-sync-alt"></i> <span>Refresh</span>
+                                </button>
+                            </div>
                         </div>
 
                         <div id="jobsListContainer" class="space-y-4">
@@ -451,6 +456,16 @@
             loadAvailableJobs();
             loadSparepartsList();
             fetchNotifications();
+
+            // Otomatis sinkronisasi GPS teknisi saat buka dasbor
+            setTimeout(() => {
+                updateTechnicianGpsLive(true);
+            }, 1200);
+
+            // Sinkronisasi otomatis posisi GPS berkala setiap 60 detik jika browser terbuka
+            setInterval(() => {
+                updateTechnicianGpsLive(true);
+            }, 60000);
 
             activeJobPollInterval = setInterval(() => {
                 checkActiveJob();
@@ -1107,14 +1122,13 @@
         let techMarkerInstance = null;
         let custMarkerInstance = null;
         let routePolylineInstance = null;
-        let currentTechLat = -6.2088;
-        let currentTechLng = 106.8456;
+        let hasCustomGpsLocation = false;
 
         function initOrUpdateTechRouteMap(order) {
             const custLat = parseFloat(order.latitude) || -6.2088;
             const custLng = parseFloat(order.longitude) || 106.8456;
 
-            if (globalTechProfile && globalTechProfile.latitude && globalTechProfile.longitude) {
+            if (!hasCustomGpsLocation && globalTechProfile && globalTechProfile.latitude && globalTechProfile.longitude) {
                 currentTechLat = parseFloat(globalTechProfile.latitude);
                 currentTechLng = parseFloat(globalTechProfile.longitude);
             }
@@ -1237,41 +1251,78 @@
             return R * c;
         }
 
-        function updateTechnicianGpsLive() {
+        async function updateTechnicianGpsLive(silent = false) {
             if (!navigator.geolocation) {
-                Swal.fire('GPS Tidak Didukung', 'Browser tidak mendukung deteksi GPS.', 'warning');
+                if (!silent) Swal.fire('GPS Tidak Didukung', 'Browser tidak mendukung deteksi GPS.', 'warning');
                 return;
             }
 
-            Swal.fire({
-                title: 'Mendeteksi GPS...',
-                text: 'Mengambil koordinat live posisi Anda saat ini...',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
-            });
+            if (!silent) {
+                Swal.fire({
+                    title: 'Mendeteksi GPS...',
+                    text: 'Mengambil koordinat live posisi Anda saat ini...',
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading()
+                });
+            }
 
             navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    currentTechLat = pos.coords.latitude;
-                    currentTechLng = pos.coords.longitude;
-                    Swal.close();
+                async (pos) => {
+                    const newLat = pos.coords.latitude;
+                    const newLng = pos.coords.longitude;
+                    currentTechLat = newLat;
+                    currentTechLng = newLng;
+                    hasCustomGpsLocation = true;
+
+                    if (globalTechProfile) {
+                        globalTechProfile.latitude = newLat;
+                        globalTechProfile.longitude = newLng;
+                    }
+
+                    // Simpan koordinat live teknisi ke database server via API
+                    try {
+                        const token = localStorage.getItem('token');
+                        await fetch('/api/teknisi/location', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': 'Bearer ' + token,
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                latitude: newLat,
+                                longitude: newLng
+                            })
+                        });
+                    } catch (e) {
+                        console.warn('Gagal sync lokasi GPS ke backend:', e);
+                    }
+
+                    if (!silent) {
+                        Swal.close();
+                        Swal.fire({
+                            toast: true,
+                            position: 'top-end',
+                            icon: 'success',
+                            title: 'Posisi GPS Teknisi Berhasil Disimpan & Diperbarui!',
+                            showConfirmButton: false,
+                            timer: 2000
+                        });
+                    }
+
                     if (currentActiveJob) {
                         initOrUpdateTechRouteMap(currentActiveJob);
+                    } else {
+                        loadAvailableJobs();
                     }
-                    Swal.fire({
-                        toast: true,
-                        position: 'top-end',
-                        icon: 'success',
-                        title: 'Posisi GPS Teknisi Diperbarui!',
-                        showConfirmButton: false,
-                        timer: 1800
-                    });
                 },
                 (err) => {
-                    console.error(err);
-                    Swal.fire('Gagal GPS', 'Pastikan izin lokasi GPS diaktifkan pada browser Anda.', 'warning');
+                    console.error('GPS error:', err);
+                    if (!silent) {
+                        Swal.fire('Izin GPS Ditolak', 'Pastikan izin akses lokasi (GPS) diizinkan di browser Anda.', 'warning');
+                    }
                 },
-                { enableHighAccuracy: true, timeout: 8000 }
+                { enableHighAccuracy: true, timeout: 9000, maximumAge: 15000 }
             );
         }
 

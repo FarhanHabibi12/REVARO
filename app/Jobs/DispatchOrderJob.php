@@ -97,20 +97,11 @@ class DispatchOrderJob implements ShouldQueue
                 $nextRadius = min($this->radius + 7, $this->maxRadius);
                 self::dispatchSync($this->orderId, $nextRadius, $this->maxRadius);
             } else {
-                // Reached max radius (7 KM regular or 20 KM premium), cancel order
-                $order->update(['status' => 'CANCELLED']);
-
-                $premiumLabel = $this->maxRadius >= 20 ? 'Jangkauan Premium (20 KM)' : '7 KM';
-                Notifikasi::create([
-                    'user_id' => $order->pelanggan->user_id,
-                    'judul' => 'Pencarian Teknisi Gagal',
-                    'pesan' => "Maaf, tidak ada teknisi yang tersedia di sekitar lokasi Anda dalam radius {$premiumLabel} saat ini. Silakan coba kembali.",
-                    'dibaca' => false,
-                ]);
-
+                // Reached max radius: Biarkan order tetap berstatus SEARCHING
+                // Jangan batalkan otomatis agar teknisi spesialisasi yang online bisa melihat dan menerima pesanan dari feed
                 ActivityLog::create([
                     'user_id' => null, // System action
-                    'aktivitas' => "Order {$order->kode_order} dibatalkan otomatis karena tidak menemukan teknisi dalam radius {$this->maxRadius} KM",
+                    'aktivitas' => "Order {$order->kode_order} sedang mencari teknisi dalam radius {$this->maxRadius} KM, status tetap aktif (SEARCHING)",
                 ]);
             }
         }
