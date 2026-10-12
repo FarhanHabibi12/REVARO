@@ -266,6 +266,51 @@
         </div>`;
     }
 
+    function formatWibTime(dateStr) {
+        if (!dateStr) return 'Aktif';
+        try {
+            if (typeof dateStr === 'string' && dateStr.includes(' ')) {
+                const parts = dateStr.split(' ');
+                if (parts[1]) return parts[1].substring(0, 8) + ' WIB';
+            }
+            const d = new Date(dateStr);
+            if (!isNaN(d.getTime())) {
+                return d.toLocaleTimeString('id-ID', {
+                    timeZone: 'Asia/Jakarta',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false
+                }).replace(/\./g, ':') + ' WIB';
+            }
+            return dateStr.substring(11, 19) + ' WIB';
+        } catch(e) {
+            return (dateStr.substring(11, 19) || 'Aktif') + ' WIB';
+        }
+    }
+
+    function formatWibDateTime(dateStr) {
+        if (!dateStr) return 'Baru saja';
+        try {
+            const d = new Date(dateStr);
+            if (!isNaN(d.getTime())) {
+                return d.toLocaleString('id-ID', {
+                    timeZone: 'Asia/Jakarta',
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false
+                }).replace(/\./g, ':');
+            }
+            return dateStr.substring(0, 19).replace('T', ' ');
+        } catch(e) {
+            return dateStr.substring(0, 19).replace('T', ' ');
+        }
+    }
+
     function renderActiveVisitors(visitors) {
         const tbody = document.getElementById('visitorsTableBody');
         const countSpan = document.getElementById('connectedAccountCount');
@@ -318,7 +363,7 @@
                         <div class="text-[10px] text-slate-400 flex items-center gap-2 mt-0.5">
                             <span>${v.endpoint || '/superadmin/keamanan'}</span>
                             <span class="text-slate-600">•</span>
-                            <span class="text-emerald-400 font-bold">${v.last_seen_at ? v.last_seen_at.substring(11, 19) + ' WIB' : 'Aktif'}</span>
+                            <span class="text-emerald-400 font-bold">${formatWibTime(v.last_seen_at)}</span>
                         </div>
                     </td>
                     <td class="py-3.5 text-right">
@@ -416,7 +461,7 @@
                     </div>
                 </div>
                 <div class="text-[10px] text-slate-500 font-mono self-end md:self-auto">
-                    ${l.created_at ? l.created_at.substring(0, 19).replace('T', ' ') : 'Baru saja'}
+                    ${formatWibDateTime(l.created_at)}
                 </div>
             </div>
         `).join('');
