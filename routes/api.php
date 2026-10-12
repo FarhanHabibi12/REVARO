@@ -69,6 +69,8 @@ Route::middleware(['auth:sanctum', 'read_only'])->group(function () {
         ->middleware('role:super-admin-pemilik');
     Route::match(['post', 'patch'], '/admin/accounts/{id}/toggle', [AdminAccountController::class, 'toggleActive'])
         ->middleware('role:super-admin-pemilik');
+    Route::post('/admin/accounts/{id}/reset-password', [AdminAccountController::class, 'resetAdminPassword'])
+        ->middleware('role:super-admin-pemilik');
     Route::get('/admin/audit-logs', [AdminAccountController::class, 'getAuditLogs'])
         ->middleware('role:super-admin-pemilik');
 

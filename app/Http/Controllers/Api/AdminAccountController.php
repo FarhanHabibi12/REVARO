@@ -70,9 +70,9 @@ class AdminAccountController extends Controller
             return response()->json(['message' => 'Role tidak ditemukan di database.'], 500);
         }
 
-        // Full Sistem: Generate password acak dari sistem otomatis
-        $rawPassword = $request->filled('password') && app()->environment('testing')
-            ? $request->password 
+        // Full Sistem: Gunakan password dari form jika diisi, atau generate acak otomatis
+        $rawPassword = $request->filled('password')
+            ? (string) $request->password 
             : \Illuminate\Support\Str::random(10);
 
         $user = User::create([
@@ -86,11 +86,61 @@ class AdminAccountController extends Controller
         // Tandai bahwa admin baru wajib ganti password awal & belum memiliki username
         $user->setMustChangePassword(true);
 
+        // Catat jejak audit aktivitas pembuatan admin
+        \App\Models\ActivityLog::create([
+            'user_id' => auth()->id() ?? $user->id,
+            'aktivitas' => 'Mendaftarkan akun administrator baru: ' . $user->nama . ' (' . $roleName . ')',
+            'ip_address' => $request->ip(),
+        ]);
+
         return response()->json([
             'message' => 'Akun internal admin berhasil dibuat.',
             'user' => $user,
             'temporary_password' => $rawPassword,
         ], 201);
+    }
+
+    /**
+     * Reset password of an admin account by Super Admin Pemilik.
+     */
+    public function resetAdminPassword(Request $request, $id)
+    {
+        $user = User::with('role')->find($id);
+        if (!$user) {
+            return response()->json(['message' => 'Akun administrator tidak ditemukan.'], 404);
+        }
+
+        if ($user->isSuperAdminPemilik()) {
+            return response()->json(['message' => 'Kata sandi akun Super Admin Pemilik tidak dapat direset dari menu ini.'], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'password' => 'nullable|string|min:6',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $newPassword = $request->filled('password')
+            ? (string) $request->password
+            : \Illuminate\Support\Str::random(10);
+
+        $user->password = Hash::make($newPassword);
+        $user->setMustChangePassword(true);
+        $user->save();
+
+        \App\Models\ActivityLog::create([
+            'user_id' => auth()->id() ?? $user->id,
+            'aktivitas' => 'Mereset kata sandi akun administrator: ' . $user->nama . ' (' . ($user->role->nama ?? 'Admin') . ')',
+            'ip_address' => $request->ip(),
+        ]);
+
+        return response()->json([
+            'message' => 'Kata sandi akun admin berhasil direset.',
+            'user' => $user,
+            'temporary_password' => $newPassword,
+        ], 200);
     }
 
     /**
