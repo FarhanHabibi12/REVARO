@@ -176,6 +176,7 @@ class SecurityController extends Controller
         }
 
         $visitors = \App\Models\ActiveVisitor::with('user.role')
+            ->where('last_seen_at', '>=', now()->subMinutes(15))
             ->orderBy('last_seen_at', 'desc')
             ->get()
             ->map(function ($v) {

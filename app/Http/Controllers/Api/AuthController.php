@@ -509,6 +509,7 @@ class AuthController extends Controller
         $user = $request->user();
         if ($user) {
             $user->currentAccessToken()?->delete();
+            \App\Models\ActiveVisitor::where('user_id', $user->id)->delete();
         }
 
         \Illuminate\Support\Facades\Auth::guard('web')->logout();
