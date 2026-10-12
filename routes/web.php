@@ -39,6 +39,7 @@ Route::get('/login-admin', function (\Illuminate\Http\Request $request) {
     return view('auth.admin_login');
 })->name('admin.login');
 Route::get('/admin/login',      fn() => redirect('/login-admin'));
+Route::get('/admin-login',      fn() => redirect('/login-admin'));
 Route::get('/partner/register', fn() => view('auth.partner_register'));
 Route::get('/session-expired',   fn() => response()->view('errors.419', [], 419))->name('session.expired');
 Route::get('/error/419',        fn() => response()->view('errors.419', [], 419));
