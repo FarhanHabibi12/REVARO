@@ -225,10 +225,10 @@
             // Realtime Maintenance Heartbeat for Admin
             setInterval(async () => {
                 try {
-                    const t = localStorage.getItem('admin_token') || localStorage.getItem('token');
+                    const t = localStorage.getItem('admin_token');
                     if (t) {
                         const ping = await fetch('/api/auth/me', {
-                            headers: { 'Authorization': `Bearer ${t}` }
+                            headers: { 'Authorization': `Bearer ${t}`, 'Accept': 'application/json' }
                         });
                         if (ping.status === 401) {
                             localStorage.removeItem('admin_token');
@@ -243,8 +243,15 @@
                 } catch(e) {}
             }, 10000);
 
-            const token = localStorage.getItem('admin_token') || localStorage.getItem('token');
-            const userRaw = localStorage.getItem('admin_user') || localStorage.getItem('user');
+            const urlParams = new URLSearchParams(window.location.search);
+            const queryToken = urlParams.get('_token_auth');
+            if (queryToken) {
+                localStorage.setItem('admin_token', queryToken);
+            }
+
+            let token = localStorage.getItem('admin_token');
+            let userRaw = localStorage.getItem('admin_user');
+
             if (!token || !userRaw) {
                 window.location.href = '/login-admin?session_required=1';
                 return;
@@ -255,7 +262,7 @@
             } catch(e) {
                 localStorage.removeItem('admin_token');
                 localStorage.removeItem('admin_user');
-                window.location.href = '/login-admin';
+                window.location.href = '/login-admin?session_required=1';
                 return;
             }
 
@@ -268,6 +275,18 @@
             if (lowerRole.includes('verifikator')) roleSlug = 'admin-verifikator';
             else if (lowerRole.includes('resolusi')) roleSlug = 'admin-resolusi';
             else if (lowerRole.includes('pemilik')) roleSlug = 'super-admin-pemilik';
+
+            // Validasi keras: Jangan izinkan akun non-admin (misal data pelanggan) masuk
+            if (roleSlug !== 'admin-verifikator' && roleSlug !== 'admin-resolusi') {
+                localStorage.removeItem('admin_token');
+                localStorage.removeItem('admin_user');
+                let homeUrl = '/login-admin?session_required=1';
+                if (roleSlug === 'super-admin-pemilik') {
+                    homeUrl = '/superadmin/pemilik/dashboard';
+                }
+                window.location.href = homeUrl;
+                return;
+            }
 
             localStorage.setItem('admin_token', token);
             localStorage.setItem('admin_user', JSON.stringify({ ...currentUser, role: roleSlug }));
@@ -283,15 +302,6 @@
             };
             const roleElem = document.getElementById('adminNavRole');
             if (roleElem) roleElem.innerText = roleDisplayNames[roleSlug] || 'Staf';
-
-            if (roleSlug !== 'admin-verifikator' && roleSlug !== 'admin-resolusi') {
-                let homeUrl = '/login-admin';
-                if (roleSlug === 'super-admin-pemilik') {
-                    homeUrl = '/superadmin/pemilik/dashboard';
-                }
-                window.location.href = homeUrl;
-                return;
-            }
 
             renderSidebarMenu(roleSlug);
 

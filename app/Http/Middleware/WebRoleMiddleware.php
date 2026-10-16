@@ -22,21 +22,63 @@ class WebRoleMiddleware
      */
     public function handle(Request $request, Closure $next, string ...$slugs): Response
     {
+        $path = $request->path();
+        $isAdminRoute = str_starts_with($path, 'superadmin') || str_starts_with($path, 'admin');
+
         $user = null;
         try {
-            // 1. Resolve user from Web Auth Guard
-            $user = Auth::guard('web')->user();
+            // Prioritas 1: Jika query parameter _token_auth dikirim secara eksplisit (misal redirect langsung dari login admin/user)
+            $explicitToken = $request->query('_token_auth');
+            if ($explicitToken) {
+                if (str_starts_with($explicitToken, 'Bearer ')) {
+                    $explicitToken = substr($explicitToken, 7);
+                }
+                $pat = PersonalAccessToken::findToken($explicitToken);
+                if ($pat && $pat->tokenable) {
+                    $user = $pat->tokenable;
+                    Auth::guard('web')->login($user);
+                    if ($isAdminRoute) {
+                        session(['admin_bearer_token' => $explicitToken]);
+                    }
+                    session(['auth_token' => $explicitToken]);
+                }
+            }
 
-            // 2. If not found in session, try resolving via cookie, Bearer header, or query token
+            // Prioritas 2: Resolve user from Web Auth Guard jika belum ada user dari token eksplisit
             if (!$user) {
-                $tokenString = $request->cookie('auth_token')
+                $user = Auth::guard('web')->user();
+            }
+
+            // Prioritas 3: Jika rute ini adalah portal admin tapi sesi web saat ini BUKAN admin (misal sesi pelanggan tertinggal di Chrome),
+            // coba cari apakah ada token admin yang valid di cookie, session, atau header
+            if ($isAdminRoute && $user && !$user->isAdminVerifikator() && !$user->isAdminResolusi() && !$user->isSuperAdminPemilik() && !$user->isSuperAdminMonitoring()) {
+                $candidateToken = session('admin_bearer_token')
+                    ?? $request->cookie('auth_token')
+                    ?? $request->bearerToken();
+
+                if ($candidateToken) {
+                    if (str_starts_with($candidateToken, 'Bearer ')) {
+                        $candidateToken = substr($candidateToken, 7);
+                    }
+                    $pat = PersonalAccessToken::findToken($candidateToken);
+                    if ($pat && $pat->tokenable) {
+                        $candUser = $pat->tokenable;
+                        if ($candUser->isAdminVerifikator() || $candUser->isAdminResolusi() || $candUser->isSuperAdminPemilik() || $candUser->isSuperAdminMonitoring()) {
+                            $user = $candUser;
+                            Auth::guard('web')->login($user);
+                        }
+                    }
+                }
+            }
+
+            // Prioritas 4: Jika belum ada user terotentikasi, coba resolve dari cookie/header/session
+            if (!$user) {
+                $tokenString = ($isAdminRoute ? session('admin_bearer_token') : null)
+                    ?? $request->cookie('auth_token')
                     ?? $request->bearerToken()
-                    ?? $request->query('_token_auth')
-                    ?? session('admin_bearer_token')
                     ?? session('auth_token');
 
                 if ($tokenString) {
-                    // Strip Bearer prefix if accidentally included in cookie
                     if (str_starts_with($tokenString, 'Bearer ')) {
                         $tokenString = substr($tokenString, 7);
                     }
@@ -51,10 +93,6 @@ class WebRoleMiddleware
         } catch (\Throwable $e) {
             $user = null;
         }
-
-        // 3. Determine if this route is an Admin Portal or User Portal
-        $path = $request->path();
-        $isAdminRoute = str_starts_with($path, 'superadmin') || str_starts_with($path, 'admin');
 
         // 4. If user is still not authenticated, redirect to appropriate login page immediately
         if (!$user) {
@@ -194,8 +232,9 @@ class WebRoleMiddleware
                 'user_role' => $userRoleLabel,
                 'target_portal' => $targetPortal,
                 'user_dashboard' => $userDashboardUrl,
+                'is_admin_portal' => $isAdminRoute,
                 'register_url' => $partnerRegisterUrl,
-                'message' => 'Akun Anda saat ini masuk sebagai ' . $userRoleLabel . ' dan belum terdaftar untuk mengakses ' . $targetPortal . '.'
+                'message' => 'Akun Anda saat ini masuk sebagai ' . $userRoleLabel . ' (' . $user->nama . ') dan belum memiliki hak akses Administrator. Silakan masuk menggunakan akun staf admin Anda.'
             ], 403);
         }
 

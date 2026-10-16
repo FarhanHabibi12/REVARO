@@ -169,32 +169,44 @@
             }
         }
 
-        // Bersihkan token basi saat halaman login dibuka agar form selalu siap digunakan
+        // Bersihkan storage pelanggan dan kredensial basi saat halaman login dibuka agar form selalu bersih & siap digunakan
         window.addEventListener('DOMContentLoaded', () => {
             const urlParams = new URLSearchParams(window.location.search);
-            // Jika diarahkan karena sesi web tidak ada / kedaluwarsa, bersihkan storage basi segera!
+            // Selalu bersihkan token pelanggan dari halaman login admin
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            localStorage.removeItem('profile');
+
+            // Jika diarahkan karena sesi web tidak ada / kedaluwarsa, bersihkan storage admin juga
             if (urlParams.get('session_required') || urlParams.get('expired') || urlParams.get('logged_out')) {
                 localStorage.removeItem('admin_token');
                 localStorage.removeItem('admin_user');
-                localStorage.removeItem('token');
-                localStorage.removeItem('user');
                 document.cookie = "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Lax";
                 return;
             }
 
-            // Jika ada sesi Super Admin lama di perangkat yang TIDAK memiliki cookie kunci, bersihkan agar tidak mental 404
+            // Periksa kredensial admin yang tersimpan
             const adminUserRaw = localStorage.getItem('admin_user');
             if (adminUserRaw) {
                 try {
                     const u = JSON.parse(adminUserRaw);
-                    const role = (u.role || '').toLowerCase();
-                    if (role.includes('pemilik') || role.includes('super-admin')) {
+                    const role = (u.role || (u.role && u.role.nama) || '').toLowerCase();
+                    // Jika data admin_user ternyata bukan peran admin (misal terkontaminasi pelanggan), bersihkan segera!
+                    if (!role.includes('verifikator') && !role.includes('resolusi') && !role.includes('pemilik') && !role.includes('monitoring')) {
+                        localStorage.removeItem('admin_token');
+                        localStorage.removeItem('admin_user');
+                        document.cookie = "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Lax";
+                    } else if (role.includes('pemilik') || role.includes('super-admin')) {
+                        // Jika ada sesi Super Admin lama di perangkat yang TIDAK memiliki cookie kunci, bersihkan agar tidak mental 404
                         if (!document.cookie.includes('revaro_device_key')) {
                             localStorage.removeItem('admin_token');
                             localStorage.removeItem('admin_user');
                         }
                     }
-                } catch (e) {}
+                } catch (e) {
+                    localStorage.removeItem('admin_token');
+                    localStorage.removeItem('admin_user');
+                }
             }
         });
 

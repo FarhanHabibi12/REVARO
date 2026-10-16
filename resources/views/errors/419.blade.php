@@ -100,13 +100,17 @@
                 </p>
 
                 <div class="flex flex-col sm:flex-row justify-center gap-3.5">
-                    <button onclick="window.location.reload()" class="revaro-btn px-7 py-3.5 rounded-xl font-bold text-sm sm:text-base flex items-center justify-center gap-2">
+                    <button onclick="window.location.reload()" class="revaro-btn px-6 py-3.5 rounded-xl font-bold text-sm sm:text-base flex items-center justify-center gap-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                         <span>Segarkan Halaman</span>
                     </button>
-                    <a href="/login" id="loginBtn" class="revaro-btn-outline px-7 py-3.5 rounded-xl font-bold text-sm sm:text-base flex items-center justify-center gap-2">
+                    <a href="/login-admin?session_required=1" id="loginAdminBtn" class="revaro-btn-orange px-6 py-3.5 rounded-xl font-bold text-sm sm:text-base flex items-center justify-center gap-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/></svg>
-                        <span>Masuk Kembali</span>
+                        <span>Masuk Portal Admin</span>
+                    </a>
+                    <a href="/?auth=login&session_required=1" id="loginBtn" class="revaro-btn-outline px-6 py-3.5 rounded-xl font-bold text-sm sm:text-base flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                        <span>Masuk Akun Pengguna</span>
                     </a>
                 </div>
             </div>
@@ -120,14 +124,12 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const loginBtn = document.getElementById('loginBtn');
-            if (loginBtn) {
-                if (document.referrer.includes('admin') || localStorage.getItem('last_portal') === 'admin') {
-                    loginBtn.href = '/login-admin';
-                } else {
-                    loginBtn.href = '/?auth=login';
-                }
-            }
+            // Bersihkan storage basi saat berada di halaman session expired agar login berikutnya fresh
+            localStorage.removeItem('admin_token');
+            localStorage.removeItem('admin_user');
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            document.cookie = "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Lax";
         });
     </script>
 </body>

@@ -147,6 +147,17 @@
                     </p>
 
                     <div class="flex flex-col sm:flex-row justify-center gap-3">
+                        @if(!empty($is_admin_portal) || ($target_portal ?? '') === 'Portal Administrasi Khusus')
+                            <a href="/login-admin?session_required=1" class="revaro-btn-orange px-6 py-3.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/></svg>
+                                <span>Masuk ke Portal Admin</span>
+                            </a>
+                            <button onclick="handleLogoutAndExit()" class="revaro-btn-outline px-6 py-3.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                                <span>Ganti / Keluar Akun</span>
+                            </button>
+                        @endif
+
                         @if(!empty($register_url))
                             <a href="{{ $register_url }}" class="revaro-btn-orange px-6 py-3.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
@@ -222,7 +233,8 @@
         function handleLogoutAndExit() {
             localStorage.clear();
             sessionStorage.clear();
-            window.location.href = '/';
+            document.cookie = "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Lax";
+            window.location.href = '/login-admin?session_required=1';
         }
     </script>
 

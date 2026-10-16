@@ -349,8 +349,14 @@
             });
         }
 
-        const token = localStorage.getItem('admin_token') || localStorage.getItem('token');
-        const userRaw = localStorage.getItem('admin_user') || localStorage.getItem('user');
+        const urlParams = new URLSearchParams(window.location.search);
+        const queryToken = urlParams.get('_token_auth');
+        if (queryToken) {
+            localStorage.setItem('admin_token', queryToken);
+        }
+
+        const token = localStorage.getItem('admin_token');
+        const userRaw = localStorage.getItem('admin_user');
         if (!token || !userRaw) { 
             window.location.href = '/login-admin?session_required=1'; 
             return; 
@@ -362,7 +368,7 @@
         } catch(e) {
             localStorage.removeItem('admin_token');
             localStorage.removeItem('admin_user');
-            window.location.href = '/login-admin';
+            window.location.href = '/login-admin?session_required=1';
             return;
         }
 

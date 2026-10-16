@@ -63,6 +63,16 @@ Route::get('/login-admin', function (\Illuminate\Http\Request $request) {
             cookie('revaro_device_key', $expectedHash, 525600, '/', null, false, true, false, 'Lax')
         );
     }
+
+    // Jika ada sesi non-admin aktif di browser (misal Pelanggan/Mitra), bersihkan sesi web agar form login admin tidak konflik
+    $currentUser = \Illuminate\Support\Facades\Auth::guard('web')->user();
+    if ($currentUser && !$currentUser->isAdminVerifikator() && !$currentUser->isAdminResolusi() && !$currentUser->isSuperAdminPemilik() && !$currentUser->isSuperAdminMonitoring()) {
+        \Illuminate\Support\Facades\Auth::guard('web')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+        return response()->view('auth.admin_login')->withCookie(cookie()->forget('auth_token'));
+    }
+
     return view('auth.admin_login');
 })->name('admin.login');
 Route::get('/admin/login',      fn() => redirect('/login-admin'));
