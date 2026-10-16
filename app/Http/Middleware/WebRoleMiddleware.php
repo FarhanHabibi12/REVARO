@@ -154,8 +154,48 @@ class WebRoleMiddleware
                 return response()->json(['message' => 'Forbidden: Akses ditolak untuk peran akun Anda.'], 403);
             }
 
+            // Hitung peran aktif yang dimiliki pengguna saat ini
+            $userRoleLabel = 'Pelanggan';
+            $userDashboardUrl = '/pelanggan/dashboard';
+            if (method_exists($user, 'isSuperAdminPemilik') && $user->isSuperAdminPemilik()) {
+                $userRoleLabel = 'Super Admin Pemilik';
+                $userDashboardUrl = '/superadmin/pemilik/dashboard';
+            } elseif ((method_exists($user, 'isTeknisi') && $user->isTeknisi()) || $user->teknisi !== null) {
+                $userRoleLabel = 'Mitra Teknisi';
+                $userDashboardUrl = '/teknisi/dashboard';
+            } elseif ((method_exists($user, 'isToko') && $user->isToko()) || $user->toko !== null) {
+                $userRoleLabel = 'Mitra Toko Sparepart';
+                $userDashboardUrl = '/toko/dashboard';
+            } elseif ((method_exists($user, 'isPelanggan') && $user->isPelanggan()) || $user->pelanggan !== null) {
+                $userRoleLabel = 'Pelanggan';
+                $userDashboardUrl = '/pelanggan/dashboard';
+            } elseif ($user->role) {
+                $userRoleLabel = $user->role->nama;
+            }
+
+            // Tentukan target portal yang coba dibuka
+            $targetPortal = 'Portal Sistem';
+            $partnerRegisterUrl = null;
+            if (in_array('toko-sparepart', $slugs) || str_starts_with($path, 'toko')) {
+                $targetPortal = 'Dasbor Toko Sparepart';
+                $partnerRegisterUrl = '/partner/register?role=toko-sparepart';
+            } elseif (in_array('teknisi', $slugs) || str_starts_with($path, 'teknisi')) {
+                $targetPortal = 'Dasbor Mitra Teknisi';
+                $partnerRegisterUrl = '/partner/register?role=teknisi';
+            } elseif (in_array('pelanggan', $slugs) || str_starts_with($path, 'pelanggan')) {
+                $targetPortal = 'Dasbor Pelanggan';
+            } elseif ($isAdminRoute) {
+                $targetPortal = 'Portal Administrasi Khusus';
+            }
+
             return response()->view('errors.403', [
-                'message' => 'Akses Ditolak: Peran akun Anda tidak memiliki izin untuk membuka halaman portal ini.'
+                'error_type' => 'role_unregistered',
+                'user_name' => $user->nama,
+                'user_role' => $userRoleLabel,
+                'target_portal' => $targetPortal,
+                'user_dashboard' => $userDashboardUrl,
+                'register_url' => $partnerRegisterUrl,
+                'message' => 'Akun Anda saat ini masuk sebagai ' . $userRoleLabel . ' dan belum terdaftar untuk mengakses ' . $targetPortal . '.'
             ], 403);
         }
 

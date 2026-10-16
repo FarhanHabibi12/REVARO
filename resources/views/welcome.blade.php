@@ -765,7 +765,7 @@
                                 <li class="flex items-start gap-2"><i class="fas fa-check text-secondary mt-0.5"></i> <span>Kenaikan tier reputasi (Bronze, Silver, Gold).</span></li>
                             </ul>
                         </div>
-                        <a href="/partner/register" class="bg-secondary hover:bg-orange-600 text-white w-full mt-6 py-2 rounded-xl text-xs font-bold text-center block transition-colors">
+                        <a href="/partner/register?role=teknisi" class="bg-secondary hover:bg-orange-600 text-white w-full mt-6 py-2 rounded-xl text-xs font-bold text-center block transition-colors">
                             Gabung Mitra Teknisi
                         </a>
                     </div>
@@ -784,7 +784,7 @@
                                 <li class="flex items-start gap-2"><i class="fas fa-check text-secondary mt-0.5"></i> <span>Badge Toko Resmi Terverifikasi untuk kepercayaan.</span></li>
                             </ul>
                         </div>
-                        <a href="/partner/register" class="revaro-btn-outline w-full mt-6 py-2 rounded-xl text-xs font-bold text-center block">
+                        <a href="/partner/register?role=toko-sparepart" class="revaro-btn-outline w-full mt-6 py-2 rounded-xl text-xs font-bold text-center block">
                             Daftar Toko Sparepart
                         </a>
                     </div>

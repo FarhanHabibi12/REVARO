@@ -810,9 +810,8 @@
                         tabTech.classList.remove('hover:text-primary');
                         tabTech.classList.add('opacity-60', 'cursor-not-allowed', 'bg-gray-100', 'border-gray-300', 'text-gray-500');
                         tabTech.innerHTML = '👨‍🔧 Teknisi <span class="ml-1 text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-2 py-0.5 rounded-full border border-emerald-300">✅ Sudah Terdaftar</span>';
-                        tabTech.onclick = (e) => {
-                            e.preventDefault();
-                        const techObj = user.teknisi || d.teknisi || {};
+
+                        const techObj = user.teknisi || data.teknisi || {};
                         const isPending = techObj.status === 'PENDING_REVIEW' || (techObj.status && techObj.status !== 'ACTIVE' && techObj.status !== 'APPROVED');
                         const techSpec = techObj.kategori || 'Air Conditioner (AC)';
 
@@ -962,6 +961,15 @@
 
         window.addEventListener('load', () => {
             initTechDomicileMap();
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const roleParam = (urlParams.get('role') || '').toLowerCase();
+            if (roleParam === 'toko' || roleParam === 'toko-sparepart' || roleParam === 'shop') {
+                switchTab('toko-sparepart');
+            } else if (roleParam === 'teknisi') {
+                switchTab('teknisi');
+            }
+
             checkExistingMitra();
         });
 
