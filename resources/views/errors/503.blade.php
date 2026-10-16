@@ -471,9 +471,6 @@
                 <p id="portalSubHeader">{{ ($isAdmin ?? false) ? 'Portal Khusus Administrator' : 'Platform Servis Elektronik' }}</p>
             </div>
         </a>
-        <a href="/login-admin" class="header-link">
-            <span>Portal Super Admin</span>
-        </a>
     </header>
 
     <!-- Main Content -->

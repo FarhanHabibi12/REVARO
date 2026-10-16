@@ -234,7 +234,7 @@ class WebRoleMiddleware
                 'user_dashboard' => $userDashboardUrl,
                 'is_admin_portal' => $isAdminRoute,
                 'register_url' => $partnerRegisterUrl,
-                'message' => 'Akun Anda saat ini masuk sebagai ' . $userRoleLabel . ' (' . $user->nama . ') dan belum memiliki hak akses Administrator. Silakan masuk menggunakan akun staf admin Anda.'
+                'message' => 'Akun Anda saat ini masuk sebagai ' . $userRoleLabel . ' (' . $user->nama . ') dan belum terdaftar untuk mengakses ' . $targetPortal . '.'
             ], 403);
         }
 
