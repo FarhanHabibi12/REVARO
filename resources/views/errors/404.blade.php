@@ -98,10 +98,26 @@
                     {{ $exception && $exception->getMessage() ? $exception->getMessage() : 'Halaman yang Anda cari sepertinya tidak ada, sudah dipindahkan, atau Anda salah memasukkan alamat URL.' }}
                 </p>
 
+@php
+    $user404 = auth()->user();
+    $dashUrl404 = '/';
+    $btnText404 = 'Kembali ke Beranda';
+    if ($user404) {
+        $btnText404 = 'Kembali ke Dasbor';
+        if ($user404->isSuperAdminPemilik()) $dashUrl404 = '/superadmin/pemilik/dashboard';
+        elseif ($user404->isSuperAdminMonitoring()) $dashUrl404 = '/superadmin/monitoring/dashboard';
+        elseif ($user404->isAdminVerifikator()) $dashUrl404 = '/admin/verifikator/dashboard';
+        elseif ($user404->isAdminResolusi()) $dashUrl404 = '/admin/resolusi/dashboard';
+        elseif ($user404->isToko() || $user404->toko) $dashUrl404 = '/toko/dashboard';
+        elseif ($user404->isTeknisi() || $user404->teknisi) $dashUrl404 = '/teknisi/dashboard';
+        else $dashUrl404 = '/pelanggan/dashboard';
+    }
+@endphp
+
                 <div class="flex flex-col sm:flex-row justify-center gap-3.5">
-                    <a href="/" class="revaro-btn px-7 py-3.5 rounded-xl font-bold text-sm sm:text-base flex items-center justify-center gap-2">
+                    <a href="{{ $dashUrl404 }}" id="backHomeBtn404" class="revaro-btn px-7 py-3.5 rounded-xl font-bold text-sm sm:text-base flex items-center justify-center gap-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-                        <span>Kembali ke Beranda</span>
+                        <span id="backHomeText404">{{ $btnText404 }}</span>
                     </a>
                     <button onclick="window.history.back()" class="revaro-btn-outline px-7 py-3.5 rounded-xl font-bold text-sm sm:text-base flex items-center justify-center gap-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
@@ -117,5 +133,28 @@
         &copy; 2026 REVARO — Solusi Perbaikan &amp; Komponen Otomotif Terpercaya.
     </footer>
 
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('token');
+            const userRaw = localStorage.getItem('user');
+            if (token && userRaw) {
+                try {
+                    const u = JSON.parse(userRaw);
+                    const r = (u.role?.nama || u.role || '').toLowerCase();
+                    let dUrl = '/pelanggan/dashboard';
+                    if (r.includes('toko') || u.toko) dUrl = '/toko/dashboard';
+                    else if (r.includes('teknisi') || u.teknisi) dUrl = '/teknisi/dashboard';
+                    else if (r.includes('pemilik')) dUrl = '/superadmin/pemilik/dashboard';
+                    else if (r.includes('verifikator')) dUrl = '/admin/verifikator/dashboard';
+                    else if (r.includes('resolusi')) dUrl = '/admin/resolusi/dashboard';
+
+                    const btn = document.getElementById('backHomeBtn404');
+                    const txt = document.getElementById('backHomeText404');
+                    if (btn) btn.href = dUrl;
+                    if (txt) txt.innerText = 'Kembali ke Dasbor';
+                } catch(e) {}
+            }
+        });
+    </script>
 </body>
 </html>

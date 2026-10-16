@@ -13,7 +13,34 @@ use Illuminate\Support\Facades\Route;
 */
 
 // Welcome & Public Landing
-Route::get('/', function() {
+Route::get('/', function(\Illuminate\Http\Request $request) {
+    if (!$request->has('stay') && !$request->has('auth')) {
+        $user = \Illuminate\Support\Facades\Auth::guard('web')->user();
+        if (!$user) {
+            $tokenString = $request->cookie('auth_token')
+                ?? session('auth_token');
+            if ($tokenString) {
+                if (str_starts_with($tokenString, 'Bearer ')) {
+                    $tokenString = substr($tokenString, 7);
+                }
+                $accessToken = \Laravel\Sanctum\PersonalAccessToken::findToken($tokenString);
+                if ($accessToken && $accessToken->tokenable) {
+                    $user = $accessToken->tokenable;
+                }
+            }
+        }
+
+        if ($user) {
+            if ($user->isSuperAdminPemilik()) return redirect('/superadmin/pemilik/dashboard');
+            if ($user->isSuperAdminMonitoring()) return redirect('/superadmin/monitoring/dashboard');
+            if ($user->isAdminVerifikator()) return redirect('/admin/verifikator/dashboard');
+            if ($user->isAdminResolusi()) return redirect('/admin/resolusi/dashboard');
+            if ($user->isToko() || $user->toko) return redirect('/toko/dashboard');
+            if ($user->isTeknisi() || $user->teknisi) return redirect('/teknisi/dashboard');
+            return redirect('/pelanggan/dashboard');
+        }
+    }
+
     $jasaServis = \App\Models\JasaServis::where('is_active', true)->orderBy('id', 'asc')->get();
     return view('welcome', compact('jasaServis'));
 });

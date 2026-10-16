@@ -464,6 +464,22 @@ class AuthController extends Controller
 
         $roleName = $user->role ? $user->role->nama : '';
 
+        if ($user->teknisi) {
+            $latestVerifTeknisi = \App\Models\PendaftaranVerifikasi::where('teknisi_id', $user->teknisi->id)
+                ->latest('id')
+                ->first();
+            $user->teknisi->setAttribute('catatan_revisi', $latestVerifTeknisi?->catatan ?? '');
+            $user->teknisi->setAttribute('latest_verifikasi', $latestVerifTeknisi);
+        }
+
+        if ($user->toko) {
+            $latestVerifToko = \App\Models\PendaftaranVerifikasi::where('toko_id', $user->toko->id)
+                ->latest('id')
+                ->first();
+            $user->toko->setAttribute('catatan_revisi', $latestVerifToko?->catatan ?? '');
+            $user->toko->setAttribute('latest_verifikasi', $latestVerifToko);
+        }
+
         if ($roleContext === 'teknisi' && $user->teknisi) {
             $profile = $user->teknisi;
         } elseif ($roleContext === 'toko' && $user->toko) {
@@ -498,6 +514,45 @@ class AuthController extends Controller
             'teknisi' => $user->teknisi,
             'toko' => $user->toko,
             'pelanggan' => $user->pelanggan,
+        ]);
+    }
+
+    /**
+     * Get latest verification note for logged-in partner (Toko or Teknisi).
+     */
+    public function getVerificationNotes(Request $request)
+    {
+        $user = $request->user();
+        $catatan = null;
+        $status = null;
+        $verifiedAt = null;
+
+        if ($user->toko) {
+            $verif = \App\Models\PendaftaranVerifikasi::where('toko_id', $user->toko->id)
+                ->latest('id')
+                ->first();
+            if ($verif) {
+                $catatan = $verif->catatan;
+                $status = $verif->status;
+                $verifiedAt = $verif->verified_at;
+            }
+        }
+
+        if (!$catatan && $user->teknisi) {
+            $verif = \App\Models\PendaftaranVerifikasi::where('teknisi_id', $user->teknisi->id)
+                ->latest('id')
+                ->first();
+            if ($verif) {
+                $catatan = $verif->catatan;
+                $status = $verif->status;
+                $verifiedAt = $verif->verified_at;
+            }
+        }
+
+        return response()->json([
+            'status' => $status,
+            'catatan' => $catatan,
+            'verified_at' => $verifiedAt,
         ]);
     }
 

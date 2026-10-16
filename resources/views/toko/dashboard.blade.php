@@ -637,8 +637,32 @@
                                     </div>
                                     <p class="text-xs text-textLight">Harap menunggu konfirmasi verifikasi dari tim admin.</p>
                                     <div class="pt-2">
-                                        <a href="/?stay=1" class="w-full inline-block revaro-btn py-3 px-6 rounded-xl text-xs font-black shadow-btn">
-                                            Kembali ke Beranda
+                                        <a href="/pelanggan/dashboard" class="w-full inline-block revaro-btn py-3 px-6 rounded-xl text-xs font-black shadow-btn">
+                                            Buka Dasbor Pelanggan
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        return;
+                    } else if (profile && profile.status === 'REJECTED') {
+                        const rejectNote = (profile && (profile.catatan_revisi || (profile.latest_verifikasi && profile.latest_verifikasi.catatan))) || 'Pendaftaran kemitraan Toko Sparepart Anda tidak disetujui oleh Admin Verifikator.';
+                        document.body.innerHTML = `
+                            <div class="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                                <div class="max-w-md w-full bg-white border-2 border-red-500 rounded-3xl p-8 shadow-[6px_6px_0px_0px_#EF4444] text-center space-y-4">
+                                    <div class="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center text-3xl mx-auto border-2 border-red-500 shadow-sm">
+                                        ❌
+                                    </div>
+                                    <h3 class="text-lg font-black text-red-600">Pendaftaran Ditolak</h3>
+                                    <div class="p-3.5 bg-red-50 border border-red-300 rounded-2xl text-xs text-red-900 leading-relaxed font-semibold text-left">
+                                        Mohon maaf, pengajuan pendaftaran kemitraan Toko Sparepart Anda tidak disetujui oleh tim Admin Verifikator REVARO.
+                                        <div class="mt-2 pt-2 border-t border-red-200">
+                                            <strong>Alasan / Catatan Admin:</strong> <span class="font-bold text-red-700">${escapeHtml(rejectNote)}</span>
+                                        </div>
+                                    </div>
+                                    <div class="pt-2">
+                                        <a href="/pelanggan/dashboard" class="w-full inline-block revaro-btn py-3 px-6 rounded-xl text-xs font-black shadow-btn">
+                                            Buka Dasbor Pelanggan
                                         </a>
                                     </div>
                                 </div>
@@ -649,30 +673,32 @@
                         banner.classList.remove('hidden');
                         mainGrid.classList.add('hidden');
                         
+                        const actualNote = (profile && (profile.catatan_revisi || (profile.latest_verifikasi && profile.latest_verifikasi.catatan))) || 'Memuat catatan dari admin verifikator...';
+
                         banner.innerHTML = `
                             <div class="revaro-card p-6 md:p-8 space-y-4 border-2 border-red-500 bg-red-50/60">
                                 <div class="flex items-center space-x-2 text-red-600 font-extrabold text-base">
                                     <span>📝</span> <span>Dokumen Toko Anda Perlu Direvisi</span>
                                 </div>
                                 <div class="p-3 bg-white border-2 border-red-300 text-xs text-red-700 rounded-xl leading-normal">
-                                    <strong>Catatan Admin Verifikator:</strong> <span id="revisionNotes">Dokumen NIB tidak terdaftar, harap unggah ulang scan dokumen asli.</span>
+                                    <strong>Catatan Admin Verifikator:</strong> <span id="revisionNotes">${escapeHtml(actualNote)}</span>
                                 </div>
                                 
                                 <form id="resubmitForm" onsubmit="handleResubmit(event)" class="space-y-4 text-xs max-w-xl">
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
                                             <label class="block text-primary font-bold mb-1">Nomor Telepon Toko</label>
-                                            <input required type="text" id="resubPhone" class="revaro-input w-full bg-white rounded-xl p-2.5" value="${profile.telepon}">
+                                            <input required type="text" id="resubPhone" class="revaro-input w-full bg-white rounded-xl p-2.5" value="${escapeHtml(profile.telepon || '')}">
                                         </div>
                                         <div>
                                             <label class="block text-primary font-bold mb-1">Nomor SIUP / NIB</label>
-                                            <input required type="text" id="resubNIB" class="revaro-input w-full bg-white rounded-xl p-2.5" value="${profile.izin_usaha}">
+                                            <input required type="text" id="resubNIB" class="revaro-input w-full bg-white rounded-xl p-2.5" value="${escapeHtml(profile.izin_usaha || '')}">
                                         </div>
                                     </div>
                                     <div class="space-y-3">
                                         <div>
                                             <label class="block text-primary font-bold mb-1">Alamat Lengkap Toko</label>
-                                            <input required type="text" id="resubAddress" class="revaro-input w-full bg-white rounded-xl p-2.5" value="${profile.alamat}">
+                                            <input required type="text" id="resubAddress" class="revaro-input w-full bg-white rounded-xl p-2.5" value="${escapeHtml(profile.alamat || '')}">
                                         </div>
                                         <div>
                                             <label class="block text-primary font-bold mb-1">Unggah Berkas NIB Baru (.PDF/.JPG)</label>
@@ -692,16 +718,26 @@
             } catch (err) { console.error(err); }
         }
 
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         async function fetchRevisionNotes(shopId) {
             try {
-                const res = await fetch('/api/admin/verifications', {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                const res = await fetch('/api/mitra/verification-notes', {
+                    headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
                 });
-                const data = await res.json();
                 if (res.ok) {
-                    const myVerif = data.find(v => v.toko_id === shopId && v.status === 'NEEDS_REVISION');
-                    if (myVerif && myVerif.catatan) {
-                        document.getElementById('revisionNotes').innerText = myVerif.catatan;
+                    const data = await res.json();
+                    if (data && data.catatan) {
+                        const el = document.getElementById('revisionNotes');
+                        if (el) el.innerText = data.catatan;
                     }
                 }
             } catch (e) {}

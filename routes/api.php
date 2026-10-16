@@ -49,6 +49,7 @@ Route::middleware(['auth:sanctum', 'read_only'])->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::post('/profile/resubmit', [AuthController::class, 'resubmit']);
     Route::post('/user/profile', [AuthController::class, 'updateUserProfile']);
+    Route::get('/mitra/verification-notes', [AuthController::class, 'getVerificationNotes']);
 
     // Onboarding & Verification (Admin Verifikator only)
     Route::get('/verifications/pending', [VerificationController::class, 'index'])

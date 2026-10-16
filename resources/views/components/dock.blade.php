@@ -324,7 +324,7 @@
 
     if (role === 'pelanggan') {
       items = [
-        { icon: svgIcons.home, label: 'Beranda SOS', mobileLabel: 'Beranda', url: '/pelanggan/dashboard' },
+        { icon: svgIcons.home, label: 'Dasbor SOS', mobileLabel: 'Dasbor', url: '/pelanggan/dashboard' },
         { 
           icon: svgIcons.pesanServis, 
           label: 'Pesan Servis', 
@@ -338,7 +338,7 @@
       ];
     } else if (role === 'teknisi') {
       items = [
-        { icon: svgIcons.home, label: 'Beranda & SOS', mobileLabel: 'Beranda', url: '/teknisi/dashboard' },
+        { icon: svgIcons.home, label: 'Dasbor & SOS', mobileLabel: 'Dasbor', url: '/teknisi/dashboard' },
         { icon: svgIcons.riwayat, label: 'Riwayat Kerja', mobileLabel: 'Riwayat', url: '/teknisi/riwayat' },
         { icon: svgIcons.wallet, label: 'Dompet Saldo', mobileLabel: 'Dompet', url: '/teknisi/dompet' },
         { icon: svgIcons.settings, label: 'Pengaturan Akun', mobileLabel: 'Profil', url: '/teknisi/settings' }

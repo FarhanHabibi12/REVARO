@@ -142,14 +142,30 @@
                     {{ $exception && $exception->getMessage() ? $exception->getMessage() : 'Server kami sedang mengalami sedikit kendala teknis. Tim teknisi kami sedang menanganinya. Mohon coba beberapa saat lagi.' }}
                 </p>
 
+@php
+    $user500 = auth()->user();
+    $dashUrl500 = '/';
+    $btnText500 = 'Ke Beranda';
+    if ($user500) {
+        $btnText500 = 'Kembali ke Dasbor';
+        if ($user500->isSuperAdminPemilik()) $dashUrl500 = '/superadmin/pemilik/dashboard';
+        elseif ($user500->isSuperAdminMonitoring()) $dashUrl500 = '/superadmin/monitoring/dashboard';
+        elseif ($user500->isAdminVerifikator()) $dashUrl500 = '/admin/verifikator/dashboard';
+        elseif ($user500->isAdminResolusi()) $dashUrl500 = '/admin/resolusi/dashboard';
+        elseif ($user500->isToko() || $user500->toko) $dashUrl500 = '/toko/dashboard';
+        elseif ($user500->isTeknisi() || $user500->teknisi) $dashUrl500 = '/teknisi/dashboard';
+        else $dashUrl500 = '/pelanggan/dashboard';
+    }
+@endphp
+
                 <div class="flex flex-col sm:flex-row justify-center gap-3.5">
                     <button onclick="window.location.reload()" class="revaro-btn px-7 py-3.5 rounded-xl font-bold text-sm sm:text-base flex items-center justify-center gap-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                         <span>Muat Ulang Halaman</span>
                     </button>
-                    <a href="/" class="revaro-btn-outline px-7 py-3.5 rounded-xl font-bold text-sm sm:text-base flex items-center justify-center gap-2">
+                    <a href="{{ $dashUrl500 }}" id="backHomeBtn500" class="revaro-btn-outline px-7 py-3.5 rounded-xl font-bold text-sm sm:text-base flex items-center justify-center gap-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-                        <span>Ke Beranda</span>
+                        <span id="backHomeText500">{{ $btnText500 }}</span>
                     </a>
                 </div>
             </div>
@@ -161,5 +177,28 @@
         &copy; 2026 REVARO — Solusi Perbaikan &amp; Komponen Otomotif Terpercaya.
     </footer>
 
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('token');
+            const userRaw = localStorage.getItem('user');
+            if (token && userRaw) {
+                try {
+                    const u = JSON.parse(userRaw);
+                    const r = (u.role?.nama || u.role || '').toLowerCase();
+                    let dUrl = '/pelanggan/dashboard';
+                    if (r.includes('toko') || u.toko) dUrl = '/toko/dashboard';
+                    else if (r.includes('teknisi') || u.teknisi) dUrl = '/teknisi/dashboard';
+                    else if (r.includes('pemilik')) dUrl = '/superadmin/pemilik/dashboard';
+                    else if (r.includes('verifikator')) dUrl = '/admin/verifikator/dashboard';
+                    else if (r.includes('resolusi')) dUrl = '/admin/resolusi/dashboard';
+
+                    const btn = document.getElementById('backHomeBtn500');
+                    const txt = document.getElementById('backHomeText500');
+                    if (btn) btn.href = dUrl;
+                    if (txt) txt.innerText = 'Kembali ke Dasbor';
+                } catch(e) {}
+            }
+        });
+    </script>
 </body>
 </html>

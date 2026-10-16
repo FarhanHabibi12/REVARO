@@ -112,16 +112,29 @@
 </head>
 <body class="bg-gray-50 min-h-screen text-textDark flex flex-col justify-between">
 
+    @php
+        $partnerUser = auth()->user();
+        $partnerDashUrl = '/pelanggan/dashboard';
+        if ($partnerUser) {
+            if ($partnerUser->isSuperAdminPemilik()) $partnerDashUrl = '/superadmin/pemilik/dashboard';
+            elseif ($partnerUser->isSuperAdminMonitoring()) $partnerDashUrl = '/superadmin/monitoring/dashboard';
+            elseif ($partnerUser->isAdminVerifikator()) $partnerDashUrl = '/admin/verifikator/dashboard';
+            elseif ($partnerUser->isAdminResolusi()) $partnerDashUrl = '/admin/resolusi/dashboard';
+            elseif ($partnerUser->isToko() || $partnerUser->toko) $partnerDashUrl = '/toko/dashboard';
+            elseif ($partnerUser->isTeknisi() || $partnerUser->teknisi) $partnerDashUrl = '/teknisi/dashboard';
+        }
+    @endphp
+
     <!-- Top Navigation Bar -->
     <header class="bg-white border-b-2 border-primary sticky top-0 z-50 shadow-sm">
         <div class="max-w-6xl mx-auto px-4 py-3.5 flex justify-between items-center">
-            <a href="/" id="headerLogoLink" class="flex items-center space-x-3">
+            <a href="{{ $partnerUser ? $partnerDashUrl : '/' }}" id="headerLogoLink" class="flex items-center space-x-3">
                 <span class="text-2xl font-extrabold text-primary tracking-tighter">REVA<span class="text-secondary">RO</span></span>
                 <span class="text-xs px-2.5 py-0.5 rounded-full bg-accent text-primary font-bold border border-primary hidden sm:inline-block">Portal Mitra</span>
             </a>
             <div class="flex items-center gap-3">
-                <a href="/" id="backHomeLink" class="revaro-btn-outline text-xs px-3.5 py-1.5 rounded-xl font-bold flex items-center gap-1.5">
-                    <i class="fas fa-arrow-left"></i> <span id="backHomeText">Kembali ke Beranda</span>
+                <a href="{{ $partnerUser ? $partnerDashUrl : '/' }}" id="backHomeLink" class="revaro-btn-outline text-xs px-3.5 py-1.5 rounded-xl font-bold flex items-center gap-1.5">
+                    <i class="fas fa-arrow-left"></i> <span id="backHomeText">{{ $partnerUser ? 'Kembali ke Dasbor' : 'Kembali ke Beranda' }}</span>
                 </a>
             </div>
         </div>
@@ -1263,6 +1276,30 @@
                 });
             }
         }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('token');
+            const userRaw = localStorage.getItem('user');
+            if (token && userRaw) {
+                try {
+                    const u = JSON.parse(userRaw);
+                    const r = (u.role?.nama || u.role || '').toLowerCase();
+                    let dUrl = '/pelanggan/dashboard';
+                    if (r.includes('toko') || u.toko) dUrl = '/toko/dashboard';
+                    else if (r.includes('teknisi') || u.teknisi) dUrl = '/teknisi/dashboard';
+                    else if (r.includes('pemilik')) dUrl = '/superadmin/pemilik/dashboard';
+                    else if (r.includes('verifikator')) dUrl = '/admin/verifikator/dashboard';
+                    else if (r.includes('resolusi')) dUrl = '/admin/resolusi/dashboard';
+
+                    const backLink = document.getElementById('backHomeLink');
+                    const backText = document.getElementById('backHomeText');
+                    const logoLink = document.getElementById('headerLogoLink');
+                    if (backLink) backLink.href = dUrl;
+                    if (backText) backText.innerText = 'Kembali ke Dasbor';
+                    if (logoLink) logoLink.href = dUrl;
+                } catch(e) {}
+            }
+        });
     </script>
 </body>
 </html>

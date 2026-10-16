@@ -1084,13 +1084,13 @@
             }
             if (lower.includes('teknisi')) {
                 if (userObj && userObj.teknisi && userObj.teknisi.status === 'PENDING_REVIEW') {
-                    return null;
+                    return '/pelanggan/dashboard';
                 }
                 return '/teknisi/dashboard';
             }
             if (lower.includes('toko') || lower.includes('sparepart')) {
                 if (userObj && userObj.toko && userObj.toko.status === 'PENDING_REVIEW') {
-                    return null;
+                    return '/pelanggan/dashboard';
                 }
                 return '/toko/dashboard';
             }
@@ -1134,6 +1134,15 @@
                     const user = JSON.parse(userRaw);
                     const roleName = user.role ? (user.role.nama || user.role) : '';
                     const lowerRole = (typeof roleName === 'string' ? roleName : (roleName.nama || '')).toLowerCase();
+
+                    // Jika pengguna sudah login, langsung arahkan ke dashboard peran (jangan balik ke landing page)
+                    if (!urlParams.get('stay') && !urlParams.get('auth')) {
+                        const targetDash = getRoleDashboardUrl(roleName, user);
+                        if (targetDash) {
+                            window.location.replace(targetDash);
+                            return;
+                        }
+                    }
 
                     // Khusus akun internal staf/admin/superadmin, jangan render di navbar beranda pelanggan
                     if (!lowerRole.includes('admin') && !lowerRole.includes('pemilik') && !lowerRole.includes('verifikator') && !lowerRole.includes('resolusi')) {

@@ -160,10 +160,6 @@
                                 <span>Buka Dasbor Saya</span>
                             </a>
                         @endif
-
-                        <a href="/" class="revaro-btn-outline px-6 py-3.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2">
-                            <span>Beranda Utama</span>
-                        </a>
                     </div>
                 </div>
             </div>

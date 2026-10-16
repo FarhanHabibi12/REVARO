@@ -707,8 +707,8 @@
                                             Mohon maaf, pengajuan pendaftaran kemitraan Teknisi Anda tidak disetujui oleh tim Admin Verifikator REVARO.
                                         </div>
                                         <div class="pt-2">
-                                            <a href="/?stay=1" class="w-full inline-block revaro-btn py-3 px-6 rounded-xl text-xs font-black shadow-btn">
-                                                Kembali ke Beranda
+                                            <a href="/pelanggan/dashboard" class="w-full inline-block revaro-btn py-3 px-6 rounded-xl text-xs font-black shadow-btn">
+                                                Buka Dasbor Pelanggan
                                             </a>
                                         </div>
                                     </div>
@@ -738,8 +738,8 @@
                                         </div>
                                         <p class="text-xs text-textLight">Harap menunggu konfirmasi verifikasi dari tim admin kami.</p>
                                         <div class="pt-2">
-                                            <a href="/?stay=1" class="w-full inline-block revaro-btn py-3 px-6 rounded-xl text-xs font-black shadow-btn">
-                                                Kembali ke Beranda
+                                            <a href="/pelanggan/dashboard" class="w-full inline-block revaro-btn py-3 px-6 rounded-xl text-xs font-black shadow-btn">
+                                                Buka Dasbor Pelanggan
                                             </a>
                                         </div>
                                     </div>
@@ -810,20 +810,22 @@
                         banner.classList.remove('hidden');
                         mainGrid.classList.add('hidden');
                         
+                        const actualNote = (profile && (profile.catatan_revisi || (profile.latest_verifikasi && profile.latest_verifikasi.catatan))) || 'Memuat catatan dari admin verifikator...';
+
                         banner.innerHTML = `
                             <div class="bg-red-50 border border-red-200 rounded-2xl p-6 space-y-4">
                                 <div class="flex items-center space-x-2 text-red-600 font-extrabold text-sm">
                                     <span>📝</span> <span>Dokumen Anda Perlu Direvisi</span>
                                 </div>
                                 <div class="p-3 bg-red-100/50 border border-red-200 text-xs text-red-700 rounded-xl leading-normal">
-                                    <strong>Catatan Admin Verifikator:</strong> <span id="revisionNotes">Dokumen KTP buram, harap unggah ulang.</span>
+                                    <strong>Catatan Admin Verifikator:</strong> <span id="revisionNotes">${escapeHtml(actualNote)}</span>
                                 </div>
                                 
                                 <form id="resubmitForm" onsubmit="handleResubmit(event)" class="space-y-3 text-xs max-w-xl">
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                                         <div>
                                             <label class="block text-slate-600 font-semibold mb-1">Nomor WhatsApp/HP</label>
-                                            <input required type="text" id="resubPhone" class="w-full bg-white border border-slate-200 rounded-lg p-2.5 outline-none" value="${profile.hp}">
+                                            <input required type="text" id="resubPhone" class="w-full bg-white border border-slate-200 rounded-lg p-2.5 outline-none" value="${escapeHtml(profile.hp || '')}">
                                         </div>
                                         <div>
                                             <label class="block text-slate-600 font-semibold mb-1">Kategori Spesialisasi</label>
@@ -857,17 +859,26 @@
             } catch (err) { console.error(err); }
         }
 
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         async function fetchRevisionNotes(techId) {
             try {
-                // Read verification notes via audit trace or endpoint if any
-                const res = await fetch('/api/admin/verifications', {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                const res = await fetch('/api/mitra/verification-notes', {
+                    headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
                 });
-                const data = await res.json();
                 if (res.ok) {
-                    const myVerif = data.find(v => v.teknisi_id === techId && v.status === 'NEEDS_REVISION');
-                    if (myVerif && myVerif.catatan) {
-                        document.getElementById('revisionNotes').innerText = myVerif.catatan;
+                    const data = await res.json();
+                    if (data && data.catatan) {
+                        const el = document.getElementById('revisionNotes');
+                        if (el) el.innerText = data.catatan;
                     }
                 }
             } catch (e) {}
